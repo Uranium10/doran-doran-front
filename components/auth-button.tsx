@@ -75,7 +75,7 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
     // Use the current origin so OAuth returns to whatever host we're on
     // (localhost, v0 preview, or production) instead of a hardcoded URL.
     const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined
+      typeof window !== "undefined" ? `${window.location.origin}` : undefined
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
