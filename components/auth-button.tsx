@@ -72,10 +72,17 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
   const handleSignIn = async () => {
     const supabase = getSupabaseBrowserClient()
     if (!supabase) return
-    await supabase.auth.signInWithOAuth({
+    // Use the current origin so OAuth returns to whatever host we're on
+    // (localhost, v0 preview, or production) instead of a hardcoded URL.
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: "http://localhost:3000/dashboard" },
+      options: { redirectTo },
     })
+    if (error) {
+      console.error("[v0] Google 로그인 실패:", error.message)
+    }
   }
 
   const handleSignOut = async () => {
