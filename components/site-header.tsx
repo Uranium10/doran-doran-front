@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Menu, X, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { AuthButton } from "@/components/auth-button"
 
 const navItems = [
   { label: "라이브러리", href: "/#library" },
@@ -65,9 +65,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button asChild className="rounded-full">
-            <Link href="/dashboard">무료 시작하기</Link>
-          </Button>
+          <AuthButton light={!scrolled} />
         </div>
 
         <button
@@ -96,11 +94,9 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Button asChild className="mt-2 rounded-full">
-              <Link href="/dashboard" onClick={() => setOpen(false)}>
-                무료 시작하기
-              </Link>
-            </Button>
+            <div className="mt-2">
+              <AuthButton fullWidth />
+            </div>
           </nav>
         </div>
       )}
