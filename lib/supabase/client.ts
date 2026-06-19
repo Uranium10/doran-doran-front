@@ -13,16 +13,18 @@ let client: SupabaseClient | undefined
  *   const token = data.session?.access_token
  *   fetch(url, { headers: { Authorization: `Bearer ${token}` } })
  */
-export function getSupabaseBrowserClient(): SupabaseClient {
+export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (client) return client
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Supabase 환경변수가 설정되지 않았습니다. NEXT_PUBLIC_SUPABASE_URL 과 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 를 추가해 주세요.",
+    // Don't crash the page — log once and let callers degrade gracefully.
+    console.warn(
+      "[v0] Supabase 환경변수가 설정되지 않았습니다. NEXT_PUBLIC_SUPABASE_URL 과 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 를 추가해 주세요.",
     )
+    return null
   }
 
   client = createClient(supabaseUrl, supabaseKey, {

@@ -90,11 +90,11 @@ export function Pricing() {
                 ))}
               </ul>
               <Button
-                asChild
+                render={<Link href="/dashboard" />}
                 variant={plan.highlight ? "default" : "secondary"}
                 className="mt-7 h-12 rounded-full text-base"
               >
-                <Link href="/dashboard">{plan.cta}</Link>
+                {plan.cta}
               </Button>
             </div>
           ))}

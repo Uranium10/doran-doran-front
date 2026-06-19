@@ -120,15 +120,13 @@ export function Report({
           새 동화 만들기
         </Button>
         <Button
-          asChild
+          render={<Link href="/" />}
           size="lg"
           variant="secondary"
           className="h-12 flex-1 rounded-full text-base"
         >
-          <Link href="/">
-            <Home className="mr-1 h-5 w-5" />
-            홈으로
-          </Link>
+          <Home className="mr-1 h-5 w-5" />
+          홈으로
         </Button>
       </div>
     </div>

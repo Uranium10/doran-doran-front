@@ -30,6 +30,10 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
   // Real-time session detection.
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
@@ -67,6 +71,7 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
 
   const handleSignIn = async () => {
     const supabase = getSupabaseBrowserClient()
+    if (!supabase) return
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: "http://localhost:3000/dashboard" },
@@ -75,6 +80,7 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
 
   const handleSignOut = async () => {
     const supabase = getSupabaseBrowserClient()
+    if (!supabase) return
     await supabase.auth.signOut()
     setMenuOpen(false)
   }
