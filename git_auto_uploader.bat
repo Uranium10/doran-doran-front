@@ -1,5 +1,5 @@
+git pull origin v0/uranium10-ebf78e2c
 git add .
 git commit -m "by auto uploader"
-git pull
 call git push
 pause
