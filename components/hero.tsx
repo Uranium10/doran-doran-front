@@ -65,23 +65,23 @@ export function Hero() {
             만나보세요.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/dashboard">
-            <Button asChild size="lg" className="h-13 rounded-full px-7 text-base point-hover">
-                <Play className="mr-1 h-5 w-5 fill-current" style={{display:'inline', marginTop:'-4px'}} />
-                무료 시작하기
-            </Button>
-            </Link>
-            <Link href="/#library">
             <Button
-              asChild
+              render={<Link href="/dashboard" />}
+              size="lg"
+              className="h-13 rounded-full px-7 text-base point-hover"
+            >
+              <Play className="mr-1 h-5 w-5 fill-current" style={{ display: "inline", marginTop: "-4px" }} />
+              무료 시작하기
+            </Button>
+            <Button
+              render={<Link href="/#library" />}
               size="lg"
               variant="secondary"
               className="h-13 rounded-full px-7 text-base point-hover"
             >
-                라이브러리 둘러보기
-                <ArrowRight className="ml-1 h-5 w-5" style={{display:'inline', marginTop:'-4px'}}/>
-              </Button>
-            </Link>
+              라이브러리 둘러보기
+              <ArrowRight className="ml-1 h-5 w-5" style={{ display: "inline", marginTop: "-4px" }} />
+            </Button>
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
             <span>신용카드 없이 시작</span>

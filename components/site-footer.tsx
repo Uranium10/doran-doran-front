@@ -14,12 +14,12 @@ export function SiteFooter() {
             문해력 테스트부터 나만의 팝업북까지, 3분이면 충분해요.
           </p>
           <Button
-            asChild
+            render={<Link href="/dashboard" />}
             size="lg"
             variant="secondary"
             className="mt-7 h-13 rounded-full px-8 text-base"
           >
-            <Link href="/dashboard">무료로 시작하기</Link>
+            무료로 시작하기
           </Button>
         </div>
 
