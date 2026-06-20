@@ -46,6 +46,82 @@ export function scoreToLevel(percent: number): number {
   return Math.max(1, Math.min(MAX_LEVEL, lvl))
 }
 
+/** level(1~12) -> 대략적인 정답률(0~100). 이전 측정 추정 등에 사용. */
+export function levelToPercent(level: number | null): number {
+  if (level == null || level <= 0) return 0
+  return Math.round((Math.min(level, MAX_LEVEL) / MAX_LEVEL) * 100)
+}
+
+// ---------------------------------------------------------------------------
+// 측정 결과 / 진척도
+// ---------------------------------------------------------------------------
+
+/** 측정 종류: 최초 / 동화를 읽은 뒤 / 재시험 */
+export type LiteracyTestKind = "initial" | "post-story" | "retest"
+
+/** 진행 막대에 필요한 진척도 정보 */
+export type LiteracyProgress = {
+  /** 환산된 레벨 (1~12) */
+  level: number
+  /** 막대 왼쪽 라벨 (현재 도달 단계) */
+  lowerLabel: string
+  /** 막대 오른쪽 라벨 (다음 목표 단계) */
+  upperLabel: string
+  /** 두 단계 사이에서의 달성도 (0~100) */
+  achievement: number
+}
+
+/**
+ * 측정 결과 페이로드.
+ * 추후 서버가 내려줄 "결과지" 형태를 가정해 설계했다.
+ * 현재는 더미 계산으로 채우지만, 서버 연동 시 이 객체를 그대로 받아오면 된다.
+ */
+export type LiteracyResult = LiteracyProgress & {
+  kind: LiteracyTestKind
+  /** 맞춘 문항 수 */
+  correct: number
+  /** 전체 문항 수 */
+  total: number
+  /** 직전 측정 대비 변화량(%). 최초 측정이면 null */
+  delta: number | null
+}
+
+/** 정답률(0~100) -> 진척도 정보 (현재 단계 ~ 다음 단계 사이 위치) */
+export function getLiteracyProgress(percent: number): LiteracyProgress {
+  const clamped = Math.max(0, Math.min(100, percent))
+  const cont = (clamped / 100) * MAX_LEVEL // 0~12 연속값
+  const floorLevel = Math.floor(cont)
+  const lowerStep = Math.max(1, Math.min(MAX_LEVEL - 1, floorLevel))
+  const upperStep = Math.min(MAX_LEVEL, lowerStep + 1)
+  const within = Math.max(0, Math.min(1, cont - lowerStep))
+  return {
+    level: scoreToLevel(clamped),
+    lowerLabel: getStageInfo(lowerStep)?.label ?? "씨앗 1단계",
+    upperLabel: getStageInfo(upperStep)?.label ?? "씨앗 2단계",
+    achievement: Math.round(within * 1000) / 10, // 소수 1자리
+  }
+}
+
+/**
+ * 더미 결과지 생성기.
+ * correct/total 과 직전 정답률(prevPercent)로 결과 페이로드를 만든다.
+ * 서버 연동 시에는 이 함수 대신 응답 JSON 을 그대로 사용하면 된다.
+ */
+export function buildLiteracyResult(
+  kind: LiteracyTestKind,
+  correct: number,
+  total: number,
+  prevPercent: number | null = null,
+): LiteracyResult {
+  const percent = total > 0 ? Math.round((correct / total) * 100) : 0
+  const progress = getLiteracyProgress(percent)
+  const delta =
+    kind === "initial" || prevPercent == null
+      ? null
+      : Math.round((percent - prevPercent) * 10) / 10
+  return { ...progress, kind, correct, total, delta }
+}
+
 /** 생년월일(YYYY-MM-DD) -> 개월 수 */
 export function ageInMonths(birthDate: string, now: Date = new Date()): number {
   const birth = new Date(birthDate)
