@@ -6,10 +6,12 @@ import { Criteria } from "@/components/criteria"
 import { Pricing } from "@/components/pricing"
 import { Faq } from "@/components/faq"
 import { SiteFooter } from "@/components/site-footer"
+import { AuthRedirectGate } from "@/components/auth-redirect-gate"
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
+      <AuthRedirectGate />
       <SiteHeader />
       <Hero />
       <HowItWorks />
