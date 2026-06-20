@@ -13,6 +13,8 @@ type AuthButtonProps = {
   /** When true, the button stretches to fill its container (mobile menu). */
   fullWidth?: boolean
   className?: string
+  /** Called after a successful sign-out (e.g. to navigate elsewhere). */
+  onSignedOut?: () => void
 }
 
 function getInitial(name: string | undefined, email: string | undefined) {
@@ -20,7 +22,7 @@ function getInitial(name: string | undefined, email: string | undefined) {
   return source.charAt(0).toUpperCase()
 }
 
-export function AuthButton({ light = false, fullWidth = false, className }: AuthButtonProps) {
+export function AuthButton({ light = false, fullWidth = false, className, onSignedOut }: AuthButtonProps) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -90,6 +92,7 @@ export function AuthButton({ light = false, fullWidth = false, className }: Auth
     if (!supabase) return
     await supabase.auth.signOut()
     setMenuOpen(false)
+    onSignedOut?.()
   }
 
   // Loading: subtle themed placeholder that matches the button footprint.

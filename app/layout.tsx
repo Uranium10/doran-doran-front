@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
 import { Jua, Noto_Sans_KR, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { Providers } from '@/components/providers'
 
 const jua = Jua({
   weight: '400',
@@ -35,7 +36,7 @@ export default function RootLayout({
       className={`${jua.variable} ${notoSansKr.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased">
-        {children}
+        <Providers>{children}</Providers>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
