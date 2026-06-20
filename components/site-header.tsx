@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
 import { AuthButton } from "@/components/auth-button"
 
 const navItems = [
+  { label: "대쉬보드", href: "/#hero"},
   { label: "라이브러리", href: "/#library" },
-  { label: "대시보드", href: "/dashboard" },
   { label: "가격", href: "/#pricing" },
   { label: "문해력 평가기준", href: "/#criteria" },
   { label: "자주 묻는 질문", href: "/#faq" },
