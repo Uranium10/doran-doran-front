@@ -8,6 +8,7 @@ import { useProfile, type Profile } from "@/lib/profile-context"
 import { ageLabel, getStageInfo } from "@/lib/levels"
 import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-form-modal"
 import { ConfirmModal } from "@/components/confirm-modal"
+import { AuthButton } from "@/components/auth-button"
 
 export function ProfilePicker() {
   const router = useRouter()
@@ -26,7 +27,12 @@ export function ProfilePicker() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
+      {/* 구글 계정 로그인 상태 (우상단) — 로그아웃 시 대시보드로 이동 */}
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <AuthButton onSignedOut={() => router.push("/dashboard")} />
+      </div>
+
       <div className="mb-12 text-center">
         <p className="font-mono text-xs tracking-widest text-primary">
           도란도란
