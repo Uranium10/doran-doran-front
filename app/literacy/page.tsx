@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Award, ArrowRight, BookHeart } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
+import { BackLink } from "@/components/back-link"
 import { Quiz } from "@/components/workpad/quiz"
 import { ToddlerChecklist } from "@/components/literacy/toddler-checklist"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ export default function LiteracyPage() {
       <AppHeader />
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <BackLink className="mb-6" />
         {/* 측정 결과 화면 */}
         {resultLevel !== null ? (
           <div className="mx-auto w-full max-w-md text-center">

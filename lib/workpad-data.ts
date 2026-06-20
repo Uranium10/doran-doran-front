@@ -135,6 +135,19 @@ export type StoryPage = {
   text: string
 }
 
+/**
+ * 동화 생성 입력값.
+ * 추후 서버 엔드포인트로 그대로 전송할 페이로드 형태로 설계했다.
+ * - protagonistName: 주인공 이름 (기본값: 현재 프로필 이름, 편집 가능)
+ * - favorite: 아이가 좋아하는 것 (예: 공룡/별/공주)
+ * - todayEvent: 오늘 있었던 일 (자유 서술)
+ */
+export type StoryInput = {
+  protagonistName: string
+  favorite: string
+  todayEvent: string
+}
+
 // Sample generated pop-up story
 export function buildStory(childName: string, favorite: string): StoryPage[] {
   const name = childName.trim() || "아이"

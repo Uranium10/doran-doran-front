@@ -1,131 +1,124 @@
 "use client"
 
 import { useState } from "react"
-import { Sparkles, Wand2 } from "lucide-react"
+import { Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import type { StoryInput } from "@/lib/workpad-data"
 
-const themes = [
-  { id: "courage", label: "용기와 모험" },
-  { id: "kindness", label: "나눔과 친절" },
-  { id: "wisdom", label: "지혜와 재치" },
-  { id: "family", label: "가족과 사랑" },
-]
+// 좋아하는 것 예시 (탭하면 입력칸에 채워짐)
+const FAVORITE_EXAMPLES = ["공룡", "별", "공주", "강아지", "로봇", "딸기"]
+
+const MAX_EVENT_LEN = 200
 
 export function StorySetup({
-  level,
-  onGenerate,
+  defaultName,
+  onSubmit,
 }: {
-  level: string
-  onGenerate: (childName: string, favorite: string) => void
+  /** 주인공 이름 기본값 (현재 프로필 이름) */
+  defaultName: string
+  /** 폼 입력이 완료되면 구조화된 StoryInput 을 넘긴다. 추후 서버 호출 지점. */
+  onSubmit: (input: StoryInput) => void
 }) {
-  const [childName, setChildName] = useState("")
+  const [protagonistName, setProtagonistName] = useState(defaultName)
   const [favorite, setFavorite] = useState("")
-  const [theme, setTheme] = useState("courage")
-  const [loading, setLoading] = useState(false)
+  const [todayEvent, setTodayEvent] = useState("")
 
-  const generate = () => {
-    setLoading(true)
-    // Simulate AI generation with sample content.
-    setTimeout(() => onGenerate(childName, favorite), 2200)
-  }
+  const canSubmit =
+    protagonistName.trim().length > 0 && favorite.trim().length > 0
 
-  if (loading) {
-    return (
-      <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">
-        <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          <Sparkles className="h-9 w-9 animate-pulse text-primary" />
-        </span>
-        <h2 className="mt-6 font-heading text-2xl text-foreground">
-          전래동화를 짓는 중이에요...
-        </h2>
-        <p className="mt-2 text-muted-foreground">
-          {childName.trim() || "아이"}(이)를 위한 팝업북을 한 장 한 장 만들고
-          있어요.
-        </p>
-        <div className="mt-6 h-2 w-64 overflow-hidden rounded-full bg-secondary">
-          <div className="h-full w-1/2 animate-[loadbar_2.2s_ease-in-out] rounded-full bg-primary" />
-        </div>
-        <style jsx>{`
-          @keyframes loadbar {
-            0% {
-              transform: translateX(-100%);
-            }
-            100% {
-              transform: translateX(220%);
-            }
-          }
-        `}</style>
-      </div>
-    )
+  const handleSubmit = () => {
+    if (!canSubmit) return
+    onSubmit({
+      protagonistName: protagonistName.trim(),
+      favorite: favorite.trim(),
+      todayEvent: todayEvent.trim(),
+    })
   }
 
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-6 text-center">
-        <span className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1 text-sm font-medium text-accent">
-          측정 결과: {level} 단계
-        </span>
-        <h2 className="mt-3 font-heading text-3xl text-foreground">
-          이제 전래동화를 만들어요
+        <h2 className="font-heading text-3xl text-foreground">
+          어떤 이야기를 만들까요?
         </h2>
         <p className="mt-2 text-muted-foreground">
-          아이 정보를 넣으면 {level} 단계에 꼭 맞는 나만의 동화가 만들어져요.
+          몇 가지만 알려 주면 우리 아이만의 전래동화가 만들어져요.
         </p>
       </div>
 
       <div className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-md sm:p-8">
+        {/* 1. 주인공 이름 */}
         <div className="space-y-2">
-          <Label htmlFor="childName" className="text-base">
-            아이 이름 (주인공)
+          <Label htmlFor="protagonistName" className="text-base">
+            주인공의 이름을 정해주세요
           </Label>
           <Input
-            id="childName"
-            value={childName}
-            onChange={(e) => setChildName(e.target.value)}
+            id="protagonistName"
+            value={protagonistName}
+            onChange={(e) => setProtagonistName(e.target.value)}
             placeholder="예: 도란이"
             className="h-12 rounded-xl text-base"
           />
         </div>
 
+        {/* 2. 좋아하는 것 (+ 예시 칩) */}
         <div className="space-y-2">
           <Label htmlFor="favorite" className="text-base">
-            아이가 좋아하는 것
+            무엇을 좋아하나요?
           </Label>
           <Input
             id="favorite"
             value={favorite}
             onChange={(e) => setFavorite(e.target.value)}
-            placeholder="예: 별, 강아지, 딸기"
+            placeholder="예: 공룡, 별, 공주"
             className="h-12 rounded-xl text-base"
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-base">이야기 주제</Label>
-          <div className="grid grid-cols-2 gap-3">
-            {themes.map((t) => (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {FAVORITE_EXAMPLES.map((ex) => (
               <button
-                key={t.id}
+                key={ex}
                 type="button"
-                onClick={() => setTheme(t.id)}
+                onClick={() => setFavorite(ex)}
                 className={cn(
-                  "rounded-2xl border-2 p-4 text-base font-medium transition-colors",
-                  theme === t.id
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/40",
+                  "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                  favorite === ex
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                 )}
               >
-                {t.label}
+                {ex}
               </button>
             ))}
           </div>
         </div>
 
+        {/* 3. 오늘 있었던 일 */}
+        <div className="space-y-2">
+          <Label htmlFor="todayEvent" className="text-base">
+            오늘 무슨 일이 있었나요?
+          </Label>
+          <Textarea
+            id="todayEvent"
+            value={todayEvent}
+            onChange={(e) =>
+              setTodayEvent(e.target.value.slice(0, MAX_EVENT_LEN))
+            }
+            placeholder="예: 오늘 유치원에서 친구랑 블록으로 큰 성을 만들었어요."
+            rows={4}
+            className="resize-none rounded-xl text-base"
+          />
+          <p className="text-right text-xs text-muted-foreground">
+            {todayEvent.length}/{MAX_EVENT_LEN}
+          </p>
+        </div>
+
         <Button
-          onClick={generate}
+          onClick={handleSubmit}
+          disabled={!canSubmit}
           size="lg"
           className="h-13 w-full rounded-full text-base"
         >
