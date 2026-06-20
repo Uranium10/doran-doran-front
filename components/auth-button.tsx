@@ -74,10 +74,11 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
   const handleSignIn = async () => {
     const supabase = getSupabaseBrowserClient()
     if (!supabase) return
+    // After Google login, land on the profile selection screen.
     // Use the current origin so OAuth returns to whatever host we're on
     // (localhost, v0 preview, or production) instead of a hardcoded URL.
     const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}` : undefined
+      typeof window !== "undefined" ? `${window.location.origin}/profiles` : undefined
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
