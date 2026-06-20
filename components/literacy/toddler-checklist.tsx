@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import {
-  toddlerChecklist,
-  toddlerMaxScore,
-} from "@/lib/literacy-data"
+import { toddlerChecklist } from "@/lib/literacy-data"
 
 export function ToddlerChecklist({
   childName,
   onComplete,
 }: {
   childName: string
-  onComplete: (percent: number) => void
+  /** correct: 잘 발달한 항목 수, total: 전체 항목 수 */
+  onComplete: (correct: number, total: number) => void
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
 
@@ -24,12 +22,14 @@ export function ToddlerChecklist({
 
   const submit = () => {
     if (!allAnswered) return
-    let score = 0
+    // 각 항목의 최고 점수 선택지를 고른 경우를 "잘하는 항목"으로 집계한다.
+    let correct = 0
     for (const q of toddlerChecklist) {
       const picked = q.options.find((o) => o.value === answers[q.id])
-      score += picked?.score ?? 0
+      const maxScore = Math.max(...q.options.map((o) => o.score))
+      if ((picked?.score ?? 0) >= maxScore) correct++
     }
-    onComplete(Math.round((score / toddlerMaxScore) * 100))
+    onComplete(correct, toddlerChecklist.length)
   }
 
   return (

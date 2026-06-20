@@ -9,11 +9,25 @@ import { BackLink } from "@/components/back-link"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { PopupBook } from "@/components/workpad/popup-book"
 import { StorySetup } from "@/components/workpad/story-setup"
+import { Quiz } from "@/components/workpad/quiz"
+import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
-import { getStageInfo, needsMeasurement } from "@/lib/levels"
-import { buildStory, type StoryPage, type StoryInput } from "@/lib/workpad-data"
+import {
+  getStageInfo,
+  needsMeasurement,
+  scoreToLevel,
+  levelToPercent,
+  buildLiteracyResult,
+  type LiteracyResult,
+} from "@/lib/levels"
+import {
+  buildStory,
+  postQuestions,
+  type StoryPage,
+  type StoryInput,
+} from "@/lib/workpad-data"
 
-type View = "home" | "form" | "generating" | "book"
+type View = "home" | "form" | "generating" | "book" | "post-quiz" | "result"
 
 /**
  * 더미 동화 생성기. 추후 서버 엔드포인트로 교체할 지점.
@@ -30,10 +44,11 @@ async function generateStory(input: StoryInput): Promise<StoryPage[]> {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { currentProfile } = useProfile()
+  const { currentProfile, updateProfile } = useProfile()
   const [view, setView] = useState<View>("home")
   const [pages, setPages] = useState<StoryPage[]>([])
   const [measureModalOpen, setMeasureModalOpen] = useState(false)
+  const [result, setResult] = useState<LiteracyResult | null>(null)
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로 보낸다.
   useEffect(() => {
@@ -58,9 +73,25 @@ export default function DashboardPage() {
   // 폼 입력 완료 → 생성(더미) → 팝업북
   const handleStorySubmit = async (input: StoryInput) => {
     setView("generating")
-    const result = await generateStory(input)
-    setPages(result)
+    const generated = await generateStory(input)
+    setPages(generated)
     setView("book")
+  }
+
+  // 동화를 다 읽음 → 내용 기반 문해력 테스트로 이동
+  const handleBookFinish = () => {
+    setView("post-quiz")
+  }
+
+  // 동화 후 테스트 완료 → 결과지 생성 후 결과 화면
+  const handlePostQuizComplete = (correct: number, total: number) => {
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0
+    // 직전(동화 읽기 전) 수준과 비교해 변화량을 계산한다.
+    const prevPercent = levelToPercent(currentProfile.level)
+    const res = buildLiteracyResult("post-story", correct, total, prevPercent)
+    updateProfile(currentProfile.id, { level: scoreToLevel(percent) })
+    setResult(res)
+    setView("result")
   }
 
   return (
@@ -189,7 +220,7 @@ export default function DashboardPage() {
             <PopupBook
               pages={pages}
               childName={currentProfile.name}
-              onFinish={() => router.push("/library")}
+              onFinish={handleBookFinish}
             />
             <div className="mt-6 text-center">
               <button
@@ -202,6 +233,43 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {view === "post-quiz" && (
+          <div>
+            <div className="mb-6">
+              <BackLink label="동화 다시 보기" onClick={() => setView("book")} />
+            </div>
+            <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-accent/30 bg-accent/10 p-4 text-center">
+              <p className="font-heading text-lg text-accent">
+                방금 읽은 이야기를 떠올려 볼까요?
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                동화 내용을 바탕으로 한 문제씩 풀어 보면 문해력이 얼마나
+                자랐는지 알 수 있어요.
+              </p>
+            </div>
+            <Quiz
+              questions={postQuestions}
+              title="이야기 속 문제를 풀어 볼까요?"
+              intro="방금 읽은 전래동화 내용을 바탕으로 한 문제씩 풀어 보세요."
+              onComplete={(r) => handlePostQuizComplete(r.correct, r.total)}
+            />
+          </div>
+        )}
+
+        {view === "result" && result && (
+          <LiteracyResultView
+            result={result}
+            childName={currentProfile.name}
+            primaryLabel="이야기 책장 보러 가기"
+            onPrimary={() => router.push("/library")}
+            secondaryLabel="새 동화 만들기"
+            onSecondary={() => {
+              setResult(null)
+              setView("home")
+            }}
+          />
         )}
       </main>
 
