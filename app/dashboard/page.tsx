@@ -5,13 +5,28 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Wand2, Sparkles, BookOpen, BarChart3, Library } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
+import { BackLink } from "@/components/back-link"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { PopupBook } from "@/components/workpad/popup-book"
+import { StorySetup } from "@/components/workpad/story-setup"
 import { useProfile } from "@/lib/profile-context"
 import { getStageInfo, needsMeasurement } from "@/lib/levels"
-import { buildStory, type StoryPage } from "@/lib/workpad-data"
+import { buildStory, type StoryPage, type StoryInput } from "@/lib/workpad-data"
 
-type View = "home" | "generating" | "book"
+type View = "home" | "form" | "generating" | "book"
+
+/**
+ * 더미 동화 생성기. 추후 서버 엔드포인트로 교체할 지점.
+ * StoryInput 을 그대로 받아 페이지 배열을 반환하도록 설계해,
+ * 통신 연동 시 이 함수 본문만 fetch 호출로 바꾸면 된다.
+ */
+async function generateStory(input: StoryInput): Promise<StoryPage[]> {
+  // TODO: 실제 엔드포인트 연동 시 아래를 fetch 로 교체
+  //   const res = await fetch("/api/story", { method: "POST", body: JSON.stringify(input) })
+  //   return (await res.json()).pages
+  await new Promise((resolve) => setTimeout(resolve, 3000))
+  return buildStory(input.protagonistName, input.favorite)
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -36,12 +51,16 @@ export default function DashboardPage() {
       setMeasureModalOpen(true)
       return
     }
-    // 상황 B: 더미 로딩 후 팝업북으로 이동한다.
+    // 상황 B: 동화 입력 폼으로 이동한다.
+    setView("form")
+  }
+
+  // 폼 입력 완료 → 생성(더미) → 팝업북
+  const handleStorySubmit = async (input: StoryInput) => {
     setView("generating")
-    setTimeout(() => {
-      setPages(buildStory(currentProfile.name, "별빛"))
-      setView("book")
-    }, 3000)
+    const result = await generateStory(input)
+    setPages(result)
+    setView("book")
   }
 
   return (
@@ -123,6 +142,18 @@ export default function DashboardPage() {
                 </span>
               </Link>
             </div>
+          </div>
+        )}
+
+        {view === "form" && (
+          <div>
+            <div className="mb-6">
+              <BackLink label="이전으로" onClick={() => setView("home")} />
+            </div>
+            <StorySetup
+              defaultName={currentProfile.name}
+              onSubmit={handleStorySubmit}
+            />
           </div>
         )}
 
