@@ -28,9 +28,9 @@ export function ProfilePicker() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
-      {/* 구글 계정 로그인 상태 (우상단) — 로그아웃 시 대시보드로 이동 */}
+      {/* 구글 계정 로그인 상태 (우상단) — 로그아웃 시 사이트 기본 화면으로 이동 */}
       <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
-        <AuthButton onSignedOut={() => router.push("/dashboard")} />
+        <AuthButton onSignedOut={() => router.push("/")} />
       </div>
 
       <div className="mb-12 text-center">
