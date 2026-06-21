@@ -6,6 +6,7 @@ import { ChevronDown, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { syncCurrentUser } from "@/lib/api"
 
 type AuthButtonProps = {
   /** When true, render labels in a light tone for use over dark/hero backgrounds. */
@@ -40,6 +41,8 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
+      // 로그인 상태면 백엔드 DB와 동기화 (없으면 생성, 있으면 통과)
+      if (data.session) void syncCurrentUser()
     })
 
     const {
@@ -47,6 +50,7 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setLoading(false)
+      if (nextSession) void syncCurrentUser()
     })
 
     return () => subscription.unsubscribe()

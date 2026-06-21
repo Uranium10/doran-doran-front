@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { syncCurrentUser } from "@/lib/api"
 
 /**
  * Renders nothing. On mount it checks for an existing (auto-logged-in)
@@ -21,6 +22,8 @@ export function AuthRedirectGate() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (active && data.session) {
+        // 자동 로그인된 세션도 백엔드와 동기화한 뒤 프로필 화면으로 이동
+        void syncCurrentUser()
         router.replace("/profiles")
       }
     })

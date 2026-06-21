@@ -13,7 +13,7 @@ import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-f
 
 export function AppHeader() {
   const router = useRouter()
-  const { currentProfile, clearCurrentProfile, updateProfile } = useProfile()
+  const { currentProfile, clearCurrentProfile, editProfile } = useProfile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -59,14 +59,14 @@ export function AppHeader() {
     router.push("/")
   }
 
-  const handleEditSubmit = (values: ProfileFormValues) => {
-    if (currentProfile) {
-      updateProfile(currentProfile.id, {
-        name: values.name,
-        birth_date: values.birth_date,
-        avatar_url: values.avatar_url,
-      })
-    }
+  const handleEditSubmit = async (values: ProfileFormValues) => {
+    if (!currentProfile) return
+    // PATCH 성공 시에만 모달을 닫는다. 실패 시 throw 되어 모달이 열린 채 로딩만 해제된다.
+    await editProfile(currentProfile.id, {
+      name: values.name,
+      birth_date: values.birth_date,
+      avatar_url: values.avatar_url,
+    })
     setEditOpen(false)
   }
 
