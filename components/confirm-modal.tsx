@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -20,19 +20,34 @@ export function ConfirmModal({
   confirmLabel?: string
   cancelLabel?: string
   destructive?: boolean
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   onClose: () => void
 }) {
+  // 비동기 onConfirm(API 호출) 진행 중 중복 클릭/닫기를 막기 위한 상태
+  const [loading, setLoading] = useState(false)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape" && !loading) onClose()
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
-  }, [open, onClose])
+  }, [open, onClose, loading])
 
   if (!open) return null
+
+  const handleConfirm = async () => {
+    if (loading) return
+    setLoading(true)
+    try {
+      await onConfirm()
+    } catch (e) {
+      console.error("[v0] 작업 실패:", e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div
@@ -45,6 +60,7 @@ export function ConfirmModal({
         type="button"
         aria-label="닫기"
         onClick={onClose}
+        disabled={loading}
         className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in-0"
       />
       <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-2xl animate-in fade-in-0 zoom-in-95 duration-150">
@@ -61,6 +77,7 @@ export function ConfirmModal({
             variant="secondary"
             className="h-11 flex-1 rounded-full"
             onClick={onClose}
+            disabled={loading}
           >
             {cancelLabel}
           </Button>
@@ -70,9 +87,10 @@ export function ConfirmModal({
               destructive &&
                 "bg-destructive text-white hover:bg-destructive/90",
             )}
-            onClick={onConfirm}
+            onClick={handleConfirm}
+            disabled={loading}
           >
-            {confirmLabel}
+            {loading ? "처리 중…" : confirmLabel}
           </Button>
         </div>
       </div>

@@ -32,13 +32,15 @@ export function ProfileFormModal({
   mode: "create" | "edit"
   initial?: Pick<Profile, "name" | "birth_date" | "avatar_url">
   onClose: () => void
-  onSubmit: (values: ProfileFormValues) => void
+  onSubmit: (values: ProfileFormValues) => void | Promise<void>
 }) {
   const [name, setName] = useState("")
   const [birthDate, setBirthDate] = useState("")
   const [avatar, setAvatar] = useState(AVATAR_CHOICES[0])
   // 사용자가 업로드한 커스텀 썸네일 (data URL). 프리셋과 별개로 보관한다.
   const [customAvatar, setCustomAvatar] = useState<string | null>(null)
+  // API 호출 중 중복 제출/닫기를 막기 위한 로딩 상태
+  const [submitting, setSubmitting] = useState(false)
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -90,9 +92,20 @@ export function ProfileFormModal({
 
   const canSubmit = name.trim().length > 0 && birthDate.length > 0
 
-  const submit = () => {
-    if (!canSubmit) return
-    onSubmit({ name: name.trim(), birth_date: birthDate, avatar_url: avatar })
+  const submit = async () => {
+    if (!canSubmit || submitting) return
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        name: name.trim(),
+        birth_date: birthDate,
+        avatar_url: avatar,
+      })
+    } catch (e) {
+      console.error("[v0] 프로필 저장 실패:", e)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return createPortal(
@@ -248,15 +261,20 @@ export function ProfileFormModal({
             variant="secondary"
             className="h-11 flex-1 rounded-full"
             onClick={onClose}
+            disabled={submitting}
           >
             취소
           </Button>
           <Button
             className="h-11 flex-1 rounded-full"
             onClick={submit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || submitting}
           >
-            {mode === "create" ? "만들기" : "저장하기"}
+            {submitting
+              ? "저장 중…"
+              : mode === "create"
+                ? "만들기"
+                : "저장하기"}
           </Button>
         </div>
       </div>

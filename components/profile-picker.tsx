@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -12,19 +12,32 @@ import { AuthButton } from "@/components/auth-button"
 
 export function ProfilePicker() {
   const router = useRouter()
-  const { profiles, selectProfile, addProfile, deleteProfile } = useProfile()
+  const {
+    profiles,
+    loading,
+    selectProfile,
+    addProfile,
+    deleteProfile,
+    refreshProfiles,
+  } = useProfile()
   const [createOpen, setCreateOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null)
   // 방금 만든 프로필 — 문해력 측정 여부를 묻는 모달 대상
   const [pendingMeasure, setPendingMeasure] = useState<Profile | null>(null)
+
+  // 프로필 선택 화면 진입 시 서버에서 최신 목록을 불러온다.
+  useEffect(() => {
+    void refreshProfiles()
+  }, [refreshProfiles])
 
   const handleSelect = (id: string) => {
     selectProfile(id)
     router.push("/dashboard")
   }
 
-  const handleCreate = (values: ProfileFormValues) => {
-    const created = addProfile(values)
+  const handleCreate = async (values: ProfileFormValues) => {
+    // 실패 시 에러를 throw 하여 모달이 로딩을 해제하고 열린 상태를 유지하게 한다.
+    const created = await addProfile(values)
     setCreateOpen(false)
     // 생성 직후, 측정 데이터가 없으니 측정 여부를 물어본다.
     setPendingMeasure(created)
@@ -47,6 +60,14 @@ export function ProfilePicker() {
         <p className="mt-3 text-pretty text-muted-foreground">
           프로필을 선택하면 아이에게 꼭 맞는 동화 여정이 시작돼요.
         </p>
+        {loading && profiles.length === 0 && (
+          <p
+            className="mt-4 text-sm text-muted-foreground"
+            aria-live="polite"
+          >
+            프로필을 불러오는 중이에요…
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-start justify-center gap-6 sm:gap-8">
@@ -157,8 +178,8 @@ export function ProfilePicker() {
         confirmLabel="삭제하기"
         cancelLabel="그냥 둘게요"
         destructive
-        onConfirm={() => {
-          if (pendingDelete) deleteProfile(pendingDelete.id)
+        onConfirm={async () => {
+          if (pendingDelete) await deleteProfile(pendingDelete.id)
           setPendingDelete(null)
         }}
         onClose={() => setPendingDelete(null)}
