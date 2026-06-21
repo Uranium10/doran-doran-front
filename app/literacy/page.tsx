@@ -77,6 +77,7 @@ export default function LiteracyPage() {
             childName={currentProfile.name}
             primaryLabel="이 단계로 동화 만들기"
             onPrimary={() => router.push("/dashboard")}
+            showScore={mode !== "toddler"}
           />
         ) : (
           <>
