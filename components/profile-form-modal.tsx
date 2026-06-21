@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { X, ImagePlus, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -36,16 +37,44 @@ export function ProfileFormModal({
   const [name, setName] = useState("")
   const [birthDate, setBirthDate] = useState("")
   const [avatar, setAvatar] = useState(AVATAR_CHOICES[0])
+  // 사용자가 업로드한 커스텀 썸네일 (data URL). 프리셋과 별개로 보관한다.
+  const [customAvatar, setCustomAvatar] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // 포털은 클라이언트에서만 렌더 (SSR 안전장치)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   // 모달이 열릴 때 초기값을 채운다.
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "")
       setBirthDate(initial?.birth_date ?? "")
-      setAvatar(initial?.avatar_url ?? AVATAR_CHOICES[0])
+      const initialAvatar = initial?.avatar_url ?? AVATAR_CHOICES[0]
+      setAvatar(initialAvatar)
+      // 초기 아바타가 프리셋에 없으면 업로드한 커스텀 이미지로 간주한다.
+      setCustomAvatar(
+        initialAvatar && !AVATAR_CHOICES.includes(initialAvatar)
+          ? initialAvatar
+          : null,
+      )
     }
   }, [open, initial])
+
+  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setCustomAvatar(dataUrl)
+      setAvatar(dataUrl)
+    }
+    reader.readAsDataURL(file)
+    // 같은 파일 재선택도 동작하도록 값 초기화
+    e.target.value = ""
+  }
 
   // Escape 로 닫기
   useEffect(() => {
@@ -57,7 +86,7 @@ export function ProfileFormModal({
     return () => document.removeEventListener("keydown", onKey)
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const canSubmit = name.trim().length > 0 && birthDate.length > 0
 
@@ -66,7 +95,7 @@ export function ProfileFormModal({
     onSubmit({ name: name.trim(), birth_date: birthDate, avatar_url: avatar })
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -133,10 +162,54 @@ export function ProfileFormModal({
                   )}
                 </button>
               ))}
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-border text-muted-foreground">
+              {/* 업로드한 커스텀 썸네일 (있을 때만 선택지로 노출) */}
+              {customAvatar && (
+                <button
+                  type="button"
+                  onClick={() => setAvatar(customAvatar)}
+                  className={cn(
+                    "relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 transition-all",
+                    avatar === customAvatar
+                      ? "ring-primary ring-offset-2 ring-offset-card"
+                      : "ring-border hover:ring-primary/40",
+                  )}
+                  aria-label="업로드한 썸네일 선택"
+                  aria-pressed={avatar === customAvatar}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={customAvatar || "/placeholder.svg"}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                  {avatar === customAvatar && (
+                    <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* 직접 업로드 버튼 */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                aria-label="썸네일 직접 올리기"
+              >
                 <ImagePlus className="h-5 w-5" />
-              </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFilePick}
+                className="hidden"
+              />
             </div>
+            <p className="text-xs text-muted-foreground">
+              기본 그림을 고르거나, 사진을 직접 올릴 수 있어요.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -187,6 +260,7 @@ export function ProfileFormModal({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
