@@ -32,6 +32,7 @@ export function LiteracyResultView({
   onPrimary,
   secondaryLabel,
   onSecondary,
+  showScore = true,
 }: {
   result: LiteracyResult
   childName: string
@@ -39,6 +40,8 @@ export function LiteracyResultView({
   onPrimary: () => void
   secondaryLabel?: string
   onSecondary?: () => void
+  /** 맞춘 개수 표시 여부. 유아용 설문에서는 false 로 숨긴다. */
+  showScore?: boolean
 }) {
   const name = childName.trim() || "아이"
   const copy = KIND_COPY[result.kind]
@@ -59,17 +62,19 @@ export function LiteracyResultView({
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-6 shadow-md sm:p-8">
-        {/* 맞춘 개수 */}
-        <div className="flex items-center justify-center gap-3 rounded-2xl bg-secondary/60 p-5 text-center">
-          <CheckCircle2 className="h-6 w-6 text-primary" />
-          <p className="font-heading text-2xl text-foreground">
-            {total}문제 중 <span className="text-primary">{correct}문제</span>{" "}
-            정답
-          </p>
-        </div>
+        {/* 맞춘 개수 (유아용 설문에서는 숨김) */}
+        {showScore && (
+          <div className="flex items-center justify-center gap-3 rounded-2xl bg-secondary/60 p-5 text-center">
+            <CheckCircle2 className="h-6 w-6 text-primary" />
+            <p className="font-heading text-2xl text-foreground">
+              {total}문제 중 <span className="text-primary">{correct}문제</span>{" "}
+              정답
+            </p>
+          </div>
+        )}
 
         {/* 진행 막대: 현재 단계 → 다음 단계 */}
-        <div className="mt-8">
+        <div className={showScore ? "mt-8" : ""}>
           <div className="flex items-end justify-between text-sm">
             <span className="font-heading text-foreground">{lowerLabel}</span>
             <span className="font-medium text-muted-foreground">현재 달성도</span>
