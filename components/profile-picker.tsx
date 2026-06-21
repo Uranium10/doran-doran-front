@@ -136,7 +136,14 @@ export function ProfilePicker() {
             router.push("/literacy")
           }
         }}
-        onClose={() => setPendingMeasure(null)}
+        onClose={() => {
+          // "나중에 할게요" — 측정은 건너뛰되 새 프로필로 대시보드까지는 이동한다.
+          if (pendingMeasure) {
+            selectProfile(pendingMeasure.id)
+            setPendingMeasure(null)
+            router.push("/dashboard")
+          }
+        }}
       />
 
       <ConfirmModal
