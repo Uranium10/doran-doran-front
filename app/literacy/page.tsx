@@ -4,19 +4,26 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
-import { Quiz } from "@/components/workpad/quiz"
+import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { ToddlerChecklist } from "@/components/literacy/toddler-checklist"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
 import {
   literacyMode,
-  scoreToLevel,
   levelToPercent,
   buildLiteracyResult,
   needsMeasurement,
   type LiteracyResult,
+  type LiteracyTestKind,
 } from "@/lib/levels"
-import { preQuestions } from "@/lib/workpad-data"
+import {
+  buildPretestAssessment,
+  buildSubmission,
+  submitAssessment,
+} from "@/lib/workpad-data"
+
+// 배치고사(pretest) 출제는 정적 더미이므로 한 번만 만든다.
+const pretestAssessment = buildPretestAssessment()
 
 export default function LiteracyPage() {
   const router = useRouter()
@@ -33,17 +40,27 @@ export default function LiteracyPage() {
   const mode = literacyMode(currentProfile.birth_date)
   // 이미 레벨이 있으면 재시험, 없으면 최초 측정
   const isFirstMeasure = needsMeasurement(currentProfile.level)
+  const kind: LiteracyTestKind = isFirstMeasure ? "initial" : "retest"
+  const prevPercent = isFirstMeasure
+    ? null
+    : levelToPercent(currentProfile.level)
 
-  const finishWithCount = (correct: number, total: number) => {
-    const percent = total > 0 ? Math.round((correct / total) * 100) : 0
-    const prevPercent = isFirstMeasure ? null : levelToPercent(currentProfile.level)
-    const res = buildLiteracyResult(
-      isFirstMeasure ? "initial" : "retest",
-      correct,
-      total,
-      prevPercent,
+  // 영유아 체크리스트: 개수 기반(상세 답안 없음)으로 결과지 생성
+  const finishToddler = (correct: number, total: number) => {
+    const res = buildLiteracyResult(kind, correct, total, prevPercent)
+    updateProfile(currentProfile.id, { level: res.level })
+    setResult(res)
+  }
+
+  // 아동 퀴즈: 제출(front→back) → 결과(back→front)
+  const finishChild = async (quiz: QuizResult) => {
+    const submission = buildSubmission(
+      currentProfile.id,
+      pretestAssessment,
+      quiz.answers,
     )
-    updateProfile(currentProfile.id, { level: scoreToLevel(percent) })
+    const res = await submitAssessment(submission, { kind, prevPercent })
+    updateProfile(currentProfile.id, { level: res.level })
     setResult(res)
   }
 
@@ -76,12 +93,12 @@ export default function LiteracyPage() {
             {mode === "toddler" ? (
               <ToddlerChecklist
                 childName={currentProfile.name}
-                onComplete={finishWithCount}
+                onComplete={finishToddler}
               />
             ) : (
               <ChildQuiz
                 childName={currentProfile.name}
-                onComplete={finishWithCount}
+                onComplete={finishChild}
               />
             )}
           </>
@@ -97,7 +114,7 @@ function ChildQuiz({
   onComplete,
 }: {
   childName: string
-  onComplete: (correct: number, total: number) => void
+  onComplete: (quiz: QuizResult) => void
 }) {
   return (
     <div>
@@ -110,10 +127,10 @@ function ChildQuiz({
         </p>
       </div>
       <Quiz
-        questions={preQuestions}
+        questions={pretestAssessment.quizzes}
         title="이야기 문제를 풀어 볼까요?"
         intro="다섯 문제만 풀면 우리 아이에게 꼭 맞는 동화 단계를 찾을 수 있어요."
-        onComplete={(r) => onComplete(r.correct, r.total)}
+        onComplete={onComplete}
       />
     </div>
   )
