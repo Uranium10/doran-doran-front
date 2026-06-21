@@ -175,3 +175,17 @@ export function buildStory(childName: string, favorite: string): StoryPage[] {
     },
   ]
 }
+// 공통 질문 타입 (체크리스트와 퀴즈 모두 이것만 씁니다)
+export type AssessmentQuestion = {
+  question_id: string;
+  skill?: string;
+  passage?: string; // 예문 (없을 수 있음)
+  prompt: string;   // 질문 내용
+  options: { 
+    label: string; 
+    value: string; 
+    image_url?: string | null; 
+  }[];
+  level?: number;
+  answer?: string;
+}
