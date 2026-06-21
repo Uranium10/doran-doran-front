@@ -15,6 +15,8 @@ export function ProfilePicker() {
   const { profiles, selectProfile, addProfile, deleteProfile } = useProfile()
   const [createOpen, setCreateOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null)
+  // 방금 만든 프로필 — 문해력 측정 여부를 묻는 모달 대상
+  const [pendingMeasure, setPendingMeasure] = useState<Profile | null>(null)
 
   const handleSelect = (id: string) => {
     selectProfile(id)
@@ -22,8 +24,10 @@ export function ProfilePicker() {
   }
 
   const handleCreate = (values: ProfileFormValues) => {
-    addProfile(values)
+    const created = addProfile(values)
     setCreateOpen(false)
+    // 생성 직후, 측정 데이터가 없으니 측정 여부를 물어본다.
+    setPendingMeasure(created)
   }
 
   return (
@@ -116,6 +120,23 @@ export function ProfilePicker() {
         mode="create"
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      {/* 프로필 생성 직후: 문해력 측정 안내 (대시보드와 동일한 모달) */}
+      <ConfirmModal
+        open={pendingMeasure !== null}
+        title="문해력 측정이 필요해요"
+        description="동화 제공을 위해 문해력 측정이 필요해요. 지금 하러 갈까요?"
+        confirmLabel="지금 할게요"
+        cancelLabel="나중에 할게요"
+        onConfirm={() => {
+          if (pendingMeasure) {
+            selectProfile(pendingMeasure.id)
+            setPendingMeasure(null)
+            router.push("/literacy")
+          }
+        }}
+        onClose={() => setPendingMeasure(null)}
       />
 
       <ConfirmModal
