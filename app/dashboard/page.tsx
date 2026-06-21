@@ -9,44 +9,30 @@ import { BackLink } from "@/components/back-link"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { PopupBook } from "@/components/workpad/popup-book"
 import { StorySetup } from "@/components/workpad/story-setup"
-import { Quiz } from "@/components/workpad/quiz"
+import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
 import {
   getStageInfo,
   needsMeasurement,
-  scoreToLevel,
   levelToPercent,
-  buildLiteracyResult,
   type LiteracyResult,
 } from "@/lib/levels"
 import {
-  buildStory,
-  postQuestions,
-  type StoryPage,
+  generateAssessment,
+  buildSubmission,
+  submitAssessment,
+  type AssessmentPayload,
   type StoryInput,
 } from "@/lib/workpad-data"
 
 type View = "home" | "form" | "generating" | "book" | "post-quiz" | "result"
 
-/**
- * 더미 동화 생성기. 추후 서버 엔드포인트로 교체할 지점.
- * StoryInput 을 그대로 받아 페이지 배열을 반환하도록 설계해,
- * 통신 연동 시 이 함수 본문만 fetch 호출로 바꾸면 된다.
- */
-async function generateStory(input: StoryInput): Promise<StoryPage[]> {
-  // TODO: 실제 엔드포인트 연동 시 아래를 fetch 로 교체
-  //   const res = await fetch("/api/story", { method: "POST", body: JSON.stringify(input) })
-  //   return (await res.json()).pages
-  await new Promise((resolve) => setTimeout(resolve, 3000))
-  return buildStory(input.protagonistName, input.favorite)
-}
-
 export default function DashboardPage() {
   const router = useRouter()
   const { currentProfile, updateProfile } = useProfile()
   const [view, setView] = useState<View>("home")
-  const [pages, setPages] = useState<StoryPage[]>([])
+  const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
   const [measureModalOpen, setMeasureModalOpen] = useState(false)
   const [result, setResult] = useState<LiteracyResult | null>(null)
 
@@ -70,11 +56,11 @@ export default function DashboardPage() {
     setView("form")
   }
 
-  // 폼 입력 완료 → 생성(더미) → 팝업북
+  // 폼 입력 완료 → 출제(동화+퀴즈 묶음) → 팝업북
   const handleStorySubmit = async (input: StoryInput) => {
     setView("generating")
-    const generated = await generateStory(input)
-    setPages(generated)
+    const payload = await generateAssessment(input)
+    setAssessment(payload)
     setView("book")
   }
 
@@ -83,13 +69,21 @@ export default function DashboardPage() {
     setView("post-quiz")
   }
 
-  // 동화 후 테스트 완료 → 결과지 생성 후 결과 화면
-  const handlePostQuizComplete = (correct: number, total: number) => {
-    const percent = total > 0 ? Math.round((correct / total) * 100) : 0
+  // 동화 후 테스트 완료 → 제출(front→back) → 결과(back→front)
+  const handlePostQuizComplete = async (quiz: QuizResult) => {
+    if (!assessment) return
+    const submission = buildSubmission(
+      currentProfile.id,
+      assessment,
+      quiz.answers,
+    )
     // 직전(동화 읽기 전) 수준과 비교해 변화량을 계산한다.
     const prevPercent = levelToPercent(currentProfile.level)
-    const res = buildLiteracyResult("post-story", correct, total, prevPercent)
-    updateProfile(currentProfile.id, { level: scoreToLevel(percent) })
+    const res = await submitAssessment(submission, {
+      kind: "post-story",
+      prevPercent,
+    })
+    updateProfile(currentProfile.id, { level: res.level })
     setResult(res)
     setView("result")
   }
@@ -218,7 +212,7 @@ export default function DashboardPage() {
         {view === "book" && (
           <div>
             <PopupBook
-              pages={pages}
+              pages={assessment?.pages ?? []}
               childName={currentProfile.name}
               onFinish={handleBookFinish}
             />
@@ -250,10 +244,10 @@ export default function DashboardPage() {
               </p>
             </div>
             <Quiz
-              questions={postQuestions}
+              questions={assessment?.quizzes ?? []}
               title="이야기 속 문제를 풀어 볼까요?"
               intro="방금 읽은 전래동화 내용을 바탕으로 한 문제씩 풀어 보세요."
-              onComplete={(r) => handlePostQuizComplete(r.correct, r.total)}
+              onComplete={handlePostQuizComplete}
             />
           </div>
         )}
