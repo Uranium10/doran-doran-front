@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -10,14 +10,7 @@ import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { ToddlerChecklist } from "@/components/literacy/toddler-checklist"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
-import {
-  literacyMode,
-  levelToPercent,
-  buildLiteracyResult,
-  needsMeasurement,
-  type LiteracyResult,
-  type LiteracyTestKind,
-} from "@/lib/levels"
+import type { LiteracyResult } from "@/lib/levels"
 import {
   generatePretest,
   buildSubmission,
@@ -29,25 +22,30 @@ export default function LiteracyPage() {
   const router = useRouter()
   const { currentProfile, updateProfile } = useProfile()
   const [result, setResult] = useState<LiteracyResult | null>(null)
-  // 아동 모드 배치고사 문제 (서버에서 받아옴)
-  const [pretest, setPretest] = useState<AssessmentPayload | null>(null)
-  const [loadingPretest, setLoadingPretest] = useState(false)
+  // 서버 배치고사 문제 (첫 측정이면 나이 기반, 이후엔 현재 레벨 기반으로 서버가 산출)
+  const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  // 프로필별로 한 번만 출제 요청하기 위한 가드
+  const fetchedFor = useRef<string | null>(null)
 
   // 프로필이 없으면 선택 화면으로
   useEffect(() => {
     if (!currentProfile) router.replace("/profiles")
   }, [currentProfile, router])
 
-  // 아동(child) 모드: 마운트 시 배치고사 문제를 서버에서 받아온다.
+  // 마운트 시 항상 배치고사 문제를 서버에서 받아온다.
+  // (첫 측정: 서버가 profile.age 로 첫 레벨/문제 산출 / 이후: 현재 레벨 기반)
+  const profileId = currentProfile?.id ?? null
   useEffect(() => {
-    if (!currentProfile) return
-    if (literacyMode(currentProfile.level) !== "child") return
+    if (!profileId) return
+    if (fetchedFor.current === profileId) return
+    fetchedFor.current = profileId
 
     let active = true
-    setLoadingPretest(true)
-    generatePretest(currentProfile.id)
+    setLoading(true)
+    generatePretest(profileId)
       .then((payload) => {
-        if (active) setPretest(payload)
+        if (active) setAssessment(payload)
       })
       .catch((e) => {
         console.error("[v0] 배치고사 생성 실패:", e)
@@ -55,39 +53,24 @@ export default function LiteracyPage() {
         router.back()
       })
       .finally(() => {
-        if (active) setLoadingPretest(false)
+        if (active) setLoading(false)
       })
 
     return () => {
       active = false
     }
-  }, [currentProfile, router])
+  }, [profileId, router])
 
   if (!currentProfile) return null
 
-  const mode = literacyMode(currentProfile.level)
-  const isFirstMeasure = needsMeasurement(currentProfile.level)
-  const kind: LiteracyTestKind = isFirstMeasure ? "initial" : "retest"
+  // 영유아 체크리스트 여부는 서버 응답(assessment_type)으로 판단한다.
+  const isChecklist = assessment?.assessment_type === "checklist"
 
-  // 영유아 체크리스트: 개수 기반(상세 답안 없음)으로 로컬 결과지 생성
-  const finishToddler = (correct: number, total: number) => {
-    const prevPercent = isFirstMeasure
-      ? null
-      : levelToPercent(currentProfile.level)
-    const res = buildLiteracyResult(kind, correct, total, prevPercent)
-    updateProfile(currentProfile.id, { level: res.level })
-    setResult(res)
-  }
-
-  // 아동 퀴즈: 제출(front→back) → 결과(back→front, 서버가 계산)
-  const finishChild = async (quiz: QuizResult) => {
-    if (!pretest) return
+  // 측정 완료 → 제출(front→back) → 결과(back→front, 서버가 레벨/추세 계산)
+  const finishMeasurement = async (answers: Record<string, string>) => {
+    if (!assessment) return
     try {
-      const submission = buildSubmission(
-        currentProfile.id,
-        pretest,
-        quiz.answers,
-      )
+      const submission = buildSubmission(currentProfile.id, assessment, answers)
       const res = await submitAssessment(submission)
       updateProfile(currentProfile.id, { level: res.level })
       setResult(res)
@@ -111,7 +94,7 @@ export default function LiteracyPage() {
             childName={currentProfile.name}
             primaryLabel="이 단계로 동화 만들기"
             onPrimary={() => router.push("/dashboard")}
-            showScore={mode !== "toddler"}
+            showScore={!isChecklist}
           />
         ) : (
           <>
@@ -124,19 +107,22 @@ export default function LiteracyPage() {
               </h1>
             </div>
 
-            {/* 레벨 기반 분기: 영유아 모드 vs 아동 모드 */}
-            {mode === "toddler" ? (
+            {/* 서버 응답 대기 */}
+            {loading || !assessment ? (
+              <PretestLoading />
+            ) : isChecklist ? (
               <ToddlerChecklist
                 childName={currentProfile.name}
-                onComplete={finishToddler}
+                questions={assessment.quizzes}
+                onComplete={finishMeasurement}
               />
-            ) : loadingPretest || !pretest ? (
-              <PretestLoading />
             ) : (
               <ChildQuiz
                 childName={currentProfile.name}
-                questions={pretest.quizzes}
-                onComplete={finishChild}
+                questions={assessment.quizzes}
+                onComplete={(quiz: QuizResult) =>
+                  finishMeasurement(quiz.answers)
+                }
               />
             )}
           </>

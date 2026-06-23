@@ -225,30 +225,7 @@ export default function DashboardPage() {
         )}
 
         {view === "generating" && (
-          <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">
-            <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="h-9 w-9 animate-pulse text-primary" />
-            </span>
-            <h2 className="mt-6 font-heading text-2xl text-foreground">
-              전래동화를 짓는 중이에요...
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              {currentProfile.name}님을 위한 팝업북을 한 장 한 장 만들고 있어요.
-            </p>
-            <div className="mt-6 h-2 w-64 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full w-1/2 animate-[loadbar_3s_ease-in-out] rounded-full bg-primary" />
-            </div>
-            <style jsx>{`
-              @keyframes loadbar {
-                0% {
-                  transform: translateX(-100%);
-                }
-                100% {
-                  transform: translateX(240%);
-                }
-              }
-            `}</style>
-          </div>
+          <GeneratingView childName={currentProfile.name} />
         )}
 
         {view === "book" && (
@@ -333,6 +310,63 @@ export default function DashboardPage() {
         onConfirm={() => setReadDoneModalOpen(false)}
         onClose={() => setReadDoneModalOpen(false)}
       />
+    </div>
+  )
+}
+
+// 동화 생성 중 화면: 로딩바는 계속 움직이고, 하단 메시지가 순환한다.
+const GENERATING_MESSAGES = [
+  "도깨비들이 동화를 만드는 중...",
+  "제비가 박씨를 물어다 주는 중...",
+  "호랑이가 떡 하나 달라고 조르는 중...",
+  "선녀가 날개옷을 찾는 중...",
+  "토끼가 용궁으로 헤엄치는 중...",
+  "혹부리 영감이 노래를 부르는 중...",
+  "해님 달님이 동아줄을 내리는 중...",
+]
+
+function GeneratingView({ childName }: { childName: string }) {
+  const [msgIndex, setMsgIndex] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % GENERATING_MESSAGES.length)
+    }, 2200)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">
+      <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <Sparkles className="h-9 w-9 animate-pulse text-primary" />
+      </span>
+      <h2 className="mt-6 font-heading text-2xl text-foreground">
+        전래동화를 짓는 중이에요...
+      </h2>
+      <p className="mt-2 text-muted-foreground">
+        {childName}님을 위한 팝업북을 한 장 한 장 만들고 있어요.
+      </p>
+      <div className="mt-6 h-2 w-64 overflow-hidden rounded-full bg-secondary">
+        <div className="h-full w-1/2 animate-[loadbar_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
+      </div>
+      {/* 순환하는 안내 메시지 */}
+      <p
+        key={msgIndex}
+        className="mt-5 animate-in fade-in duration-500 font-heading text-base text-primary"
+        aria-live="polite"
+      >
+        {GENERATING_MESSAGES[msgIndex]}
+      </p>
+      <style jsx>{`
+        @keyframes loadbar {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(240%);
+          }
+        }
+      `}</style>
     </div>
   )
 }

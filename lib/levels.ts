@@ -160,6 +160,11 @@ export const CHILD_MODE_MIN_MONTHS = 72
 
 export type LiteracyMode = "toddler" | "child"
 
+/**
+ * 측정 모드 분기.
+ * 레벨 9 미만(측정 전 level=null 포함)은 부모가 작성하는 영유아 체크리스트(toddler),
+ * 레벨 9 이상이면 아이가 직접 푸는 아동 퀴즈(child).
+ */
 export function literacyMode(level: number | null): LiteracyMode {
   return level == null || level < 9 ? "toddler" : "child"
 }
