@@ -13,9 +13,16 @@ import { PopupBook } from "@/components/workpad/popup-book"
 
 type ViewMode = "grid" | "list"
 
-/** 저장된 동화의 표지(첫 페이지 이미지)를 구한다. */
+/**
+ * 저장된 동화의 표지 이미지를 구한다.
+ * content.cover_image 가 있으면 우선 사용하고, 없으면 첫 페이지 이미지로 폴백한다.
+ */
 function coverOf(story: SavedStory): string {
-  return story.content?.pages?.[0]?.image || "/placeholder.svg"
+  return (
+    story.content?.cover_image ||
+    story.content?.pages?.[0]?.image ||
+    "/placeholder.svg"
+  )
 }
 
 export function LibraryGallery() {

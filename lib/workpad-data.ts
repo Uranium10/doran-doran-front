@@ -101,7 +101,11 @@ export type SavedStory = {
   title: string
   theme: string
   created_at: string
-  content: { pages: StoryPage[] }
+  content: {
+    pages: StoryPage[]
+    /** 서버가 동화 표지 이미지를 생성해 넣어줄 경우의 표지 URL (없을 수 있음) */
+    cover_image?: string | null
+  }
 }
 
 /** 기성(자체 제공) 전래동화 카드 (back -> front) */
