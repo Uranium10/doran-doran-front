@@ -37,7 +37,7 @@ export default function LiteracyPage() {
 
   if (!currentProfile) return null
 
-  const mode = literacyMode(currentProfile.birth_date)
+  const mode = literacyMode(currentProfile.level)
   // 이미 레벨이 있으면 재시험, 없으면 최초 측정
   const isFirstMeasure = needsMeasurement(currentProfile.level)
   const kind: LiteracyTestKind = isFirstMeasure ? "initial" : "retest"

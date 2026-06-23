@@ -12,26 +12,40 @@ export type StageInfo = {
   ratio: number
 }
 
-const STAGE_NAMES = ["씨앗", "새싹", "나무", "숲"] as const
-const STEPS_PER_STAGE = 3
-const MAX_LEVEL = STAGE_NAMES.length * STEPS_PER_STAGE // 12
+// 백엔드 LEVEL_LABELS와 1:1 일치: 씨앗6·새싹5·나무5·숲4 = 20단계
+const STAGE_TABLE = [
+  { name: "씨앗", steps: 6 },
+  { name: "새싹", steps: 5 },
+  { name: "나무", steps: 5 },
+  { name: "숲",   steps: 4 },
+] as const
+const MAX_LEVEL = 20 // 6 + 5 + 5 + 4
 
 /**
  * level(number) -> 단계 정보.
  * level 이 null 이거나 0 이하이면 "측정 전" 상태로 본다.
+ * 서버가 17.5 같은 소수 레벨을 줄 수 있으므로 내림(floor) 처리한다.
  */
 export function getStageInfo(level: number | null): StageInfo | null {
   if (level == null || level <= 0) return null
-  const clamped = Math.min(level, MAX_LEVEL)
-  const stageIndex = Math.floor((clamped - 1) / STEPS_PER_STAGE)
-  const step = ((clamped - 1) % STEPS_PER_STAGE) + 1
-  const name = STAGE_NAMES[stageIndex] ?? STAGE_NAMES[STAGE_NAMES.length - 1]
-  return {
-    name,
-    step,
-    label: `${name} ${step}단계`,
-    ratio: clamped / MAX_LEVEL,
+  const lv = Math.min(Math.floor(level), MAX_LEVEL)
+
+  let remaining = lv
+  for (const stage of STAGE_TABLE) {
+    if (remaining <= stage.steps) {
+      return {
+        name: stage.name,
+        step: remaining,
+        label: `${stage.name} ${remaining}단계`,
+        ratio: lv / MAX_LEVEL,
+      }
+    }
+    remaining -= stage.steps
   }
+
+  // 안전망 (이론상 도달 안 함)
+  const last = STAGE_TABLE[STAGE_TABLE.length - 1]
+  return { name: last.name, step: last.steps, label: `${last.name} ${last.steps}단계`, ratio: 1 }
 }
 
 /** 측정이 필요한 상태인지 (상황 A) */
@@ -145,6 +159,6 @@ export const CHILD_MODE_MIN_MONTHS = 72
 
 export type LiteracyMode = "toddler" | "child"
 
-export function literacyMode(birthDate: string): LiteracyMode {
-  return ageInMonths(birthDate) >= CHILD_MODE_MIN_MONTHS ? "child" : "toddler"
+export function literacyMode(level: number | null): LiteracyMode {
+  return level == null || level < 9 ? "toddler" : "child"
 }
