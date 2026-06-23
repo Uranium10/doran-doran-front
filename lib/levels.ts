@@ -96,7 +96,7 @@ export type LiteracyResult = LiteracyProgress & {
   correct: number
   /** 전체 문항 수 */
   total: number
-  /** 직전 측정 대비 변화량(%). 최초 측정이면 null */
+  /** 직전 측정 대비 레벨 변화량(레벨 단위, 예: +0.35). 최초 측정이면 null */
   delta: number | null
 }
 
@@ -129,10 +129,11 @@ export function buildLiteracyResult(
 ): LiteracyResult {
   const percent = total > 0 ? Math.round((correct / total) * 100) : 0
   const progress = getLiteracyProgress(percent)
+  // delta 는 레벨 단위 변화량. 최초 측정이면 null.
   const delta =
     kind === "initial" || prevPercent == null
       ? null
-      : Math.round((percent - prevPercent) * 10) / 10
+      : Math.round((progress.level - scoreToLevel(prevPercent)) * 100) / 100
   return { ...progress, kind, correct, total, delta }
 }
 

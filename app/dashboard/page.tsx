@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Wand2, Sparkles, BookOpen, BarChart3, Library } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
@@ -12,10 +13,10 @@ import { StorySetup } from "@/components/workpad/story-setup"
 import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
+import { isGuestProfile } from "@/lib/api"
 import {
   getStageInfo,
   needsMeasurement,
-  levelToPercent,
   type LiteracyResult,
 } from "@/lib/levels"
 import {
@@ -34,7 +35,10 @@ export default function DashboardPage() {
   const [view, setView] = useState<View>("home")
   const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
   const [measureModalOpen, setMeasureModalOpen] = useState(false)
+  // 동화를 다 읽었지만 퀴즈가 없을 때(posttest·퀴즈 0개) 띄우는 부모용 안내 모달
+  const [readDoneModalOpen, setReadDoneModalOpen] = useState(false)
   const [result, setResult] = useState<LiteracyResult | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로 보낸다.
   useEffect(() => {
@@ -45,8 +49,14 @@ export default function DashboardPage() {
 
   const stage = getStageInfo(currentProfile.level)
   const mustMeasure = needsMeasurement(currentProfile.level)
+  const isGuest = isGuestProfile(currentProfile.id)
 
   const handleCreateStory = () => {
+    // 목표 5: 게스트는 동화 생성 폼에 접근할 수 없다.
+    if (isGuest) {
+      toast.error("동화 만들기는 로그인 후 이용할 수 있어요.")
+      return
+    }
     // 상황 A: 측정이 필요하면 안내 모달을 띄운다.
     if (mustMeasure) {
       setMeasureModalOpen(true)
@@ -59,33 +69,65 @@ export default function DashboardPage() {
   // 폼 입력 완료 → 출제(동화+퀴즈 묶음) → 팝업북
   const handleStorySubmit = async (input: StoryInput) => {
     setView("generating")
-    const payload = await generateAssessment(input)
-    setAssessment(payload)
-    setView("book")
+    try {
+      const payload = await generateAssessment(
+        currentProfile.id,
+        "posttest",
+        input,
+      )
+      setAssessment(payload)
+      setView("book")
+    } catch (e) {
+      console.error("[v0] 동화 생성 실패:", e)
+      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      setView("form")
+    }
   }
 
-  // 동화를 다 읽음 → 내용 기반 문해력 테스트로 이동
+  // 동화를 다 읽음 → assessment_type / 퀴즈 유무로 분기 (목표 1)
   const handleBookFinish = () => {
-    setView("post-quiz")
+    const type = assessment?.assessment_type
+    const hasQuiz = (assessment?.quizzes?.length ?? 0) > 0
+
+    // 케이스 3: 라이브러리/기성 동화는 퀴즈 없이 대시보드로 복귀
+    if (type === "library" || type === "readonly") {
+      setAssessment(null)
+      setView("home")
+      return
+    }
+
+    // 케이스 2: 맞춤 동화(posttest) + 퀴즈 있음 → 퀴즈 화면
+    if (hasQuiz) {
+      setView("post-quiz")
+      return
+    }
+
+    // 케이스 1: 맞춤 동화(posttest) + 퀴즈 없음 → 대시보드 + 부모 안내 모달
+    setView("home")
+    setReadDoneModalOpen(true)
   }
 
-  // 동화 후 테스트 완료 → 제출(front→back) → 결과(back→front)
+  // 동화 후 테스트 완료 → 제출(front→back) → 결과(back→front, 서버가 계산)
   const handlePostQuizComplete = async (quiz: QuizResult) => {
-    if (!assessment) return
-    const submission = buildSubmission(
-      currentProfile.id,
-      assessment,
-      quiz.answers,
-    )
-    // 직전(동화 읽기 전) 수준과 비교해 변화량을 계산한다.
-    const prevPercent = levelToPercent(currentProfile.level)
-    const res = await submitAssessment(submission, {
-      kind: "post-story",
-      prevPercent,
-    })
-    updateProfile(currentProfile.id, { level: res.level })
-    setResult(res)
-    setView("result")
+    if (!assessment || submitting) return
+    setSubmitting(true)
+    try {
+      const submission = buildSubmission(
+        currentProfile.id,
+        assessment,
+        quiz.answers,
+      )
+      const res = await submitAssessment(submission)
+      updateProfile(currentProfile.id, { level: res.level })
+      setResult(res)
+      setView("result")
+    } catch (e) {
+      console.error("[v0] 채점 제출 실패:", e)
+      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      setView("home")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -279,6 +321,17 @@ export default function DashboardPage() {
           router.push("/literacy")
         }}
         onClose={() => setMeasureModalOpen(false)}
+      />
+
+      {/* 케이스 1: 동화만 읽고 퀴즈가 없을 때 부모용 안내 모달 */}
+      <ConfirmModal
+        open={readDoneModalOpen}
+        title="동화를 다 읽었어요!"
+        description="난이도 변경을 원하시면 문해력 재측정을 진행해 주세요."
+        confirmLabel="확인"
+        hideCancel
+        onConfirm={() => setReadDoneModalOpen(false)}
+        onClose={() => setReadDoneModalOpen(false)}
       />
     </div>
   )

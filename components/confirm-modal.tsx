@@ -11,6 +11,7 @@ export function ConfirmModal({
   confirmLabel = "확인",
   cancelLabel = "취소",
   destructive = false,
+  hideCancel = false,
   onConfirm,
   onClose,
 }: {
@@ -20,6 +21,8 @@ export function ConfirmModal({
   confirmLabel?: string
   cancelLabel?: string
   destructive?: boolean
+  /** 취소 버튼을 숨겨 단일 확인 버튼 안내 모달로 쓴다. */
+  hideCancel?: boolean
   onConfirm: () => void | Promise<void>
   onClose: () => void
 }) {
@@ -73,14 +76,16 @@ export function ConfirmModal({
           </p>
         )}
         <div className="mt-6 flex gap-3">
-          <Button
-            variant="secondary"
-            className="h-11 flex-1 rounded-full"
-            onClick={onClose}
-            disabled={loading}
-          >
-            {cancelLabel}
-          </Button>
+          {!hideCancel && (
+            <Button
+              variant="secondary"
+              className="h-11 flex-1 rounded-full"
+              onClick={onClose}
+              disabled={loading}
+            >
+              {cancelLabel}
+            </Button>
+          )}
           <Button
             className={cn(
               "h-11 flex-1 rounded-full",
