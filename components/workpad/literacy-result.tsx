@@ -104,6 +104,7 @@ export function LiteracyResultView({
               <span className="font-heading text-lg text-primary">
                 {achievement}%
               </span>
+              {/* 성장 배지: delta 는 레벨 단위 변화량. 최초 측정(null)이면 숨긴다. */}
               {delta !== null && (
                 <span
                   className={
@@ -117,7 +118,7 @@ export function LiteracyResultView({
                   ) : (
                     <TrendingDown className="h-3.5 w-3.5" />
                   )}
-                  {delta >= 0 ? `+${delta}%` : `${delta}%`}
+                  {delta >= 0 ? `레벨 +${delta}` : `레벨 ${delta}`}
                 </span>
               )}
             </div>

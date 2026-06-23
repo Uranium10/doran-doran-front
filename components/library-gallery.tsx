@@ -1,14 +1,84 @@
 "use client"
 
-import { useState } from "react"
-import { LayoutGrid, List, Calendar, Sprout } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { LayoutGrid, List, Calendar, Sprout, BookOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { dummyLibrary, formatKoreanDate } from "@/lib/library-data"
+import { useProfile } from "@/lib/profile-context"
+import { isGuestProfile } from "@/lib/api"
+import { fetchSavedStories, type SavedStory } from "@/lib/workpad-data"
+import { formatKoreanDate } from "@/lib/library-data"
+import { PopupBook } from "@/components/workpad/popup-book"
 
 type ViewMode = "grid" | "list"
 
+/** 저장된 동화의 표지(첫 페이지 이미지)를 구한다. */
+function coverOf(story: SavedStory): string {
+  return story.content?.pages?.[0]?.image || "/placeholder.svg"
+}
+
 export function LibraryGallery() {
+  const router = useRouter()
+  const { currentProfile } = useProfile()
   const [view, setView] = useState<ViewMode>("grid")
+  const [stories, setStories] = useState<SavedStory[]>([])
+  const [loading, setLoading] = useState(true)
+  // 선택된 동화 (있으면 목록 대신 팝업북을 보여준다)
+  const [reading, setReading] = useState<SavedStory | null>(null)
+
+  // 선택된 프로필이 없으면 프로필 선택 화면으로
+  useEffect(() => {
+    if (!currentProfile) router.replace("/profiles")
+  }, [currentProfile, router])
+
+  // 마운트/프로필 변경 시 보관함 동화 목록을 받아온다.
+  useEffect(() => {
+    if (!currentProfile || isGuestProfile(currentProfile.id)) {
+      setLoading(false)
+      return
+    }
+    let active = true
+    setLoading(true)
+    fetchSavedStories(currentProfile.id)
+      .then((list) => {
+        if (active) setStories(list)
+      })
+      .catch((e) => {
+        console.error("[v0] 보관함 동화 조회 실패:", e)
+        toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [currentProfile])
+
+  if (!currentProfile) return null
+
+  // 동화 읽기 모드: 퀴즈 없이(library 취급) 목록으로 복귀
+  if (reading) {
+    return (
+      <div>
+        <PopupBook
+          pages={reading.content?.pages ?? []}
+          childName={currentProfile.name}
+          onFinish={() => setReading(null)}
+        />
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => setReading(null)}
+            className="text-sm text-muted-foreground hover:text-primary"
+          >
+            이야기 책장으로 돌아가기
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -22,7 +92,9 @@ export function LibraryGallery() {
             지금까지 만든 동화
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            모두 {dummyLibrary.length}권의 이야기가 책장에 담겨 있어요.
+            {loading
+              ? "책장을 불러오는 중이에요..."
+              : `모두 ${stories.length}권의 이야기가 책장에 담겨 있어요.`}
           </p>
         </div>
 
@@ -62,23 +134,54 @@ export function LibraryGallery() {
         </div>
       </div>
 
-      {/* 그리드 뷰 */}
-      {view === "grid" ? (
+      {/* 로딩 스켈레톤 */}
+      {loading ? (
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {dummyLibrary.map((book) => (
-            <article
-              key={book.id}
-              className="group overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div
+              key={i}
+              className="overflow-hidden rounded-3xl border border-border bg-card"
+            >
+              <div className="aspect-[3/4] animate-pulse bg-muted" />
+              <div className="space-y-2 p-4">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : stories.length === 0 ? (
+        // 빈 상태
+        <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-card/50 py-16 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <BookOpen className="h-8 w-8 text-primary" />
+          </span>
+          <h2 className="mt-5 font-heading text-xl text-foreground">
+            아직 만든 동화가 없어요
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            첫 번째 전래동화를 만들어 책장을 채워 보세요.
+          </p>
+        </div>
+      ) : view === "grid" ? (
+        /* 그리드 뷰 */
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+          {stories.map((book) => (
+            <button
+              key={book.story_id}
+              type="button"
+              onClick={() => setReading(book)}
+              className="group overflow-hidden rounded-3xl border border-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
             >
               <div className="relative aspect-[3/4] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={book.cover || "/placeholder.svg"}
+                  src={coverOf(book) || "/placeholder.svg"}
                   alt={`${book.title} 표지`}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <span className="absolute left-2 top-2 rounded-full bg-background/85 px-2.5 py-1 text-[11px] font-semibold text-primary backdrop-blur-sm">
-                  {book.stageLabel}
+                  {book.theme}
                 </span>
               </div>
               <div className="p-4">
@@ -87,24 +190,26 @@ export function LibraryGallery() {
                 </h2>
                 <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
-                  {formatKoreanDate(book.createdAt)}
+                  {formatKoreanDate(book.created_at)}
                 </p>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       ) : (
         /* 리스트 뷰 */
         <div className="flex flex-col gap-3">
-          {dummyLibrary.map((book) => (
-            <article
-              key={book.id}
-              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40"
+          {stories.map((book) => (
+            <button
+              key={book.story_id}
+              type="button"
+              onClick={() => setReading(book)}
+              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40"
             >
               <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={book.cover || "/placeholder.svg"}
+                  src={coverOf(book) || "/placeholder.svg"}
                   alt={`${book.title} 표지`}
                   className="h-full w-full object-cover"
                 />
@@ -116,15 +221,15 @@ export function LibraryGallery() {
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatKoreanDate(book.createdAt)}
+                    {formatKoreanDate(book.created_at)}
                   </span>
                   <span className="flex items-center gap-1 text-primary">
                     <Sprout className="h-3 w-3" />
-                    {book.stageLabel}
+                    {book.theme}
                   </span>
                 </div>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       )}

@@ -9,6 +9,14 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
   "https://doran-doran.onrender.com/api/v1"
 
+/**
+ * 게스트(비로그인) 프로필 여부.
+ * profileId 가 없거나 "guest" 로 시작하면 게스트로 본다.
+ */
+export function isGuestProfile(profileId: string | null | undefined): boolean {
+  return !profileId || profileId.startsWith("guest")
+}
+
 /** Supabase 세션의 access_token 을 Authorization 헤더로 실어 준다. */
 async function buildHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
@@ -24,7 +32,7 @@ async function buildHeaders(): Promise<Record<string, string>> {
 }
 
 /** 공통 fetch 래퍼. 실패 시 에러를 throw 한다(호출부에서 콘솔 출력/로딩 해제). */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {

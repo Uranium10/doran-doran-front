@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
 import { Quiz, type QuizResult } from "@/components/workpad/quiz"
@@ -17,51 +19,83 @@ import {
   type LiteracyTestKind,
 } from "@/lib/levels"
 import {
-  buildPretestAssessment,
+  generatePretest,
   buildSubmission,
   submitAssessment,
+  type AssessmentPayload,
 } from "@/lib/workpad-data"
-
-// 배치고사(pretest) 출제는 정적 더미이므로 한 번만 만든다.
-const pretestAssessment = buildPretestAssessment()
 
 export default function LiteracyPage() {
   const router = useRouter()
   const { currentProfile, updateProfile } = useProfile()
   const [result, setResult] = useState<LiteracyResult | null>(null)
+  // 아동 모드 배치고사 문제 (서버에서 받아옴)
+  const [pretest, setPretest] = useState<AssessmentPayload | null>(null)
+  const [loadingPretest, setLoadingPretest] = useState(false)
 
   // 프로필이 없으면 선택 화면으로
   useEffect(() => {
     if (!currentProfile) router.replace("/profiles")
   }, [currentProfile, router])
 
+  // 아동(child) 모드: 마운트 시 배치고사 문제를 서버에서 받아온다.
+  useEffect(() => {
+    if (!currentProfile) return
+    if (literacyMode(currentProfile.level) !== "child") return
+
+    let active = true
+    setLoadingPretest(true)
+    generatePretest(currentProfile.id)
+      .then((payload) => {
+        if (active) setPretest(payload)
+      })
+      .catch((e) => {
+        console.error("[v0] 배치고사 생성 실패:", e)
+        toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+        router.back()
+      })
+      .finally(() => {
+        if (active) setLoadingPretest(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [currentProfile, router])
+
   if (!currentProfile) return null
 
   const mode = literacyMode(currentProfile.level)
-  // 이미 레벨이 있으면 재시험, 없으면 최초 측정
   const isFirstMeasure = needsMeasurement(currentProfile.level)
   const kind: LiteracyTestKind = isFirstMeasure ? "initial" : "retest"
-  const prevPercent = isFirstMeasure
-    ? null
-    : levelToPercent(currentProfile.level)
 
-  // 영유아 체크리스트: 개수 기반(상세 답안 없음)으로 결과지 생성
+  // 영유아 체크리스트: 개수 기반(상세 답안 없음)으로 로컬 결과지 생성
   const finishToddler = (correct: number, total: number) => {
+    const prevPercent = isFirstMeasure
+      ? null
+      : levelToPercent(currentProfile.level)
     const res = buildLiteracyResult(kind, correct, total, prevPercent)
     updateProfile(currentProfile.id, { level: res.level })
     setResult(res)
   }
 
-  // 아동 퀴즈: 제출(front→back) → 결과(back→front)
+  // 아동 퀴즈: 제출(front→back) → 결과(back→front, 서버가 계산)
   const finishChild = async (quiz: QuizResult) => {
-    const submission = buildSubmission(
-      currentProfile.id,
-      pretestAssessment,
-      quiz.answers,
-    )
-    const res = await submitAssessment(submission, { kind, prevPercent })
-    updateProfile(currentProfile.id, { level: res.level })
-    setResult(res)
+    if (!pretest) return
+    try {
+      const submission = buildSubmission(
+        currentProfile.id,
+        pretest,
+        quiz.answers,
+      )
+      const res = await submitAssessment(submission)
+      updateProfile(currentProfile.id, { level: res.level })
+      setResult(res)
+    } catch (e) {
+      console.error("[v0] 채점 제출 실패:", e)
+      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      router.back()
+    }
   }
 
   return (
@@ -90,15 +124,18 @@ export default function LiteracyPage() {
               </h1>
             </div>
 
-            {/* 나이 기반 분기: 영유아 모드 vs 아동 모드 */}
+            {/* 레벨 기반 분기: 영유아 모드 vs 아동 모드 */}
             {mode === "toddler" ? (
               <ToddlerChecklist
                 childName={currentProfile.name}
                 onComplete={finishToddler}
               />
+            ) : loadingPretest || !pretest ? (
+              <PretestLoading />
             ) : (
               <ChildQuiz
                 childName={currentProfile.name}
+                questions={pretest.quizzes}
                 onComplete={finishChild}
               />
             )}
@@ -109,12 +146,31 @@ export default function LiteracyPage() {
   )
 }
 
+// 배치고사 문제를 받아오는 동안 보여주는 로딩 UI
+function PretestLoading() {
+  return (
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </span>
+      <h2 className="mt-6 font-heading text-2xl text-foreground">
+        문제를 준비 중이에요...
+      </h2>
+      <p className="mt-2 text-muted-foreground">
+        아이 수준에 꼭 맞는 배치고사를 출제하고 있어요.
+      </p>
+    </div>
+  )
+}
+
 // 아동 모드: 한 문제씩 넘어가는 슬라이더형 퀴즈 (기존 Quiz 재사용)
 function ChildQuiz({
   childName,
+  questions,
   onComplete,
 }: {
   childName: string
+  questions: AssessmentPayload["quizzes"]
   onComplete: (quiz: QuizResult) => void
 }) {
   return (
@@ -128,9 +184,9 @@ function ChildQuiz({
         </p>
       </div>
       <Quiz
-        questions={pretestAssessment.quizzes}
+        questions={questions}
         title="이야기 문제를 풀어 볼까요?"
-        intro="다섯 문제만 풀면 우리 아이에게 꼭 맞는 동화 단계를 찾을 수 있어요."
+        intro="문제를 풀면 우리 아이에게 꼭 맞는 동화 단계를 찾을 수 있어요."
         onComplete={onComplete}
       />
     </div>
