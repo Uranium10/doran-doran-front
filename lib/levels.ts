@@ -160,6 +160,13 @@ export const CHILD_MODE_MIN_MONTHS = 72
 
 export type LiteracyMode = "toddler" | "child"
 
-export function literacyMode(level: number | null): LiteracyMode {
-  return level == null || level < 9 ? "toddler" : "child"
+/**
+ * 측정 모드 분기.
+ * 측정 결과(level)가 아니라 아이의 "나이(birth_date)"로 결정한다.
+ * 만 6세 미만이면 부모가 작성하는 영유아 체크리스트(toddler),
+ * 만 6세 이상이면 아이가 직접 푸는 아동 퀴즈(child).
+ */
+export function literacyMode(birthDate: string | null | undefined): LiteracyMode {
+  if (!birthDate) return "toddler"
+  return ageInMonths(birthDate) < CHILD_MODE_MIN_MONTHS ? "toddler" : "child"
 }
