@@ -41,7 +41,7 @@ export default function LiteracyPage() {
   // 아동(child) 모드: 마운트 시 배치고사 문제를 서버에서 받아온다.
   useEffect(() => {
     if (!currentProfile) return
-    if (literacyMode(currentProfile.birth_date) !== "child") return
+    if (literacyMode(currentProfile.level) !== "child") return
 
     let active = true
     setLoadingPretest(true)
@@ -65,7 +65,7 @@ export default function LiteracyPage() {
 
   if (!currentProfile) return null
 
-  const mode = literacyMode(currentProfile.birth_date)
+  const mode = literacyMode(currentProfile.level)
   const isFirstMeasure = needsMeasurement(currentProfile.level)
   const kind: LiteracyTestKind = isFirstMeasure ? "initial" : "retest"
 
