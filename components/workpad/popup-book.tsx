@@ -102,7 +102,7 @@ export function PopupBook({
             className="h-12 flex-1 rounded-full text-base sm:flex-none sm:px-8"
             onClick={onFinish}
           >
-            다 읽었어요! 문해력 다시 측정
+            다 읽었어요
             <ChevronRight className="h-5 w-5" />
           </Button>
         ) : (
