@@ -12,8 +12,11 @@ export function Hero() {
     <section className="relative isolate overflow-hidden">
       {/* Background cover mosaic */}
       <div className="absolute inset-0 -z-10 grid-container" style={{width: '200vw'}}>
-        <div className="grid-lane h-full" style={{display: 'flex'}}>
-        <div className="grid h-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid-lane h-full" style={{display: 'flex', width: '200vw'}}>
+        <div
+          className="grid h-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+          style={{ width: '100vw', flexShrink: 0 }}
+        >
           {tiles.map((t, i) => (
             <div
               key={`${t.id}-${i}`}
@@ -29,7 +32,10 @@ export function Hero() {
             </div>
           ))}
         </div>
-        <div className="grid h-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        <div
+          className="grid h-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+          style={{ width: '100vw', flexShrink: 0 }}
+        >
           {tiles.map((t, i) => (
             <div
               key={`${t.id}-${i}`}

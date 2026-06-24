@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Play, Loader2 } from "lucide-react"
+import { Play, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   fetchFolktales,
   type Folktale,
@@ -23,6 +23,7 @@ function Card({
   return (
     <button
       type="button"
+      data-card
       onClick={() => onOpen(tale.story_id)}
       disabled={loading}
       className="group relative w-44 shrink-0 text-left sm:w-52"
@@ -63,6 +64,104 @@ function SkeletonCard() {
   return (
     <div className="w-44 shrink-0 sm:w-52">
       <div className="aspect-[3/4] animate-pulse rounded-2xl border border-border bg-muted" />
+    </div>
+  )
+}
+
+// 양쪽에 세로로 길쭉한 화살표 버튼이 달린 가로 캐러셀 행.
+function Row({
+  title,
+  ids,
+  byId,
+  openingId,
+  onOpen,
+}: {
+  title: string
+  ids: string[]
+  byId: (id: string) => Folktale | undefined
+  openingId: string | null
+  onOpen: (storyId: string) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canLeft, setCanLeft] = useState(false)
+  const [canRight, setCanRight] = useState(false)
+
+  // 현재 스크롤 위치로 좌/우 버튼 활성 여부를 갱신한다.
+  const updateArrows = () => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanLeft(el.scrollLeft > 4)
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }
+
+  useEffect(() => {
+    updateArrows()
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener("scroll", updateArrows, { passive: true })
+    window.addEventListener("resize", updateArrows)
+    return () => {
+      el.removeEventListener("scroll", updateArrows)
+      window.removeEventListener("resize", updateArrows)
+    }
+  }, [ids])
+
+  // 한 권(카드 너비 + gap) 만큼 좌/우로 부드럽게 이동한다.
+  const scrollByCard = (dir: 1 | -1) => {
+    const el = scrollRef.current
+    if (!el) return
+    const firstCard = el.querySelector<HTMLElement>("[data-card]")
+    const gap = 16 // gap-4
+    const step = (firstCard?.offsetWidth ?? 208) + gap
+    el.scrollBy({ left: dir * step, behavior: "smooth" })
+  }
+
+  return (
+    <div>
+      <h3 className="mb-4 font-heading text-xl text-foreground sm:text-2xl">
+        {title}
+      </h3>
+      <div className="flex items-stretch gap-2">
+        {/* 왼쪽: 세로로 길쭉하고 얇은 버튼 */}
+        <button
+          type="button"
+          aria-label="이전 동화 보기"
+          onClick={() => scrollByCard(-1)}
+          disabled={!canLeft}
+          className="flex w-7 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-opacity hover:bg-secondary disabled:opacity-30 sm:w-9"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        <div
+          ref={scrollRef}
+          className="flex flex-1 gap-4 overflow-x-auto pb-4 scrollbar-hide"
+        >
+          {ids.map((id, i) => {
+            const tale = byId(id)
+            if (!tale) return null
+            return (
+              <Card
+                key={`${title}-${id}-${i}`}
+                tale={tale}
+                loading={openingId === id}
+                onOpen={onOpen}
+              />
+            )
+          })}
+        </div>
+
+        {/* 오른쪽: 세로로 길쭉하고 얇은 버튼 */}
+        <button
+          type="button"
+          aria-label="다음 동화 보기"
+          onClick={() => scrollByCard(1)}
+          disabled={!canRight}
+          className="flex w-7 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-opacity hover:bg-secondary disabled:opacity-30 sm:w-9"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -136,25 +235,14 @@ export function LibraryRows() {
         ) : (
           <div className="flex flex-col gap-12">
             {rows.map((row) => (
-              <div key={row.row_id}>
-                <h3 className="mb-4 font-heading text-xl text-foreground sm:text-2xl">
-                  {row.title}
-                </h3>
-                <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-4 scrollbar-hide sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                  {row.items.map((id, i) => {
-                    const tale = byId(id)
-                    if (!tale) return null
-                    return (
-                      <Card
-                        key={`${row.row_id}-${id}-${i}`}
-                        tale={tale}
-                        loading={openingId === id}
-                        onOpen={handleOpen}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
+              <Row
+                key={row.row_id}
+                title={row.title}
+                ids={row.items}
+                byId={byId}
+                openingId={openingId}
+                onOpen={handleOpen}
+              />
             ))}
           </div>
         )}
