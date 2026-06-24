@@ -27,6 +27,7 @@ export function SiteFooter() {
             <span className="font-heading text-xl text-primary">도란도란</span>
           </Link>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/#hero" className="hover:text-primary">대쉬보드</Link>
             <Link href="/#library" className="hover:text-primary">라이브러리</Link>
             <Link href="/#pricing" className="hover:text-primary">가격</Link>
             <Link href="/#criteria" className="hover:text-primary">평가 기준</Link>
