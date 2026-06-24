@@ -65,7 +65,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <AuthButton light={!scrolled} />
+          <AuthButton />
         </div>
 
         <button

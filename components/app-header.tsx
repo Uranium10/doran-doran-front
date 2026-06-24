@@ -163,7 +163,7 @@ export function AppHeader() {
                         {tierProgress.currentLabel}
                       </span>
                       {tierProgress.nextLabel && (
-                        <span className="text-muted-foreground">
+                        <span className="font-heading text-muted-foreground">
                           {tierProgress.nextLabel}
                         </span>
                       )}
@@ -176,7 +176,7 @@ export function AppHeader() {
                     </div>
                     <p className="mt-1.5 text-right text-[11px] font-medium text-primary">
                       {tierProgress.nextLabel
-                        ? `다음 단계까지 ${tierProgress.achievement}%`
+                        ? `다음 단계까지 ${100 - tierProgress.achievement}%`
                         : "최고 단계 달성!"}
                     </p>
                   </div>
