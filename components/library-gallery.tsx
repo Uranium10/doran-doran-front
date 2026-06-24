@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { LayoutGrid, List, Calendar, Sprout, BookOpen } from "lucide-react"
+import { LayoutGrid, List, Calendar, Sprout, BookOpen, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/lib/profile-context"
 import { isGuestProfile } from "@/lib/api"
-import { fetchSavedStories, type SavedStory } from "@/lib/workpad-data"
+import { fetchSavedStories, deleteStory, type SavedStory } from "@/lib/workpad-data"
 import { formatKoreanDate } from "@/lib/library-data"
 import { PopupBook } from "@/components/workpad/popup-book"
+import { ConfirmModal } from "@/components/confirm-modal"
 
 type ViewMode = "grid" | "list"
 
@@ -33,6 +34,8 @@ export function LibraryGallery() {
   const [loading, setLoading] = useState(true)
   // 선택된 동화 (있으면 목록 대신 팝업북을 보여준다)
   const [reading, setReading] = useState<SavedStory | null>(null)
+  // 삭제 확인 모달 대상 동화 (있으면 모달이 열린다)
+  const [pendingDelete, setPendingDelete] = useState<SavedStory | null>(null)
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로
   useEffect(() => {
@@ -62,6 +65,23 @@ export function LibraryGallery() {
       active = false
     }
   }, [currentProfile])
+
+  // 동화 삭제: 서버 DELETE 후 목록에서 제거
+  const handleDelete = async () => {
+    if (!pendingDelete) return
+    const target = pendingDelete
+    try {
+      await deleteStory(target.story_id)
+      setStories((prev) => prev.filter((s) => s.story_id !== target.story_id))
+      toast.success("동화를 삭제했어요.")
+    } catch (e) {
+      console.error("[v0] 동화 삭제 실패:", e)
+      toast.error("삭제하지 못했어요. 잠시 후 다시 시도해 주세요.")
+      throw e
+    } finally {
+      setPendingDelete(null)
+    }
+  }
 
   if (!currentProfile) return null
 
@@ -174,11 +194,18 @@ export function LibraryGallery() {
         /* 그리드 뷰 */
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
           {stories.map((book) => (
-            <button
+            <div
               key={book.story_id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => setReading(book)}
-              className="group overflow-hidden rounded-3xl border border-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setReading(book)
+                }
+              }}
+              className="group relative cursor-pointer overflow-hidden rounded-3xl border border-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
             >
               <div className="relative aspect-[3/4] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -190,6 +217,18 @@ export function LibraryGallery() {
                 <span className="absolute left-2 top-2 rounded-full bg-background/85 px-2.5 py-1 text-[11px] font-semibold text-primary backdrop-blur-sm">
                   {book.theme}
                 </span>
+                {/* 우측 하단 삭제 버튼 */}
+                <button
+                  type="button"
+                  aria-label={`${book.title} 삭제`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPendingDelete(book)
+                  }}
+                  className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-destructive hover:text-white"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
               <div className="p-4">
                 <h2 className="line-clamp-2 font-heading text-base leading-snug text-foreground">
@@ -200,18 +239,25 @@ export function LibraryGallery() {
                   {formatKoreanDate(book.created_at)}
                 </p>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       ) : (
         /* 리스트 뷰 */
         <div className="flex flex-col gap-3">
           {stories.map((book) => (
-            <button
+            <div
               key={book.story_id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => setReading(book)}
-              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setReading(book)
+                }
+              }}
+              className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40"
             >
               <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -236,10 +282,38 @@ export function LibraryGallery() {
                   </span>
                 </div>
               </div>
-            </button>
+              {/* 우측 삭제 버튼 */}
+              <button
+                type="button"
+                aria-label={`${book.title} 삭제`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPendingDelete(book)
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive hover:text-white"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
+
+      {/* 삭제 확인 모달 */}
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title="동화를 삭제할까요?"
+        description={
+          pendingDelete
+            ? `'${pendingDelete.title}'을(를) 책장에서 삭제해요. 삭제한 동화는 되돌릴 수 없어요.`
+            : undefined
+        }
+        confirmLabel="삭제하기"
+        cancelLabel="취소"
+        destructive
+        onConfirm={handleDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
