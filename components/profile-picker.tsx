@@ -45,9 +45,12 @@ export function ProfilePicker() {
 
   const handleSelect = (profile: Profile) => {
     selectProfile(profile.id)
-    // 이미 문해력 측정이 끝난 프로필이면 랜딩 화면으로 복귀하고,
-    // 아직 측정 전이면 기존처럼 대시보드로 이동한다.
-    router.push(needsMeasurement(profile.level) ? "/dashboard" : "/")
+    // 출발 화면(from)에 따라 복귀 지점을 결정한다.
+    // - 랜딩(from=landing)에서 이미 측정이 끝난 프로필로 바꾼 경우에만 랜딩(/)으로 복귀
+    // - 그 외(대시보드 등에서 변경, 또는 측정 전 프로필)는 항상 대시보드로 이동
+    const from = new URLSearchParams(window.location.search).get("from")
+    const goLanding = from === "landing" && !needsMeasurement(profile.level)
+    router.push(goLanding ? "/" : "/dashboard")
   }
 
   const handleCreate = async (values: ProfileFormValues) => {

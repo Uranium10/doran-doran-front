@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { ChevronDown, Users, Pencil, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/lib/profile-context"
@@ -15,6 +15,7 @@ import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-f
  */
 export function ProfileMenu({ className }: { className?: string }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { currentProfile, clearCurrentProfile, editProfile } = useProfile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -54,7 +55,10 @@ export function ProfileMenu({ className }: { className?: string }) {
   const goSwitchProfile = () => {
     setMenuOpen(false)
     clearCurrentProfile()
-    router.push("/profiles")
+    // 프로필 선택 후 복귀 지점을 결정하기 위해 현재 출발 화면을 전달한다.
+    // 랜딩(/)에서 바꾸면 측정 완료 프로필은 랜딩으로, 그 외 화면(대시보드 등)에서는 항상 대시보드로.
+    const from = pathname === "/" ? "landing" : "app"
+    router.push(`/profiles?from=${from}`)
   }
 
   const handleSignOut = async () => {
