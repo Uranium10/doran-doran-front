@@ -1,34 +1,33 @@
 const levels = [
   {
     level: "씨앗",
-    band: "4-6세",
+    band: "0-3세",
     color: "bg-chart-3",
-    desc: "그림과 짧은 문장을 보고 이야기의 흐름을 따라갈 수 있어요.",
-    skills: ["낱말 인지", "소리 내어 읽기", "그림 이해"],
+    desc: "그림과 소리에 반응하며 책과 친해지고, 짧은 말과 그림으로 이야기를 즐겨요.",
+    skills: ["그림 반응", "말 따라하기", "책과 친해지기"],
   },
   {
     level: "새싹",
-    band: "6-8세",
+    band: "3-5세",
     color: "bg-accent",
-    desc: "문장을 스스로 읽고 인물의 마음과 사건을 이해해요.",
-    skills: ["문장 이해", "어휘 확장", "원인과 결과"],
+    desc: "그림과 짧은 문장을 보며 이야기의 흐름을 따라가고, 낱말에 관심을 가져요.",
+    skills: ["낱말 인지", "그림 이해", "이야기 흐름"],
   },
   {
     level: "나무",
-    band: "8-10세",
+    band: "6-9세",
     color: "bg-primary",
-    desc: "긴 글을 읽고 주제와 교훈을 자기 말로 정리할 수 있어요.",
-    skills: ["요약하기", "추론", "주제 파악"],
+    desc: "문장을 스스로 읽고 인물의 마음과 사건의 원인을 이해해요.",
+    skills: ["문장 이해", "어휘 확장", "원인과 결과"],
   },
   {
     level: "숲",
     band: "10세+",
     color: "bg-chart-4",
-    desc: "글 속 의미를 비판적으로 읽고 자신의 생각을 표현해요.",
-    skills: ["비판적 읽기", "표현력", "관점 비교"],
+    desc: "긴 글을 읽고 주제와 교훈을 자기 말로 정리하며, 글 속 의미를 비판적으로 살펴요.",
+    skills: ["요약하기", "비판적 읽기", "관점 비교"],
   },
 ]
-
 export function Criteria() {
   return (
     <section id="criteria" className="scroll-mt-20 bg-background py-16 sm:py-20">
