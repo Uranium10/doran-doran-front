@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Sparkles } from "lucide-react"
-import { AuthButton } from "@/components/auth-button"
+import { StartButton } from "@/components/start-button"
 
 export function SiteFooter() {
   return (
@@ -13,9 +13,9 @@ export function SiteFooter() {
           <p className="mx-auto mt-3 max-w-xl text-pretty text-primary-foreground/90">
             문해력 테스트부터 나만의 팝업북까지, 3분이면 충분해요.
           </p>
-          {/* 로그인 상태에 따라 'Google 로그인' 또는 프로필 화면 진입으로 연결 */}
+          {/* 로그인 여부와 무관하게 항상 동일한 CTA. 클릭 시 로그인/프로필 진입 */}
           <div className="mt-7 flex justify-center">
-            <AuthButton light className="h-13 px-8 text-base" />
+            <StartButton light className="h-13 px-8 text-base" />
           </div>
         </div>
 

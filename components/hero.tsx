@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AuthButton } from "@/components/auth-button"
+import { StartButton } from "@/components/start-button"
 import { folktales } from "@/lib/folktales"
 
 export function Hero() {
@@ -66,8 +66,8 @@ export function Hero() {
             만나보세요.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            {/* 로그인 상태에 따라 'Google 로그인' 또는 프로필 화면 진입으로 연결 */}
-            <AuthButton className="h-13 px-7 text-base point-hover" />
+            {/* 로그인 여부와 무관하게 항상 동일한 CTA. 클릭 시 로그인/프로필 진입 */}
+            <StartButton className="h-13 px-7 text-base point-hover" />
             <Button
               render={<Link href="/#library" />}
               size="lg"
