@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile, type Profile } from "@/lib/profile-context"
-import { ageLabel, getStageInfo } from "@/lib/levels"
+import { ageLabel, getStageInfo, needsMeasurement } from "@/lib/levels"
 import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-form-modal"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { AuthButton } from "@/components/auth-button"
@@ -43,9 +43,11 @@ export function ProfilePicker() {
 
 
 
-  const handleSelect = (id: string) => {
-    selectProfile(id)
-    router.push("/dashboard")
+  const handleSelect = (profile: Profile) => {
+    selectProfile(profile.id)
+    // 이미 문해력 측정이 끝난 프로필이면 랜딩 화면으로 복귀하고,
+    // 아직 측정 전이면 기존처럼 대시보드로 이동한다.
+    router.push(needsMeasurement(profile.level) ? "/dashboard" : "/")
   }
 
   const handleCreate = async (values: ProfileFormValues) => {
@@ -103,7 +105,7 @@ export function ProfilePicker() {
 
               <button
                 type="button"
-                onClick={() => handleSelect(p.id)}
+                onClick={() => handleSelect(p)}
                 className="flex w-28 flex-col items-center gap-3 outline-none sm:w-32"
               >
                 <span className="relative block h-28 w-28 overflow-hidden rounded-full ring-4 ring-transparent transition-all duration-200 group-hover/profile:ring-primary group-hover/profile:ring-offset-4 group-hover/profile:ring-offset-background sm:h-32 sm:w-32">
