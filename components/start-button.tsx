@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useProfile } from "@/lib/profile-context"
 
@@ -23,14 +24,17 @@ type StartButtonProps = {
 export function StartButton({ light = false, className, children = "무료 시작하기" }: StartButtonProps) {
   const router = useRouter()
   const { currentProfile } = useProfile()
-
+  const [session, setSession] = useState(false);
+  
+  useEffect(()=>{
+    setSession(currentProfile? true : false)
+  }, [currentProfile])
   const handleClick = async () => {
     const supabase = getSupabaseBrowserClient()
     if (!supabase) {
       router.push("/profiles")
       return
     }
-
     const { data } = await supabase.auth.getSession()
     // 이미 로그인된 상태: 프로필 선택까지 됐으면 대시보드, 아니면 프로필 선택 화면.
     if (data.session) {
@@ -62,7 +66,7 @@ export function StartButton({ light = false, className, children = "무료 시�
         className,
       )}
     >
-      {children}
+      {session ? "대쉬보드로 이동" : "무료로 시작하기"}
     </Button>
   )
 }
