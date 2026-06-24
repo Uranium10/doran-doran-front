@@ -1,16 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Play, Loader2 } from "lucide-react"
-import { BackLink } from "@/components/back-link"
-import { PopupBook } from "@/components/workpad/popup-book"
 import {
   fetchFolktales,
-  fetchDefaultStory,
   type Folktale,
   type FolktaleRow,
-  type AssessmentPayload,
 } from "@/lib/workpad-data"
 
 // 기성 전래동화 카드. 클릭 시 라우팅 대신 onOpen 콜백을 호출한다.
@@ -71,11 +68,11 @@ function SkeletonCard() {
 }
 
 export function LibraryRows() {
+  const router = useRouter()
   const [folktales, setFolktales] = useState<Folktale[]>([])
   const [rows, setRows] = useState<FolktaleRow[]>([])
   const [loading, setLoading] = useState(true)
-  // 카드 클릭으로 불러온 동화 (있으면 목록 대신 팝업북을 보여준다)
-  const [reading, setReading] = useState<AssessmentPayload | null>(null)
+  // 카드 클릭 시 별도 라우트로 이동하기 전 스피너를 보여줄 대상 id
   const [openingId, setOpeningId] = useState<string | null>(null)
 
   // 마운트 시 기성 전래동화 목록 + 행 데이터를 받아온다.
@@ -102,39 +99,11 @@ export function LibraryRows() {
 
   const byId = (id: string) => folktales.find((t) => t.story_id === id)
 
-  // 카드 클릭 → 기성 동화 데이터를 받아와 팝업북으로 전환 (라우팅 없음)
-  const handleOpen = async (storyId: string) => {
+  // 카드 클릭 → 기성 동화 전용 라우트로 창을 통째로 이동시킨다.
+  const handleOpen = (storyId: string) => {
     if (openingId) return
     setOpeningId(storyId)
-    try {
-      const payload = await fetchDefaultStory(storyId)
-      setReading(payload)
-    } catch (e) {
-      console.error("[v0] 기성 동화 조회 실패:", e)
-      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
-    } finally {
-      setOpeningId(null)
-    }
-  }
-
-  // 팝업북 열람 모드: 대시보드 하위 컨텐츠처럼 좌측 상단 '이전으로' 링크가 있는 별도 화면.
-  if (reading) {
-    return (
-      <section className="min-h-screen bg-background py-10 sm:py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <BackLink
-            label="라이브러리로 돌아가기"
-            onClick={() => setReading(null)}
-            className="mb-6"
-          />
-          <PopupBook
-            pages={reading.pages}
-            childName={reading.title ?? "친구"}
-            onFinish={() => setReading(null)}
-          />
-        </div>
-      </section>
-    )
+    router.push(`/folktale/${encodeURIComponent(storyId)}`)
   }
 
   return (
