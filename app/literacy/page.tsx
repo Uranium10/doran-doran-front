@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
+import { HomeLink } from "@/components/home-link"
 import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { ToddlerChecklist } from "@/components/literacy/toddler-checklist"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
@@ -127,6 +128,8 @@ export default function LiteracyPage() {
             )}
           </>
         )}
+
+        <HomeLink />
       </main>
     </div>
   )
