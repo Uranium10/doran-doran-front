@@ -4,7 +4,9 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Menu, X, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useProfile } from "@/lib/profile-context"
 import { AuthButton } from "@/components/auth-button"
+import { ProfileMenu } from "@/components/profile-menu"
 
 const navItems = [
   { label: "대쉬보드", href: "/#hero"},
@@ -17,6 +19,8 @@ const navItems = [
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  // 프로필 선택까지 완료된 상태면 구글 계정 대신 아이 프로필 메뉴를 노출한다.
+  const { currentProfile } = useProfile()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -65,7 +69,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <AuthButton />
+          {currentProfile ? <ProfileMenu /> : <AuthButton />}
         </div>
 
         <button
@@ -95,7 +99,7 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2">
-              <AuthButton fullWidth />
+              {currentProfile ? <ProfileMenu /> : <AuthButton fullWidth />}
             </div>
           </nav>
         </div>
