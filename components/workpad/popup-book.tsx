@@ -10,10 +10,12 @@ export function PopupBook({
   pages,
   childName,
   onFinish,
+  isLib = false,
 }: {
   pages: StoryPage[]
-  childName: string
+  childName: string|null
   onFinish: () => void
+  isLib : boolean
 }) {
   const [page, setPage] = useState(0)
   const total = pages.length
@@ -28,9 +30,16 @@ export function PopupBook({
         <p className="font-mono text-xs tracking-widest text-primary">
           나만의 전래동화
         </p>
-        <h2 className="mt-1 font-heading text-3xl text-foreground">
-          {childName.trim() || "아이"}(이)의 도란도란 이야기
-        </h2>
+        { isLib 
+          ?
+          <h2 className="mt-1 font-heading text-3xl text-foreground">
+              {childName?.trim()}
+          </h2>
+          :
+          <h2 className="mt-1 font-heading text-3xl text-foreground">
+            {childName?.trim() ?? "아이"} (이)의 도란도란 이야기
+          </h2>
+        }
       </div>
 
       {/* 3D pop-up book stage */}

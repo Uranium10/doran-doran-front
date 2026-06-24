@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { BackLink } from "@/components/back-link"
 import { PopupBook } from "@/components/workpad/popup-book"
 import { fetchDefaultStory, type AssessmentPayload } from "@/lib/workpad-data"
+import { SiteHeader } from "./site-header"
 
 /**
  * 기성(자체 제공) 전래동화 전용 열람 화면.
@@ -39,10 +40,10 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
   const goBack = () => router.push("/#library")
 
   return (
+    <>
+    <SiteHeader />
     <section className="min-h-screen bg-background py-10 sm:py-14">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <BackLink label="라이브러리로 돌아가기" onClick={goBack} className="mb-6" />
-
         {loading ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -51,8 +52,9 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
         ) : payload ? (
           <PopupBook
             pages={payload.pages}
-            childName={payload.title ?? "친구"}
+            childName={payload.title}
             onFinish={goBack}
+            isLib={true}
           />
         ) : (
           <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
@@ -62,6 +64,8 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
           </div>
         )}
       </div>
+      {/* <BackLink label="라이브러리로 돌아가기" onClick={goBack} className="mb-6" /> */}
     </section>
+    </>
   )
 }
