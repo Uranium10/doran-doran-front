@@ -19,6 +19,8 @@ export function PopupBook({
   const total = pages.length
   const current = pages[page]
   const isLast = page === total - 1
+  // 해당 페이지에 삽화가 없으면 이미지 레이아웃 대신 텍스트 중심 레이아웃을 보여준다.
+  const hasImage = Boolean(current.image)
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -38,32 +40,52 @@ export function PopupBook({
           className="preserve-3d relative overflow-hidden rounded-[2rem] border-4 border-card bg-card shadow-2xl"
           style={{ animation: "popOpen 0.6s ease-out" }}
         >
-          {/* Illustration with layered pop-up feel */}
-          <div className="relative aspect-[16/10] overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={current.image || "/placeholder.svg"}
-              alt={current.heading}
-              className="h-full w-full object-cover"
-              style={{ animation: "layerRise 0.7s ease-out" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            {/* center book spine */}
-            <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-black/10" />
-            <h3 className="absolute bottom-4 left-5 right-5 font-heading text-2xl text-white text-shadow-storybook">
-              {current.heading}
-            </h3>
-          </div>
+          {hasImage ? (
+            <>
+              {/* Illustration with layered pop-up feel */}
+              <div className="relative aspect-[16/10] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={current.image || "/placeholder.svg"}
+                  alt={current.heading}
+                  className="h-full w-full object-cover"
+                  style={{ animation: "layerRise 0.7s ease-out" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                {/* center book spine */}
+                <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-black/10" />
+                <h3 className="absolute bottom-4 left-5 right-5 font-heading text-2xl text-white text-shadow-storybook">
+                  {current.heading}
+                </h3>
+              </div>
 
-          {/* Story text */}
-          <div className="bg-card p-6 sm:p-8">
-            <p
-              className="text-lg leading-relaxed text-card-foreground"
-              style={{ animation: "layerRise 0.9s ease-out" }}
-            >
-              {current.text}
-            </p>
-          </div>
+              {/* Story text */}
+              <div className="bg-card p-6 sm:p-8">
+                <p
+                  className="text-lg leading-relaxed text-card-foreground"
+                  style={{ animation: "layerRise 0.9s ease-out" }}
+                >
+                  {current.text}
+                </p>
+              </div>
+            </>
+          ) : (
+            // 삽화가 없는 페이지: 글자만 가운데에 큼지막하게 보여준다.
+            <div className="flex min-h-[24rem] flex-col items-center justify-center gap-6 bg-card px-6 py-12 text-center sm:min-h-[28rem] sm:px-10">
+              <h3
+                className="font-heading text-3xl text-foreground sm:text-4xl text-balance"
+                style={{ animation: "layerRise 0.7s ease-out" }}
+              >
+                {current.heading}
+              </h3>
+              <p
+                className="max-w-2xl text-2xl leading-relaxed text-card-foreground sm:text-3xl text-pretty"
+                style={{ animation: "layerRise 0.9s ease-out" }}
+              >
+                {current.text}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
