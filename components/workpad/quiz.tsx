@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
+import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -31,24 +31,36 @@ export function Quiz({
   onComplete: (result: QuizResult) => void
 }) {
   const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
 
   const q = questions[index]
   const isLast = index === questions.length - 1
-  const progress = ((index + (selected ? 1 : 0)) / questions.length) * 100
+  const isFirst = index === 0
+  // 현재 문제의 선택값은 저장된 답안에서 가져온다 (이전/다음 이동 시 체크 상태 유지)
+  const selected = answers[q.question_id] ?? null
+  const answeredCount = questions.filter((qq) => answers[qq.question_id]).length
+  const progress = (answeredCount / questions.length) * 100
+
+  // 현재 문제의 보기 선택을 즉시 저장한다.
+  const handleSelect = (value: string) => {
+    setAnswers((prev) => ({ ...prev, [q.question_id]: value }))
+  }
+
+  // 이전 문제로 이동 (저장된 답은 그대로 유지)
+  const goPrev = () => {
+    if (isFirst) return
+    setIndex((i) => i - 1)
+  }
 
   const next = () => {
     if (!selected) return
-    const nextAnswers = { ...answers, [q.question_id]: selected }
-    setAnswers(nextAnswers)
 
     if (isLast) {
       const bySkill: QuizResult["bySkill"] = {}
       const details: SubmissionDetail[] = []
       let correct = 0
       for (const question of questions) {
-        const picked = nextAnswers[question.question_id] ?? ""
+        const picked = answers[question.question_id] ?? ""
         const ok = question.answer != null && picked === question.answer
         if (ok) correct++
         const skill = question.skill ?? "기타"
@@ -66,13 +78,12 @@ export function Quiz({
         correct,
         total: questions.length,
         bySkill,
-        answers: nextAnswers,
+        answers,
         details,
       })
       return
     }
     setIndex((i) => i + 1)
-    setSelected(null)
   }
 
   return (
@@ -110,7 +121,7 @@ export function Quiz({
         {/* 객관식 항들 */}
         <RadioGroup
           value={selected ?? ""}
-          onValueChange={setSelected}
+          onValueChange={handleSelect}
           className="mt-5 gap-3"
         >
           {q.options.map((opt) => (
@@ -143,24 +154,38 @@ export function Quiz({
           ))}
         </RadioGroup>
 
-        <Button
-          onClick={next}
-          disabled={!selected}
-          size="lg"
-          className="mt-7 h-13 w-full rounded-full text-base"
-        >
-          {isLast ? (
-            <>
-              결과 확인하기
-              <CheckCircle2 className="ml-1 h-5 w-5" />
-            </>
-          ) : (
-            <>
-              다음 문제
-              <ArrowRight className="ml-1 h-5 w-5" />
-            </>
+        <div className="mt-7 flex items-center gap-3">
+          {/* 이전 문제로 이동 (첫 문제에서는 숨김) */}
+          {!isFirst && (
+            <Button
+              onClick={goPrev}
+              variant="secondary"
+              size="lg"
+              className="h-13 shrink-0 rounded-full px-5 text-base"
+            >
+              <ArrowLeft className="mr-1 h-5 w-5" />
+              이전 문제
+            </Button>
           )}
-        </Button>
+          <Button
+            onClick={next}
+            disabled={!selected}
+            size="lg"
+            className="h-13 flex-1 rounded-full text-base"
+          >
+            {isLast ? (
+              <>
+                결과 확인하기
+                <CheckCircle2 className="ml-1 h-5 w-5" />
+              </>
+            ) : (
+              <>
+                다음 문제
+                <ArrowRight className="ml-1 h-5 w-5" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )
