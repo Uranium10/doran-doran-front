@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Wand2, Sparkles, BookOpen, BarChart3, Library } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
+import { HomeLink } from "@/components/home-link"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { PopupBook } from "@/components/workpad/popup-book"
 import { StorySetup } from "@/components/workpad/story-setup"
@@ -284,6 +285,8 @@ export default function DashboardPage() {
             }}
           />
         )}
+
+        <HomeLink />
       </main>
 
       {/* 상황 A: 문해력 측정 안내 모달 */}
