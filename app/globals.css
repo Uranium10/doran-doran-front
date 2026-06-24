@@ -171,6 +171,8 @@
 }
 .grid-lane{
   animation: ats 30s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 .point-hover:hover{
   cursor: pointer;
