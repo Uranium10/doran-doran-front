@@ -9,6 +9,7 @@ import { ageLabel, getStageInfo } from "@/lib/levels"
 import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-form-modal"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { AuthButton } from "@/components/auth-button"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export function ProfilePicker() {
   const router = useRouter()
@@ -29,6 +30,18 @@ export function ProfilePicker() {
   useEffect(() => {
     void refreshProfiles()
   }, [refreshProfiles])
+  // 로그인 정보가 없으면 홈화면으로 사출
+  useEffect(() => {
+      const supabase = getSupabaseBrowserClient()
+      if (!supabase) return
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session) {
+          router.replace("/")
+        }
+      })
+    }, [router])
+
+
 
   const handleSelect = (id: string) => {
     selectProfile(id)
