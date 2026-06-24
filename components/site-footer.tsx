@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { AuthButton } from "@/components/auth-button"
 
 export function SiteFooter() {
   return (
@@ -13,14 +13,10 @@ export function SiteFooter() {
           <p className="mx-auto mt-3 max-w-xl text-pretty text-primary-foreground/90">
             문해력 테스트부터 나만의 팝업북까지, 3분이면 충분해요.
           </p>
-          <Button
-            render={<Link href="/dashboard" />}
-            size="lg"
-            variant="secondary"
-            className="mt-7 h-13 rounded-full px-8 text-base"
-          >
-            무료로 시작하기
-          </Button>
+          {/* 로그인 상태에 따라 'Google 로그인' 또는 프로필 화면 진입으로 연결 */}
+          <div className="mt-7 flex justify-center">
+            <AuthButton light className="h-13 px-8 text-base" />
+          </div>
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-6 sm:flex-row">
@@ -32,7 +28,6 @@ export function SiteFooter() {
           </Link>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <Link href="/#library" className="hover:text-primary">라이브러리</Link>
-            <Link href="/dashboard" className="hover:text-primary">대시보드</Link>
             <Link href="/#pricing" className="hover:text-primary">가격</Link>
             <Link href="/#criteria" className="hover:text-primary">평가 기준</Link>
             <Link href="/#faq" className="hover:text-primary">FAQ</Link>

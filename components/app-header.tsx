@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Sparkles, ChevronDown, Users, Pencil, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/lib/profile-context"
-import { getStageInfo } from "@/lib/levels"
+import { getStageInfo, getTierProgress } from "@/lib/levels"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { AuthButton } from "@/components/auth-button"
 import { ProfileFormModal, type ProfileFormValues } from "@/components/profile-form-modal"
@@ -44,6 +44,8 @@ export function AppHeader() {
   }, [menuOpen])
 
   const stage = getStageInfo(currentProfile?.level ?? null)
+  // 레벨이 있으면 현재 티어 → 다음 티어 진척도 게이지를 메뉴에 노출한다.
+  const tierProgress = getTierProgress(currentProfile?.level ?? null)
 
   const goSwitchProfile = () => {
     setMenuOpen(false)
@@ -152,6 +154,33 @@ export function AppHeader() {
                     </p>
                   </div>
                 </div>
+
+                {/* 레벨이 있으면 현재 티어 → 다음 티어 진척도 게이지 (퀴즈 결과 화면과 동일한 표현) */}
+                {tierProgress && (
+                  <div className="border-b border-border px-4 py-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-heading text-foreground">
+                        {tierProgress.currentLabel}
+                      </span>
+                      {tierProgress.nextLabel && (
+                        <span className="text-muted-foreground">
+                          {tierProgress.nextLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-secondary ring-1 ring-border">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-700"
+                        style={{ width: `${tierProgress.achievement}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-right text-[11px] font-medium text-primary">
+                      {tierProgress.nextLabel
+                        ? `다음 단계까지 ${tierProgress.achievement}%`
+                        : "최고 단계 달성!"}
+                    </p>
+                  </div>
+                )}
 
                 <button
                   type="button"

@@ -114,12 +114,19 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
     )
   }
 
-  // Logged out: identical to the original "무료 시작하기" button.
+  // Logged out: Google 로그인 트리거. (랜딩 CTA 로도 재사용되므로 light 대응)
   if (!session) {
     return (
       <Button
         onClick={handleSignIn}
-        className={cn("rounded-full", fullWidth && "w-full", className)}
+        className={cn(
+          "rounded-full",
+          fullWidth && "w-full",
+          // 어두운 배경(hero 상단/footer primary) 위에서는 흰 버튼으로 대비 확보
+          light &&
+            "bg-white text-primary hover:bg-white/90 border border-white/40",
+          className,
+        )}
       >
         무료 시작하기
       </Button>

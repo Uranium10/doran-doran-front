@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { ArrowRight, Play } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AuthButton } from "@/components/auth-button"
 import { folktales } from "@/lib/folktales"
 
 export function Hero() {
@@ -65,14 +66,8 @@ export function Hero() {
             만나보세요.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button
-              render={<Link href="/dashboard" />}
-              size="lg"
-              className="h-13 rounded-full px-7 text-base point-hover"
-            >
-              <Play className="mr-1 h-5 w-5 fill-current" style={{ display: "inline", marginTop: "-4px" }} />
-              무료 시작하기
-            </Button>
+            {/* 로그인 상태에 따라 'Google 로그인' 또는 프로필 화면 진입으로 연결 */}
+            <AuthButton className="h-13 px-7 text-base point-hover" />
             <Button
               render={<Link href="/#library" />}
               size="lg"
