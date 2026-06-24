@@ -127,9 +127,9 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
         className={cn(
           "rounded-full",
           fullWidth && "w-full",
-          // 어두운 배경(hero 상단/footer primary) 위에서는 흰 버튼으로 대비 확보
+          // 어두운 배경(스크롤 전 hero 상단 등) 위에서는 글래스모피즘으로 표시
           light &&
-            "bg-white text-primary hover:bg-white/90 border border-white/40",
+            "bg-white/15 text-white border border-white/30 backdrop-blur-md shadow-sm hover:bg-white/25",
           className,
         )}
       >

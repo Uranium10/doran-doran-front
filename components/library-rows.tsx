@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Play, Loader2 } from "lucide-react"
+import { BackLink } from "@/components/back-link"
 import { PopupBook } from "@/components/workpad/popup-book"
 import {
   fetchFolktales,
@@ -116,25 +117,21 @@ export function LibraryRows() {
     }
   }
 
-  // 팝업북 열람 모드: 퀴즈 없이 목록으로 복귀
+  // 팝업북 열람 모드: 대시보드 하위 컨텐츠처럼 좌측 상단 '이전으로' 링크가 있는 별도 화면.
   if (reading) {
     return (
-      <section className="bg-background py-16 sm:py-20">
+      <section className="min-h-screen bg-background py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <BackLink
+            label="라이브러리로 돌아가기"
+            onClick={() => setReading(null)}
+            className="mb-6"
+          />
           <PopupBook
             pages={reading.pages}
             childName={reading.title ?? "친구"}
             onFinish={() => setReading(null)}
           />
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setReading(null)}
-              className="text-sm text-muted-foreground hover:text-primary"
-            >
-              라이브러리로 돌아가기
-            </button>
-          </div>
         </div>
       </section>
     )
