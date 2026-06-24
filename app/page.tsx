@@ -11,7 +11,7 @@ import { AuthRedirectGate } from "@/components/auth-redirect-gate"
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
-      <AuthRedirectGate />
+      {/* <AuthRedirectGate /> */}
       <SiteHeader />
       <Hero />
       <HowItWorks />
