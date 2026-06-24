@@ -90,7 +90,7 @@ export function Pricing() {
                 ))}
               </ul>
               <Button
-                render={<Link href="/dashboard" />}
+                render={<Link href="/coming-soon" />}
                 variant={plan.highlight ? "default" : "secondary"}
                 className="mt-7 h-12 rounded-full text-base"
               >

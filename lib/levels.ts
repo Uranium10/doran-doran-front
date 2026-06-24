@@ -53,6 +53,34 @@ export function needsMeasurement(level: number | null): boolean {
   return level == null || level <= 0
 }
 
+/** 헤더 등에서 쓰는 "현재 단계 → 다음 단계" 진척도 정보 */
+export type TierProgress = {
+  /** 현재 도달 단계 라벨 (예: "새싹 2단계") */
+  currentLabel: string
+  /** 다음 목표 단계 라벨 (예: "새싹 3단계"). 최고 단계면 null */
+  nextLabel: string | null
+  /** 현재 단계 → 다음 단계 사이의 달성도 (0~100) */
+  achievement: number
+}
+
+/**
+ * level(number) -> 현재 단계에서 다음 단계까지의 진척도.
+ * 서버가 17.5 같은 소수 레벨을 주면 소수부가 곧 다음 단계로의 달성도가 된다.
+ * 측정 전(level=null/0 이하)이면 null.
+ */
+export function getTierProgress(level: number | null): TierProgress | null {
+  if (level == null || level <= 0) return null
+  const clamped = Math.min(level, MAX_LEVEL)
+  const lowerLevel = Math.max(1, Math.min(MAX_LEVEL, Math.floor(clamped)))
+  const within = clamped - Math.floor(clamped) // 0~1 소수부
+  const isMax = lowerLevel >= MAX_LEVEL
+  return {
+    currentLabel: getStageInfo(lowerLevel)?.label ?? "씨앗 1단계",
+    nextLabel: isMax ? null : getStageInfo(lowerLevel + 1)?.label ?? null,
+    achievement: isMax ? 100 : Math.round(within * 1000) / 10,
+  }
+}
+
 /** 정답률(0~100) -> level(number). 측정 결과를 레벨로 환산한다. */
 export function scoreToLevel(percent: number): number {
   // 0~100% 를 1~12 레벨로 매핑 (최소 1단계는 보장)
