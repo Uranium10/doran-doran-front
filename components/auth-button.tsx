@@ -85,7 +85,12 @@ export function AuthButton({ light = false, fullWidth = false, className, onSign
       typeof window !== "undefined" ? `${window.location.origin}/profiles` : undefined
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: {
+        redirectTo, 
+        queryParams: {
+          prompt: "select_account",
+        }
+      },
     })
     if (error) {
       console.error("[v0] Google 로그인 실패:", error.message)
