@@ -76,7 +76,7 @@ export function ProfilePicker() {
           누가 이야기를 들을까요?
         </h1>
         <p className="mt-3 text-pretty text-muted-foreground">
-          프로필을 선택하면 아이에게 꼭 맞는 동화 여정이 시작돼요.
+          <b>우리 아이 프로필</b>을 선택하면, 꼭 맞는 <span className="font-medium">동화 여정</span>이 시작돼요.
         </p>
         {loading && profiles.length === 0 && (
           <p

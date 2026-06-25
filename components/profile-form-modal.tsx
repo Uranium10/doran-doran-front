@@ -227,7 +227,7 @@ export function ProfileFormModal({
 
           <div className="space-y-2">
             <Label htmlFor="profile-name" className="text-base">
-              이름
+              아이 이름
             </Label>
             <Input
               id="profile-name"
