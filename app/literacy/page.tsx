@@ -39,27 +39,25 @@ export default function LiteracyPage() {
   const profileId = currentProfile?.id ?? null
   useEffect(() => {
     if (!profileId) return
+    // 프로필당 한 번만 출제 요청 (StrictMode 이중 실행 가드).
     if (fetchedFor.current === profileId) return
     fetchedFor.current = profileId
 
-    let active = true
     setLoading(true)
     generatePretest(profileId)
       .then((payload) => {
-        if (active) setAssessment(payload)
+        setAssessment(payload)
       })
       .catch((e) => {
         console.error("[v0] 배치고사 생성 실패:", e)
         toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+        // 실패 시 가드를 풀어 재진입할 때 다시 시도할 수 있게 한다.
+        fetchedFor.current = null
         router.back()
       })
       .finally(() => {
-        if (active) setLoading(false)
+        setLoading(false)
       })
-
-    return () => {
-      active = false
-    }
   }, [profileId, router])
 
   if (!currentProfile) return null
