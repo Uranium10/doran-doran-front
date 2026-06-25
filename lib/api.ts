@@ -31,15 +31,50 @@ async function buildHeaders(): Promise<Record<string, string>> {
   return headers
 }
 
+/** 일반 요청 기본 타임아웃(ms). */
+const DEFAULT_TIMEOUT_MS = 30_000
+/**
+ * 동화/문제 생성처럼 LLM 작업이 끼어 오래 걸리는 요청용 타임아웃(ms).
+ * 타임아웃이 없으면 서버가 응답을 늦게/안 줄 때 화면이 무한로딩에 빠진다.
+ */
+export const LONG_TIMEOUT_MS = 120_000
+
+export type RequestOptions = {
+  /** 이 요청의 타임아웃(ms). 미지정 시 DEFAULT_TIMEOUT_MS. */
+  timeoutMs?: number
+}
+
 /** 공통 fetch 래퍼. 실패 시 에러를 throw 한다(호출부에서 콘솔 출력/로딩 해제). */
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(await buildHeaders()),
-      ...((init?.headers as Record<string, string> | undefined) ?? {}),
-    },
-  })
+export async function request<T>(
+  path: string,
+  init?: RequestInit,
+  options?: RequestOptions,
+): Promise<T> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  // AbortController 로 타임아웃을 걸어, 응답이 안 와도 영원히 대기하지 않게 한다.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: init?.signal ?? controller.signal,
+      headers: {
+        ...(await buildHeaders()),
+        ...((init?.headers as Record<string, string> | undefined) ?? {}),
+      },
+    })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error(
+        `요청 시간이 초과됐어요 (${Math.round(timeoutMs / 1000)}초): ${path}`,
+      )
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "")
