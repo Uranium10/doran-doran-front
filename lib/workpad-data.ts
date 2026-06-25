@@ -1,4 +1,4 @@
-import { request } from "@/lib/api"
+import { request, LONG_TIMEOUT_MS } from "@/lib/api"
 import type { LiteracyResult } from "@/lib/levels"
 
 // ===========================================================================
@@ -137,16 +137,21 @@ export async function generateAssessment(
   assessmentType: AssessmentType,
   input: StoryInput,
 ): Promise<AssessmentPayload> {
-  return request<AssessmentPayload>("/stories/generate", {
-    method: "POST",
-    body: JSON.stringify({
-      profile_id: profileId,
-      assessment_type: assessmentType,
-      protagonist_name: input.protagonistName,
-      favorite: input.favorite,
-      today_event: input.todayEvent,
-    }),
-  })
+  return request<AssessmentPayload>(
+    "/stories/generate",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        profile_id: profileId,
+        assessment_type: assessmentType,
+        protagonist_name: input.protagonistName,
+        favorite: input.favorite,
+        today_event: input.todayEvent,
+      }),
+    },
+    // 동화 생성은 LLM 작업이라 오래 걸릴 수 있으므로 넉넉한 타임아웃을 준다.
+    { timeoutMs: LONG_TIMEOUT_MS },
+  )
 }
 
 /**
@@ -156,13 +161,18 @@ export async function generateAssessment(
 export async function generatePretest(
   profileId: string,
 ): Promise<AssessmentPayload> {
-  return request<AssessmentPayload>("/assessments/generate", {
-    method: "POST",
-    body: JSON.stringify({
-      profile_id: profileId,
-      assessment_type: "pretest",
-    }),
-  })
+  return request<AssessmentPayload>(
+    "/assessments/generate",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        profile_id: profileId,
+        assessment_type: "pretest",
+      }),
+    },
+    // 문제 생성도 LLM 작업이라 오래 걸릴 수 있으므로 넉넉한 타임아웃을 준다.
+    { timeoutMs: LONG_TIMEOUT_MS },
+  )
 }
 
 /**
