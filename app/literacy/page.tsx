@@ -11,7 +11,7 @@ import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { ToddlerChecklist } from "@/components/literacy/toddler-checklist"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
-import type { LiteracyResult } from "@/lib/levels"
+import { needsMeasurement, type LiteracyResult } from "@/lib/levels"
 import {
   generatePretest,
   buildSubmission,
@@ -68,11 +68,18 @@ export default function LiteracyPage() {
   // 측정 완료 → 제출(front→back) → 결과(back→front, 서버가 레벨/추세 계산)
   const finishMeasurement = async (answers: Record<string, string>) => {
     if (!assessment) return
+    // 제출(레벨 갱신) 전에 "측정 데이터가 없던 상태"였는지 캡처해 둔다.
+    const wasFirstMeasurement = needsMeasurement(currentProfile.level)
     try {
       const submission = buildSubmission(currentProfile.id, assessment, answers)
       const res = await submitAssessment(submission)
       updateProfile(currentProfile.id, { level: res.level })
-      setResult(res)
+      // 기존 문해력 데이터가 없었다면 '재시험'이 아니라 '첫 측정'으로 표시한다.
+      setResult(
+        wasFirstMeasurement && res.kind === "retest"
+          ? { ...res, kind: "initial", delta: null }
+          : res,
+      )
     } catch (e) {
       console.error("[v0] 채점 제출 실패:", e)
       toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
