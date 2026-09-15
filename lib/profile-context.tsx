@@ -74,7 +74,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const profilesRef = useRef<Profile[]>(profiles)
   profilesRef.current = profiles
 
-  // Supabase 세션의 user.id 를 추적한다. (프로필 조회/생성 시 사용)
+  // 세션 변경 시 화면을 갱신하기 위한 ID다. API의 사용자 권한은 서버가 JWT로 판단한다.
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
     if (!supabase) return
@@ -103,7 +103,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true)
     try {
-      const list = await fetchProfiles(userId)
+      const list = await fetchProfiles()
       setProfiles(list)
     } catch (e) {
       console.error("[v0] 프로필 목록 조회 실패:", e)
@@ -121,7 +121,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     async (input: NewProfileInput) => {
       if (!userId) throw new Error("로그인이 필요합니다.")
       const created = await createProfile({
-        user_id: userId,
         name: input.name.trim() || "새 친구",
         birth_date: input.birth_date,
         avatar_url:

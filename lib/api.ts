@@ -44,6 +44,13 @@ export type RequestOptions = {
   timeoutMs?: number
 }
 
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
 /** 공통 fetch 래퍼. 실패 시 에러를 throw 한다(호출부에서 콘솔 출력/로딩 해제). */
 export async function request<T>(
   path: string,
@@ -59,7 +66,8 @@ export async function request<T>(
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
-      signal: init?.signal ?? controller.signal,
+      // 화면 이탈 취소와 요청 시간 제한을 둘 다 지킨다.
+      signal: init?.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal,
       headers: {
         ...(await buildHeaders()),
         ...((init?.headers as Record<string, string> | undefined) ?? {}),
@@ -77,10 +85,9 @@ export async function request<T>(
   }
 
   if (!res.ok) {
-    const detail = await res.text().catch(() => "")
-    throw new Error(
-      `API ${res.status} ${res.statusText}: ${path}${detail ? ` — ${detail}` : ""}`,
-    )
+    const body = await res.json().catch(() => null)
+    const detail = typeof body?.detail === "string" ? body.detail : "요청을 처리하지 못했습니다."
+    throw new ApiError(res.status, detail)
   }
 
   // 본문이 비어 있을 수 있으므로(텍스트 → JSON) 안전하게 파싱한다.
@@ -91,12 +98,10 @@ export async function request<T>(
 // ---------------------------------------------------------------------------
 // 1. 구글 계정 로그인 동기화 (front -> back)
 // ---------------------------------------------------------------------------
-export type SyncUserInput = { user_id: string; email: string; name: string }
-
-export async function syncUser(input: SyncUserInput): Promise<void> {
+export async function syncUser(): Promise<void> {
+  // 사용자 ID·이메일은 서버가 JWT 검증 결과에서 얻는다. 본문으로 신원을 주장하지 않는다.
   await request("/users/sync", {
     method: "POST",
-    body: JSON.stringify(input),
   })
 }
 
@@ -116,12 +121,7 @@ export async function syncCurrentUser(): Promise<void> {
 
   lastSyncedUserId = session.user.id
   try {
-    const meta = session.user.user_metadata ?? {}
-    await syncUser({
-      user_id: session.user.id,
-      email: session.user.email ?? "",
-      name: meta.name ?? meta.full_name ?? "",
-    })
+    await syncUser()
   } catch (e) {
     // 실패 시 다음 기회에 재시도할 수 있도록 가드를 해제한다.
     lastSyncedUserId = null
@@ -132,9 +132,10 @@ export async function syncCurrentUser(): Promise<void> {
 // ---------------------------------------------------------------------------
 // 2. 프로필 목록 불러오기 (back -> front)
 // ---------------------------------------------------------------------------
-export async function fetchProfiles(userId: string): Promise<Profile[]> {
+export async function fetchProfiles(): Promise<Profile[]> {
+  // 조회 대상 사용자는 Authorization 토큰으로 결정한다.
   const data = await request<{ profiles: Profile[] }>(
-    `/profiles?user_id=${encodeURIComponent(userId)}`,
+    "/profiles",
   )
   return data?.profiles ?? []
 }
@@ -143,7 +144,6 @@ export async function fetchProfiles(userId: string): Promise<Profile[]> {
 // 3. 새 프로필 생성 (front -> back)
 // ---------------------------------------------------------------------------
 export type CreateProfileInput = {
-  user_id: string
   name: string
   birth_date: string
   avatar_url: string

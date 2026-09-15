@@ -1,4 +1,4 @@
-import { request, LONG_TIMEOUT_MS } from "@/lib/api"
+import { ApiError, request, LONG_TIMEOUT_MS } from "@/lib/api"
 import type { LiteracyResult } from "@/lib/levels"
 
 // ===========================================================================
@@ -28,6 +28,9 @@ export type StoryPage = {
   image: string
   heading: string
   text: string
+  image_status?: "ready" | "failed" | "not_requested"
+  audio_url?: string | null
+  audio_status?: "not_requested" | "not_implemented" | "ready" | "failed"
 }
 
 /** 공통 문항 타입 (체크리스트·퀴즈 모두 이 타입을 따른다) */
@@ -60,6 +63,17 @@ export type AssessmentPayload = {
   theme: string | null
   pages: StoryPage[]
   quizzes: AssessmentQuestion[]
+  cover_image?: string | null
+  generation?: {
+    model: string
+    prompt_version: string
+    source_id: string
+    retrieval_mode: string
+    page_images: boolean
+    quiz_status: "ready" | "failed" | "not_required"
+    cover_status: "ready" | "failed"
+    tts_status: "not_requested" | "not_implemented"
+  } | null
 }
 
 /** 채점 제출 상세 (front -> back) */
@@ -92,6 +106,60 @@ export type StoryInput = {
   protagonistName: string
   favorite: string
   todayEvent: string
+  pageImages?: boolean
+  useJobs?: boolean
+}
+
+export type GenerationPreferences = { page_images: boolean; available: boolean; jobs_enabled: boolean }
+export const fetchGenerationPreferences = () => request<GenerationPreferences>("/users/me/generation-preferences")
+export const saveGenerationPreferences = (pageImages: boolean) => request<GenerationPreferences>(
+  "/users/me/generation-preferences", { method: "PATCH", body: JSON.stringify({ page_images: pageImages }) },
+)
+
+export type GenerationJob = {
+  job_id: string
+  status: "queued" | "running" | "completed" | "failed"
+  stage: string
+  result: AssessmentPayload | null
+  error_code: string | null
+  poll_after_ms: number
+}
+
+// 새로고침 뒤에도 같은 작업을 조회한다. 입력/토큰을 저장하지 않고 작업 ID만 보관한다.
+const pendingKey = (profileId: string) => `doran-generation:${profileId}`
+export function pendingGeneration(profileId: string): string | null {
+  return typeof window === "undefined" ? null : sessionStorage.getItem(pendingKey(profileId))
+}
+
+export async function waitForGeneration(profileId: string, jobId: string,
+  onProgress?: (stage: string) => void, signal?: AbortSignal): Promise<AssessmentPayload> {
+  const deadline = Date.now() + 25 * 60_000
+  while (Date.now() < deadline) {
+    signal?.throwIfAborted()
+    let job: GenerationJob
+    try {
+      job = await request<GenerationJob>(`/stories/generation-jobs/${encodeURIComponent(jobId)}`, { signal })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) sessionStorage.removeItem(pendingKey(profileId))
+      throw error
+    }
+    onProgress?.(job.stage)
+    if (job.status === "completed" && job.result) {
+      sessionStorage.removeItem(pendingKey(profileId))
+      return job.result
+    }
+    if (job.status === "failed") {
+      sessionStorage.removeItem(pendingKey(profileId))
+      throw new Error("동화를 완성하지 못했어요. 다시 만들어 주세요.")
+    }
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")) }
+      const timer = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve() },
+        Math.max(1000, Math.min(job.poll_after_ms, 5000)))
+      signal?.addEventListener("abort", onAbort, { once: true })
+    })
+  }
+  throw new Error("생성이 오래 걸리고 있어요. 잠시 후 대시보드에서 다시 확인해 주세요.")
 }
 
 /** 보관함에 저장된 동화 (back -> front) */
@@ -136,18 +204,39 @@ export async function generateAssessment(
   profileId: string,
   assessmentType: AssessmentType,
   input: StoryInput,
+  onProgress?: (stage: string) => void,
+  signal?: AbortSignal,
 ): Promise<AssessmentPayload> {
+  const body = JSON.stringify({
+    profile_id: profileId, assessment_type: assessmentType,
+    protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
+    page_images: input.pageImages ?? false, tts: false,
+  })
+  if (input.useJobs) {
+    const existing = pendingGeneration(profileId)
+    if (existing) return waitForGeneration(profileId, existing, onProgress, signal)
+    // 네트워크 오류 뒤 동일 요청을 복구할 수 있도록 서버 제출 전에 UUID를 만든다.
+    const idempotencyKey = crypto.randomUUID()
+    // job_id는 이 UUID와 같다. 접수 응답을 잃어도 GET으로 완료 여부를 확인할 수 있다.
+    sessionStorage.setItem(pendingKey(profileId), idempotencyKey)
+    let job: GenerationJob
+    try {
+      job = await request<GenerationJob>("/stories/generation-jobs", {
+        method: "POST", body, signal, headers: { "Idempotency-Key": idempotencyKey },
+      })
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500) sessionStorage.removeItem(pendingKey(profileId))
+      throw error
+    }
+    sessionStorage.setItem(pendingKey(profileId), job.job_id)
+    return waitForGeneration(profileId, job.job_id, onProgress, signal)
+  }
   return request<AssessmentPayload>(
     "/stories/generate",
     {
       method: "POST",
-      body: JSON.stringify({
-        profile_id: profileId,
-        assessment_type: assessmentType,
-        protagonist_name: input.protagonistName,
-        favorite: input.favorite,
-        today_event: input.todayEvent,
-      }),
+      body,
+      signal,
     },
     // 동화 생성은 LLM 작업이라 오래 걸릴 수 있으므로 넉넉한 타임아웃을 준다.
     { timeoutMs: LONG_TIMEOUT_MS },

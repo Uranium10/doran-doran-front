@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { StoryPage } from "@/lib/workpad-data"
+import { useReadingPages } from "./use-reading-pages"
 
 export function PopupBook({
   pages,
@@ -15,17 +15,24 @@ export function PopupBook({
   pages: StoryPage[]
   childName: string|null
   onFinish: () => void
-  isLib : boolean
+  isLib?: boolean
 }) {
-  const [page, setPage] = useState(0)
-  const total = pages.length
-  const current = pages[page]
+  const { bookRef, imageTextRef, plainTextRef, layout, pages: readingPages, page, setPage } = useReadingPages(pages)
+  const total = readingPages.length
+  const current = readingPages[page]
   const isLast = page === total - 1
   // 해당 페이지에 삽화가 없으면 이미지 레이아웃 대신 텍스트 중심 레이아웃을 보여준다.
-  const hasImage = Boolean(current.image)
+  const hasImage = Boolean(current?.image)
+  if (!current) return <div ref={bookRef}><p role="status">표시할 동화가 없어요.</p></div>
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div ref={bookRef} className="mx-auto w-full max-w-3xl">
+      {/* 실제 본문과 같은 CSS로 높이를 잰다. 서버에 보관한 장면 원문은 변경하지 않는다. */}
+      <div aria-hidden="true" className="pointer-events-none invisible fixed -left-[10000px] top-0"
+        style={{ width: Math.max(1, layout.width - 8) }}>
+        <p ref={imageTextRef} className="mx-6 whitespace-pre-wrap break-words text-lg leading-relaxed sm:mx-8" />
+        <p ref={plainTextRef} className="mx-6 max-w-2xl whitespace-pre-wrap break-words text-center text-2xl leading-relaxed text-pretty sm:mx-10 sm:text-3xl" />
+      </div>
       <div className="mb-5 text-center">
         <p className="font-mono text-xs tracking-widest text-primary">
           나만의 전래동화
@@ -52,7 +59,7 @@ export function PopupBook({
           {hasImage ? (
             <>
               {/* Illustration with layered pop-up feel */}
-              <div className="relative aspect-[16/10] overflow-hidden">
+              <div className="relative aspect-[16/10] max-h-[32vh] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={current.image || "/placeholder.svg"}
@@ -71,10 +78,10 @@ export function PopupBook({
               {/* Story text */}
               <div className="bg-card p-6 sm:p-8">
                 <p
-                  className="text-lg leading-relaxed text-card-foreground"
+                  className="whitespace-pre-wrap break-words text-lg leading-relaxed text-card-foreground"
                   style={{ animation: "layerRise 0.9s ease-out" }}
                 >
-                  {current.text}
+                  {current.text.trim()}
                 </p>
               </div>
             </>
@@ -88,10 +95,10 @@ export function PopupBook({
                 {current.heading}
               </h3>
               <p
-                className="max-w-2xl text-2xl leading-relaxed text-card-foreground sm:text-3xl text-pretty"
+                className="max-w-2xl whitespace-pre-wrap break-words text-2xl leading-relaxed text-card-foreground sm:text-3xl text-pretty"
                 style={{ animation: "layerRise 0.9s ease-out" }}
               >
-                {current.text}
+                {current.text.trim()}
               </p>
             </div>
           )}
@@ -99,12 +106,20 @@ export function PopupBook({
       </div>
 
       {/* Page dots */}
-      <div className="mt-5 flex items-center justify-center gap-2">
-        {pages.map((_, i) => (
+      {current.image_status === "failed" && (
+        <p className="mt-3 text-center text-sm text-muted-foreground">이 장면의 그림을 만들지 못했어요. 이야기는 계속 읽을 수 있어요.</p>
+      )}
+      <p className="mt-4 text-center text-sm text-muted-foreground" aria-live="polite">
+        {page + 1} / {total}쪽
+        {current.partCount > 1 && <span className="ml-2">같은 장면 {current.part} / {current.partCount}</span>}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2" aria-label="동화 쪽 이동">
+        {readingPages.map((_, i) => (
           <button
             key={i}
             type="button"
             aria-label={`${i + 1}쪽으로 이동`}
+            aria-current={i === page ? "page" : undefined}
             onClick={() => setPage(i)}
             className={cn(
               "h-2.5 rounded-full transition-all",

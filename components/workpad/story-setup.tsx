@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import type { StoryInput } from "@/lib/workpad-data"
+import { fetchGenerationPreferences, saveGenerationPreferences, type GenerationPreferences, type StoryInput } from "@/lib/workpad-data"
 
 // 좋아하는 것 예시 (탭하면 입력칸에 채워짐)
 const FAVORITE_EXAMPLES = ["공룡", "별", "공주", "강아지", "로봇", "딸기"]
@@ -56,31 +56,51 @@ export function StorySetup({
   defaultName,
   onSubmit,
 }: {
-  /** 주인공 이름 (현재 프로필 이름). UI 로는 노출하지 않고 전송 값으로만 사용. */
+  /** 기본값은 프로필 이름이며 이번 동화에서 쓸 이름을 직접 바꿀 수 있다. */
   defaultName: string
   /** 폼 입력이 완료되면 구조화된 StoryInput 을 넘긴다. 추후 서버 호출 지점. */
   onSubmit: (input: StoryInput) => void
 }) {
   const [favorite, setFavorite] = useState("")
+  const [protagonistName, setProtagonistName] = useState(defaultName)
+  const [eventText, setEventText] = useState("")
+  const [preferences, setPreferences] = useState<GenerationPreferences | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [settingsError, setSettingsError] = useState("")
+  const loadPreferences = async () => {
+    setSettingsError("")
+    try { setPreferences(await fetchGenerationPreferences()) }
+    catch { setSettingsError("설정을 불러오지 못했어요. 다시 시도해 주세요.") }
+  }
+  useEffect(() => { void loadPreferences() }, [])
+
+  const toggleImages = async (checked: boolean) => {
+    setSaving(true)
+    setSettingsError("")
+    try { setPreferences(await saveGenerationPreferences(checked)) }
+    catch { setSettingsError("설정을 저장하지 못했어요. 기존 설정을 유지합니다.") }
+    finally { setSaving(false) }
+  }
   // 선택된 기분 id (없으면 null)
   const [moodId, setMoodId] = useState<string | null>(null)
 
   const selectedMood = MOODS.find((m) => m.id === moodId)
-  const todayEvent = selectedMood?.event ?? ""
+  const todayEvent = [eventText.trim(), selectedMood?.event].filter(Boolean).join(" ")
 
   // favorite 와 today_event 중 하나라도 채워지면 제출 가능
-  const canSubmit = favorite.trim().length > 0 || todayEvent.length > 0
+  const canSubmit = Boolean(preferences) && !saving && protagonistName.trim().length > 0
+    && (favorite.trim().length > 0 || todayEvent.length > 0)
 
   const handleSubmit = () => {
     if (!canSubmit) return
     const fav = favorite.trim()
-    // 한쪽만 입력된 경우 빈 쪽에 채워진 쪽의 값을 복사해 둘 다 채워 전송한다.
-    const finalFavorite = fav || todayEvent
-    const finalEvent = todayEvent || fav
+    // 관심사와 오늘의 경험은 별개다. 빈 항목을 복사하면 모델이 잘못 해석할 수 있다.
     onSubmit({
-      protagonistName: defaultName.trim(),
-      favorite: finalFavorite,
-      todayEvent: finalEvent,
+      protagonistName: protagonistName.trim(),
+      favorite: fav,
+      todayEvent,
+      pageImages: preferences?.page_images ?? false,
+      useJobs: preferences?.jobs_enabled ?? false,
     })
   }
 
@@ -96,6 +116,11 @@ export function StorySetup({
       </div>
 
       <div className="space-y-8 rounded-3xl border border-border bg-card p-6 shadow-md sm:p-8">
+        <div className="space-y-2">
+          <Label htmlFor="protagonist-name">이야기의 주인공 이름</Label>
+          <Input id="protagonist-name" value={protagonistName} maxLength={30}
+            onChange={(e) => setProtagonistName(e.target.value)} placeholder="주인공 이름을 입력해 주세요" />
+        </div>
         {/* 1. 좋아하는 것 (+ 예시 칩) */}
         <div className="space-y-2">
           <Label htmlFor="favorite" className="text-base">
@@ -103,6 +128,7 @@ export function StorySetup({
           </Label>
           <Input
             id="favorite"
+            maxLength={200}
             value={favorite}
             onChange={(e) => setFavorite(e.target.value)}
             placeholder="예: 공룡, 별, 공주"
@@ -181,6 +207,27 @@ export function StorySetup({
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="today-event">오늘 있었던 일 (선택)</Label>
+          <Input id="today-event" value={eventText} maxLength={800}
+            onChange={(e) => setEventText(e.target.value)} placeholder="예: 친구와 장난감을 나누기 어려웠어요" />
+        </div>
+        <div className="space-y-2 rounded-2xl bg-secondary/50 p-4">
+          <label className="flex items-center gap-3">
+            <input type="checkbox" checked={preferences?.page_images ?? false}
+              disabled={!preferences?.available || saving} onChange={(e) => void toggleImages(e.target.checked)} />
+            <span>매 장면에 삽화 넣기</span>
+          </label>
+          <p className="text-sm text-muted-foreground">
+            그림이 있으면 만드는 시간이 더 걸려요. 선택한 설정은 이 계정에 저장돼요.
+          </p>
+          {preferences && !preferences.available && <p className="text-sm text-muted-foreground">삽화 옵션을 준비하고 있어요.</p>}
+          {!preferences && !settingsError && <p role="status">설정을 불러오는 중이에요.</p>}
+          {saving && <p role="status">설정을 저장하는 중이에요.</p>}
+          {settingsError && <div role="alert" className="text-sm text-destructive">{settingsError}
+            {!preferences && <button type="button" className="ml-2 underline" onClick={() => void loadPreferences()}>다시 불러오기</button>}
+          </div>}
+        </div>
         <Button
           onClick={handleSubmit}
           disabled={!canSubmit}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -22,6 +22,8 @@ import {
 } from "@/lib/levels"
 import {
   generateAssessment,
+  pendingGeneration,
+  waitForGeneration,
   buildSubmission,
   submitAssessment,
   type AssessmentPayload,
@@ -40,6 +42,28 @@ export default function DashboardPage() {
   const [readDoneModalOpen, setReadDoneModalOpen] = useState(false)
   const [result, setResult] = useState<LiteracyResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [generationStage, setGenerationStage] = useState("queued")
+  const generationController = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const profileId = currentProfile?.id
+    if (!profileId || isGuestProfile(profileId)) return
+    const controller = new AbortController()
+    generationController.current = controller
+    const jobId = pendingGeneration(profileId)
+    if (jobId) {
+      setView("generating")
+      void waitForGeneration(profileId, jobId, setGenerationStage, controller.signal)
+        .then((payload) => { if (!controller.signal.aborted) { setAssessment(payload); setView("book") } })
+        .catch((error) => {
+          if (controller.signal.aborted) return
+          toast.error(error instanceof Error ? error.message : "생성 상태를 확인하지 못했어요.")
+          setView("home")
+        })
+    }
+    // 화면 이탈은 조회만 취소한다. 서버 작업은 이어지고 재방문 시 같은 작업을 조회한다.
+    return () => { generationController.current?.abort() }
+  }, [currentProfile?.id])
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로 보낸다.
   useEffect(() => {
@@ -69,18 +93,25 @@ export default function DashboardPage() {
 
   // 폼 입력 완료 → 출제(동화+퀴즈 묶음) → 팝업북
   const handleStorySubmit = async (input: StoryInput) => {
+    generationController.current?.abort()
+    const controller = new AbortController()
+    generationController.current = controller
+    setGenerationStage("queued")
     setView("generating")
     try {
       const payload = await generateAssessment(
         currentProfile.id,
         "posttest",
         input,
+        setGenerationStage,
+        controller.signal,
       )
+      if (controller.signal.aborted) return
       setAssessment(payload)
       setView("book")
     } catch (e) {
-      console.error("[v0] 동화 생성 실패:", e)
-      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      if (controller.signal.aborted) return
+      toast.error(e instanceof Error ? e.message : "동화를 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
       setView("form")
     }
   }
@@ -219,6 +250,7 @@ export default function DashboardPage() {
               <BackLink label="이전으로" onClick={() => setView("home")} />
             </div>
             <StorySetup
+              key={currentProfile.id}
               defaultName={currentProfile.name}
               onSubmit={handleStorySubmit}
             />
@@ -226,11 +258,23 @@ export default function DashboardPage() {
         )}
 
         {view === "generating" && (
-          <GeneratingView childName={currentProfile.name} />
+          <div>
+            <GeneratingView childName={currentProfile.name} />
+            <p role="status" className="mt-4 text-center text-sm text-muted-foreground">
+              {({ queued: "차례를 기다리고 있어요.", starting: "이야기를 준비하고 있어요.",
+                retrieve: "좋아하는 것을 담아 이야기를 쓰고 있어요.", write: "이야기의 흐름을 확인하고 있어요.",
+                validate: "이야기에 어울리는 그림과 퀴즈를 만들고 있어요.", assets: "그림과 퀴즈를 만들고 있어요.",
+                quizzes: "그림을 마무리하고 있어요.", illustrations: "책을 마무리하고 있어요.",
+                assemble: "책장에 저장하고 있어요." } as Record<string, string>)[generationStage] ?? "동화를 만들고 있어요."}
+            </p>
+          </div>
         )}
 
         {view === "book" && (
           <div>
+            {assessment?.generation?.quiz_status === "failed" && (
+              <p role="status" className="mb-4 text-center text-sm text-muted-foreground">이번 이야기의 퀴즈를 준비하지 못했어요. 동화는 읽을 수 있어요.</p>
+            )}
             <PopupBook
               pages={assessment?.pages ?? []}
               childName={currentProfile.name}
