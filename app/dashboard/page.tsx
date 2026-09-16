@@ -263,6 +263,8 @@ export default function DashboardPage() {
             <p role="status" className="mt-4 text-center text-sm text-muted-foreground">
               {({ queued: "차례를 기다리고 있어요.", starting: "이야기를 준비하고 있어요.",
                 retrieve: "좋아하는 것을 담아 이야기를 쓰고 있어요.", write: "이야기의 흐름을 확인하고 있어요.",
+                write_candidate: "이야기의 흐름을 살펴보고 있어요.", select: "이야기를 마무리하고 있어요.",
+                repair_selected: "그림과 퀴즈를 준비하고 있어요.",
                 validate: "이야기에 어울리는 그림과 퀴즈를 만들고 있어요.", assets: "그림과 퀴즈를 만들고 있어요.",
                 quizzes: "그림을 마무리하고 있어요.", illustrations: "책을 마무리하고 있어요.",
                 assemble: "책장에 저장하고 있어요." } as Record<string, string>)[generationStage] ?? "동화를 만들고 있어요."}

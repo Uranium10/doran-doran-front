@@ -65,6 +65,25 @@ export type AssessmentPayload = {
   quizzes: AssessmentQuestion[]
   cover_image?: string | null
   generation?: {
+    /** 예전 저장 동화는 없음. 선택은 상대 비교이며 품질 보증을 뜻하지 않는다. */
+    selection?: {
+      /** 두 후보 모두 낮게 평가된 경우의 제한된 보수 결과. 이전 결과는 없음/null. */
+      repair?: {
+        status: "not_needed" | "skipped_no_evidence" | "skipped_scope" | "accepted" | "retained_original" | "repair_failed" | "invalid_patch" | "recheck_failed"
+        attempts: number
+        changed_pages: number[]
+        prompt_version: string
+      } | null
+      strategy: "parallel_two_v1"
+      status: "selected" | "selected_with_concerns" | "single_candidate" | "review_failed"
+      candidate_count: number
+      valid_candidate_count: number
+      selected_candidate: "A" | "B"
+      review_version: string
+      review_model: string | null
+      coherence_score: number | null
+      level_fit_score: number | null
+    } | null
     model: string
     prompt_version: string
     source_id: string
