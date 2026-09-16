@@ -15,25 +15,25 @@ import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
 import { isGuestProfile } from "@/lib/api"
+import { useGeneration } from "@/lib/generation-context"
+import { StoryGenerationCard } from "@/components/workpad/story-generation-card"
 import {
   getStageInfo,
   needsMeasurement,
   type LiteracyResult,
 } from "@/lib/levels"
 import {
-  generateAssessment,
-  pendingGeneration,
-  waitForGeneration,
   buildSubmission,
   submitAssessment,
   type AssessmentPayload,
   type StoryInput,
 } from "@/lib/workpad-data"
 
-type View = "home" | "form" | "generating" | "book" | "post-quiz" | "result"
+type View = "home" | "form" | "book" | "post-quiz" | "result"
 
 export default function DashboardPage() {
   const router = useRouter()
+  const generation = useGeneration()
   const { currentProfile, updateProfile } = useProfile()
   const [view, setView] = useState<View>("home")
   const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
@@ -42,28 +42,22 @@ export default function DashboardPage() {
   const [readDoneModalOpen, setReadDoneModalOpen] = useState(false)
   const [result, setResult] = useState<LiteracyResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [generationStage, setGenerationStage] = useState("queued")
-  const generationController = useRef<AbortController | null>(null)
-
+  const previousProfile = useRef<string | null>(null)
+  // 다른 아이의 프로필로 바뀌면 이전 읽기/채점 화면을 남기지 않는다.
   useEffect(() => {
-    const profileId = currentProfile?.id
-    if (!profileId || isGuestProfile(profileId)) return
-    const controller = new AbortController()
-    generationController.current = controller
-    const jobId = pendingGeneration(profileId)
-    if (jobId) {
-      setView("generating")
-      void waitForGeneration(profileId, jobId, setGenerationStage, controller.signal)
-        .then((payload) => { if (!controller.signal.aborted) { setAssessment(payload); setView("book") } })
-        .catch((error) => {
-          if (controller.signal.aborted) return
-          toast.error(error instanceof Error ? error.message : "생성 상태를 확인하지 못했어요.")
-          setView("home")
-        })
+    if (previousProfile.current !== currentProfile?.id) {
+      previousProfile.current = currentProfile?.id ?? null
+      setAssessment(null); setResult(null); setView("home")
     }
-    // 화면 이탈은 조회만 취소한다. 서버 작업은 이어지고 재방문 시 같은 작업을 조회한다.
-    return () => { generationController.current?.abort() }
   }, [currentProfile?.id])
+  // 완료 알림의 '동화 읽기'를 눌렀을 때만 이동한다. 다른 활동을 강제로 중단하지 않는다.
+  useEffect(() => {
+    if (generation.requestedStory?.profileId === currentProfile?.id && generation.requestedStory) {
+      setAssessment(generation.requestedStory.payload)
+      setView("book")
+      generation.consumeStory()
+    }
+  }, [currentProfile?.id, generation.requestedStory, generation.consumeStory])
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로 보낸다.
   useEffect(() => {
@@ -91,29 +85,12 @@ export default function DashboardPage() {
     setView("form")
   }
 
-  // 폼 입력 완료 → 출제(동화+퀴즈 묶음) → 팝업북
-  const handleStorySubmit = async (input: StoryInput) => {
-    generationController.current?.abort()
-    const controller = new AbortController()
-    generationController.current = controller
-    setGenerationStage("queued")
-    setView("generating")
-    try {
-      const payload = await generateAssessment(
-        currentProfile.id,
-        "posttest",
-        input,
-        setGenerationStage,
-        controller.signal,
-      )
-      if (controller.signal.aborted) return
-      setAssessment(payload)
-      setView("book")
-    } catch (e) {
-      if (controller.signal.aborted) return
-      toast.error(e instanceof Error ? e.message : "동화를 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
-      setView("form")
-    }
+  // 입력 후 홈 카드로 돌아간다. 요청과 상태 조회는 전역 Provider가 이어받는다.
+  const handleStorySubmit = (input: StoryInput) => {
+    setView("home")
+    void generation.start(currentProfile.id, input).catch((error) => {
+      toast.error(error instanceof Error ? error.message : "동화를 시작하지 못했어요.")
+    })
   }
 
   // 동화를 다 읽음 → assessment_type / 퀴즈 유무로 분기 (목표 1)
@@ -183,8 +160,8 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* 메인 동화 만들기 카드 */}
-            <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card p-8 text-center shadow-md">
+            {/* 작업 중에는 같은 카드 자리에 상태를 표시하고 아래 메뉴를 유지한다. */}
+            {generation.job || generation.error ? <StoryGenerationCard /> : <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card p-8 text-center shadow-md">
               <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
                 <Sparkles className="h-9 w-9 text-primary" />
               </span>
@@ -204,7 +181,7 @@ export default function DashboardPage() {
                 <Wand2 className="h-5 w-5" />
                 동화 만들기
               </button>
-            </div>
+            </div>}
 
             {/* 보조 메뉴 */}
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -254,21 +231,6 @@ export default function DashboardPage() {
               defaultName={currentProfile.name}
               onSubmit={handleStorySubmit}
             />
-          </div>
-        )}
-
-        {view === "generating" && (
-          <div>
-            <GeneratingView childName={currentProfile.name} />
-            <p role="status" className="mt-4 text-center text-sm text-muted-foreground">
-              {({ queued: "차례를 기다리고 있어요.", starting: "이야기를 준비하고 있어요.",
-                retrieve: "좋아하는 것을 담아 이야기를 쓰고 있어요.", write: "이야기의 흐름을 확인하고 있어요.",
-                write_candidate: "이야기의 흐름을 살펴보고 있어요.", select: "이야기를 마무리하고 있어요.",
-                repair_selected: "그림과 퀴즈를 준비하고 있어요.",
-                validate: "이야기에 어울리는 그림과 퀴즈를 만들고 있어요.", assets: "그림과 퀴즈를 만들고 있어요.",
-                quizzes: "그림을 마무리하고 있어요.", illustrations: "책을 마무리하고 있어요.",
-                assemble: "책장에 저장하고 있어요." } as Record<string, string>)[generationStage] ?? "동화를 만들고 있어요."}
-            </p>
           </div>
         )}
 
@@ -359,63 +321,6 @@ export default function DashboardPage() {
         onConfirm={() => setReadDoneModalOpen(false)}
         onClose={() => setReadDoneModalOpen(false)}
       />
-    </div>
-  )
-}
-
-// 동화 생성 중 화면: 로딩바는 계속 움직이고, 하단 메시지가 순환한다.
-const GENERATING_MESSAGES = [
-  "도깨비들이 동화를 만드는 중...",
-  "제비가 박씨를 물어다 주는 중...",
-  "호랑이가 떡 하나 달라고 조르는 중...",
-  "선녀가 날개옷을 찾는 중...",
-  "토끼가 용궁으로 헤엄치는 중...",
-  "혹부리 영감이 노래를 부르는 중...",
-  "해님 달님이 동아줄을 내리는 중...",
-]
-
-function GeneratingView({ childName }: { childName: string }) {
-  const [msgIndex, setMsgIndex] = useState(0)
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setMsgIndex((i) => (i + 1) % GENERATING_MESSAGES.length)
-    }, 2200)
-    return () => clearInterval(id)
-  }, [])
-
-  return (
-    <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">
-      <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-        <Sparkles className="h-9 w-9 animate-pulse text-primary" />
-      </span>
-      <h2 className="mt-6 font-heading text-2xl text-foreground">
-        전래동화를 짓는 중이에요...
-      </h2>
-      <p className="mt-2 text-muted-foreground">
-        {childName}님을 위한 팝업북을 한 장 한 장 만들고 있어요.
-      </p>
-      <div className="mt-6 h-2 w-64 overflow-hidden rounded-full bg-secondary">
-        <div className="h-full w-1/2 animate-[loadbar_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
-      </div>
-      {/* 순환하는 안내 메시지 */}
-      <p
-        key={msgIndex}
-        className="mt-5 animate-in fade-in duration-500 font-heading text-base text-primary"
-        aria-live="polite"
-      >
-        {GENERATING_MESSAGES[msgIndex]}
-      </p>
-      <style jsx>{`
-        @keyframes loadbar {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(240%);
-          }
-        }
-      `}</style>
     </div>
   )
 }

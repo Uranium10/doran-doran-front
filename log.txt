@@ -193,3 +193,23 @@
 - 사용자가 push 승인. origin/main과 동기화 상태 확인, TypeScript 검사 통과.
 - 진행 단계 표시, generation.selection/repair 호환 타입, 통신규격 및 누적 작업 로그를 커밋한다.
 - 백엔드보다 프론트를 먼저 push한다. Render 검증 환경변수는 미설정이므로 신규 기본값 Flash low가 적용된다.
+
+[2026-09-16] 15단계 로컬 생성 3회 실검증
+- 운영 서버/Swagger HTTP 200 및 미인증 생성 요청 HTTP 401 확인. 사용자 지시에 따라 JWT가 필요한 운영 생성 대신 로컬 그래프 실호출로 전환.
+- Gemini 3.8 Flash low 후보 두 편 + low 선택 + 실제 퀴즈, 회차마다 실제 Qdrant 검색. 표지/컷 이미지 및 운영 DB/Storage 쓰기 제외.
+- 3/3 완료, 후보 6편 모두 첫 시도 성공, 검색/선택 폴백 0회, 선택 원문 변경 없음. 각 5장면/7문항, 장면 누락/빈 본문 없음, 퀴즈 level=15/정답·보기 구조 확인.
+- 시간 20.472/20.952/19.449초. 비용 추정 $0.09368235, 세션 누적 $6.21911455/$10(검색 임베딩 예약액 포함).
+- 직접 검토: 1회차 즉석 치료 후보를 걸러냈으나 선택 원문의 병 원인 추측은 약함. 2회차 물 공룡의 도움에 사전 맥락 부족. 3회차 오염 원인의 늦은 설명 및 정답 A 6/7 편중. 모델 4/4 판정과 별도 관찰로 기록, 프롬프트/운영 코드 변경 없음.
+- 자료: evaluation/20260916/local-level15 원문·후보·검증·퀴즈·비용. 고도화/review-20260916/run_local_level15.py 재현 실행기, 고도화/15단계_Flash_low_3편_검증.html 비교 페이지(127.0.0.1:8767).
+- 통신규격 변경 없음. 이번 결과는 로컬 검사이며 운영 인증/저장/이미지 경로 검증은 아님. push/재배포 없음.
+
+
+[2026-09-16] 전역 동화 생성 추적·현재 단계 카드·완료 알림
+- 대시보드의 순환 멘트/독립 generating 화면 제거. 동화 만들기 카드 자리에 실제 단계별 고정 동화풍 문구, 완료 시 읽기/나중에 읽기 버튼. 주변 메뉴 유지.
+- 루트 GenerationProvider/GenerationController로 이동 후에도 조회/완료 알림 유지. 계정별 작업 ID만 localStorage, 서버 latest 작업 복구, 재접속·POST 응답 유실 GET 복구·중복 제출 차단·늦은 응답 무시·로그아웃 분리.
+- 신규 인증 GET /stories/generation-jobs/current와 작업 응답 profile_id/story_id/created_at/finished_at 추가. 서버 소유권 검사 유지. 프론트는 Supabase 큐를 직접 읽지 않음.
+- GenerationProgress가 완료한 노드가 아니라 현재 수행할 노드/남은 병렬 작업을 기록. 퀴즈/이미지 완료 순서 대응, 저장 중 saving, DB 트랜잭션 후 completed.
+- 사용자 토큰 제공 후 apply_generation_jobs.py --apply로 Supabase 신규 테이블2개/함수3개 생성. anon/authenticated 직접 접근 금지·service_role 허용·기존 users/profiles/saved_stories RLS 동일 검증. 관리자 토큰/환경 파일은 커밋 제외.
+- 검증: 백엔드81개, 프론트 생명주기·원문 페이징·TypeScript 검사 통과. Next.js 프로덕션 빌드 성공. SQL 로컬 재실행/권한/소유권/중복/선점/저장/만료 테스트 통과. 브라우저 시각 검수와 인증된 운영 생성은 미실시.
+- 통신규격/ASYNC_GENERATION.md/배포 안내/고도화 명세 갱신. 기존 생성 모델/프롬프트/어휘 기준은 변경 없음. 유료 모델 호출 없음.
+- 사용자 지시로 검증 뒤 push 예정. DB 준비 완료, Render 별도 worker와 GENERATION_JOBS_ENABLED=true 활성화는 남음. 활성화 전에는 기존 동기 요청을 전역 카드에서 기다리는 호환 경로 유지.

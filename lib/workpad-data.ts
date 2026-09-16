@@ -137,6 +137,10 @@ export const saveGenerationPreferences = (pageImages: boolean) => request<Genera
 
 export type GenerationJob = {
   job_id: string
+  profile_id: string | null
+  story_id: string | null
+  created_at: string | null
+  finished_at: string | null
   status: "queued" | "running" | "completed" | "failed"
   stage: string
   result: AssessmentPayload | null
