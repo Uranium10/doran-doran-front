@@ -30,6 +30,8 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
 type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
 type PopupBookProps = {
+  initialBookmark?: BookBookmark
+  onBookmarkChange?: (bookmark: BookBookmark) => void
   coverColor?: string | null
   persistenceKey?: string | null
   pages: StoryPage[]; childName: string | null; title?: string | null; coverImage?: string | null
@@ -49,7 +51,7 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -92,7 +94,7 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
     // 표지/뒷표지는 유지하고 본문은 장면·원문 위치로 새 펼침을 찾는다.
     if (source.current !== pages) { source.current = pages; anchor.current = undefined }
     if (!bookmark.ready) return
-    const restored = anchor.current ? findBookPosition(spreads, anchor.current) : bookmarkPosition(spreads, bookmark.value)
+    const restored = anchor.current ? findBookPosition(spreads, anchor.current) : bookmarkPosition(spreads, initialBookmark ?? bookmark.value)
     destination.current = restored
     setIndex(restored)
     setTurn(null)
@@ -110,7 +112,9 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
     destination.current = target
     anchor.current = spreads[target]
     setIndex(target)
-    bookmark.setValue(bookBookmark(spreads[target]))
+    const position = bookBookmark(spreads[target])
+    bookmark.setValue(position)
+    onBookmarkChange?.(position)
     setToolsOpen(false)
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTurn(null); return }
     setTurn({ id, from: spreads[previous], to: spreads[target], forward: target > previous, spreads })

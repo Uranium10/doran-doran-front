@@ -34,7 +34,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     setRequestedStory({ profileId: job.profile_id, payload: job.result })
     controller.current?.dismiss()
     toast.dismiss(`story-ready-${job.job_id}`)
-    router.push("/dashboard")
+    router.push(job.result?.story_id ? `/books/${encodeURIComponent(job.result.story_id)}?from=dashboard` : "/dashboard")
   }, [router, selectProfile])
   openRef.current = openStory
 

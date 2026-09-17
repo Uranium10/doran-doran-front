@@ -1,321 +1,62 @@
 "use client"
-
 import { useEffect, useState } from "react"
-import { useSessionView } from "@/lib/use-session-view"
-import { libraryInitial, validLibrary } from "@/lib/view-state"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { LayoutGrid, List, Calendar, Sprout, BookOpen, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { ProfileRecovery } from "@/components/profile-recovery"
+import { LayoutGrid,List,Trash2,BookOpen } from "lucide-react"
 import { useProfile } from "@/lib/profile-context"
+import { useSessionView } from "@/lib/use-session-view"
+import { libraryInitial,validLibrary } from "@/lib/view-state"
 import { isGuestProfile } from "@/lib/api"
-import { fetchSavedStories, deleteStory, type SavedStory } from "@/lib/workpad-data"
-import { formatKoreanDate } from "@/lib/library-data"
-import { PopupBook } from "@/components/workpad/popup-book"
-import { ConfirmModal } from "@/components/confirm-modal"
+import { fetchBookshelf,bookPath,type BookSummary,type Bookshelf } from "@/lib/bookshelf"
+import { deleteStory } from "@/lib/workpad-data"
+import { BookCover } from "./book-cover"
+import { ConfirmModal } from "./confirm-modal"
+import { ProfileRecovery } from "./profile-recovery"
 
-type ViewMode = "grid" | "list"
-
-/**
- * 저장된 동화의 표지 이미지를 구한다.
- * content.cover_image 가 있으면 우선 사용하고, 없으면 첫 페이지 이미지로 폴백한다.
- */
-function coverOf(story: SavedStory): string {
-  return (
-    story.content?.cover_image ||
-    story.content?.pages?.[0]?.image ||
-    "/placeholder.svg"
-  )
-}
-
-export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading: boolean) => void }) {
-  const router = useRouter()
-  const { currentProfile, loading: profileLoading, error: profileError, sessionScope } = useProfile()
-  const screen = useSessionView(sessionScope ? `${sessionScope}:library` : null, libraryInitial, validLibrary)
-  const view = screen.value.view
-  const setView = (view: ViewMode) => screen.setValue(previous => ({ ...previous, view }))
-  const [stories, setStories] = useState<SavedStory[]>([])
-  const [loading, setLoading] = useState(true)
-  // 선택된 동화 (있으면 목록 대신 팝업북을 보여준다)
-  const reading = stories.find(story => story.story_id === screen.value.readingId) ?? null
-  const setReading = (story: SavedStory | null) => screen.setValue(previous => ({ ...previous, readingId: story?.story_id ?? null }))
-  // 목록에서 열린 동화는 같은 라이브러리 목록으로만 돌아간다.
-  useEffect(() => { onReadingChange?.(reading !== null) }, [reading, onReadingChange])
-  // 삭제 확인 모달 대상 동화 (있으면 모달이 열린다)
-  const [pendingDelete, setPendingDelete] = useState<SavedStory | null>(null)
-
-  // 선택된 프로필이 없으면 프로필 선택 화면으로
-  useEffect(() => {
-    if (!profileLoading && !profileError && !currentProfile) router.replace("/profiles")
-  }, [currentProfile, profileLoading, profileError, router])
-
-  // 마운트/프로필 변경 시 보관함 동화 목록을 받아온다.
-  useEffect(() => {
-    setStories([])
-    if (!currentProfile || isGuestProfile(currentProfile.id)) {
-      setLoading(false)
-      return
-    }
-    let active = true
-    setLoading(true)
-    fetchSavedStories(currentProfile.id)
-      .then((list) => {
-        if (active) setStories(list)
-      })
-      .catch((e) => {
-        console.error("[v0] 보관함 동화 조회 실패:", e)
-        toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [currentProfile])
-
-  // 동화 삭제: 서버 DELETE 후 목록에서 제거
-  const handleDelete = async () => {
-    if (!pendingDelete) return
-    const target = pendingDelete
-    try {
-      await deleteStory(target.story_id)
-      setStories((prev) => prev.filter((s) => s.story_id !== target.story_id))
-      toast.success("동화를 삭제했어요.")
-    } catch (e) {
-      console.error("[v0] 동화 삭제 실패:", e)
-      toast.error("삭제하지 못했어요. 잠시 후 다시 시도해 주세요.")
-      throw e
-    } finally {
-      setPendingDelete(null)
-    }
+export function LibraryGallery(){
+  const {currentProfile,loading:profileLoading,error:profileError,sessionScope}=useProfile()
+  const router=useRouter()
+  const screen=useSessionView(sessionScope?`${sessionScope}:library`:null,libraryInitial,validLibrary)
+  const [state,setState]=useState<{key:string;data?:Bookshelf;error?:string}>({key:''})
+  const [busy,setBusy]=useState(false);const [retry,setRetry]=useState(0)
+  const [pending,setPending]=useState<BookSummary|null>(null)
+  const profileId=currentProfile?.id??''
+  useEffect(()=>{if(!profileLoading&&!profileError&&!currentProfile)router.replace('/profiles')},[profileLoading,profileError,currentProfile,router])
+  useEffect(()=>{
+    setState({key:profileId});setPending(null);setBusy(false)
+    if(!profileId||isGuestProfile(profileId))return
+    let active=true
+    fetchBookshelf(profileId).then(data=>{if(active)setState({key:profileId,data})})
+      .catch(()=>{if(active)setState({key:profileId,error:'책장을 불러오지 못했어요.'})})
+    return()=>{active=false}
+  },[profileId,retry])
+  if(!currentProfile||!screen.ready)return <ProfileRecovery/>
+  const data=state.key===profileId?state.data:undefined
+  const list=screen.value.view==='list'
+  const more=async()=>{
+    if(!data||data.next_offset===null||busy)return
+    setBusy(true)
+    try{const next=await fetchBookshelf(profileId,data.next_offset)
+      if(screen.isCurrent())setState(old=>old.key===profileId?{key:profileId,data:{...next,stories:[...(old.data?.stories??[]),...next.stories].filter((item,index,all)=>all.findIndex(x=>x.story_id===item.story_id)===index)}}:old)
+    }catch{if(screen.isCurrent())toast.error('다음 책들을 불러오지 못했어요. 다시 눌러 주세요.')}
+    finally{if(screen.isCurrent())setBusy(false)}
   }
-
-  if (!currentProfile || !screen.ready) return <ProfileRecovery />
-
-  // 보관함 재열람은 기존 정책대로 퀴즈 재채점 없이 읽기 전용이다.
-  if (reading) {
-    return <PopupBook
-      persistenceKey={`${sessionScope}:book:${reading.story_id}`}
-      pages={reading.content?.pages ?? []}
-      title={reading.title}
-      coverImage={reading.content?.cover_image}
-              coverColor={reading.content?.cover_color}
-      childName={currentProfile.name}
-      onFinish={() => setReading(null)}
-      onExit={() => setReading(null)}
-      exitLabel="라이브러리로 돌아가기"
-    />
+  const remove=async()=>{
+    if(!pending)return
+    try{await deleteStory(pending.story_id);if(screen.isCurrent()){setPending(null);setRetry(v=>v+1);toast.success('책장에서 삭제했어요.')}}
+    catch{if(screen.isCurrent())toast.error('삭제하지 못했어요. 다시 시도해 주세요.');throw new Error('Delete failed')}
   }
-
-  return (
-    <div>
-      {/* 헤더 + 뷰 토글 */}
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs tracking-widest text-primary">
-            이야기 책장
-          </p>
-          <h1 className="mt-2 font-heading text-3xl text-foreground sm:text-4xl">
-            지금까지 만든 동화
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {loading
-              ? "책장을 불러오는 중이에요..."
-              : `모두 ${stories.length}권의 이야기가 책장에 담겨 있어요.`}
-          </p>
-        </div>
-
-        <div
-          className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-card p-1 shadow-sm"
-          role="group"
-          aria-label="보기 방식 전환"
-        >
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            aria-pressed={view === "grid"}
-            aria-label="그리드 뷰"
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-              view === "grid"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            aria-pressed={view === "list"}
-            aria-label="리스트 뷰"
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-              view === "list"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            <List className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 로딩 스켈레톤 */}
-      {loading ? (
-        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div
-              key={i}
-              className="overflow-hidden rounded-3xl border border-border bg-card"
-            >
-              <div className="aspect-[3/4] animate-pulse bg-muted" />
-              <div className="space-y-2 p-4">
-                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : stories.length === 0 ? (
-        // 빈 상태
-        <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-card/50 py-16 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <BookOpen className="h-8 w-8 text-primary" />
-          </span>
-          <h2 className="mt-5 font-heading text-xl text-foreground">
-            아직 만든 동화가 없어요
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            첫 번째 전래동화를 만들어 책장을 채워 보세요.
-          </p>
-        </div>
-      ) : view === "grid" ? (
-        /* 그리드 뷰 */
-        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {stories.map((book) => (
-            <div
-              key={book.story_id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setReading(book)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  setReading(book)
-                }
-              }}
-              className="group relative cursor-pointer overflow-hidden rounded-3xl border border-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="relative aspect-[3/4] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={coverOf(book) || "/placeholder.svg"}
-                  alt={`${book.title} 표지`}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <span className="absolute left-2 top-2 rounded-full bg-background/85 px-2.5 py-1 text-[11px] font-semibold text-primary backdrop-blur-sm">
-                  {book.theme}
-                </span>
-                {/* 우측 하단 삭제 버튼 */}
-                <button
-                  type="button"
-                  aria-label={`${book.title} 삭제`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setPendingDelete(book)
-                  }}
-                  className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-destructive hover:text-white"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="p-4">
-                <h2 className="line-clamp-2 font-heading text-base leading-snug text-foreground">
-                  {book.title}
-                </h2>
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  {formatKoreanDate(book.created_at)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* 리스트 뷰 */
-        <div className="flex flex-col gap-3">
-          {stories.map((book) => (
-            <div
-              key={book.story_id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setReading(book)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  setReading(book)
-                }
-              }}
-              className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40"
-            >
-              <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={coverOf(book) || "/placeholder.svg"}
-                  alt={`${book.title} 표지`}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate font-heading text-lg text-foreground">
-                  {book.title}
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatKoreanDate(book.created_at)}
-                  </span>
-                  <span className="flex items-center gap-1 text-primary">
-                    <Sprout className="h-3 w-3" />
-                    {book.theme}
-                  </span>
-                </div>
-              </div>
-              {/* 우측 삭제 버튼 */}
-              <button
-                type="button"
-                aria-label={`${book.title} 삭제`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPendingDelete(book)
-                }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive hover:text-white"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 삭제 확인 모달 */}
-      <ConfirmModal
-        open={pendingDelete !== null}
-        title="동화를 삭제할까요?"
-        description={
-          pendingDelete
-            ? `'${pendingDelete.title}'을(를) 책장에서 삭제해요. 삭제한 동화는 되돌릴 수 없어요.`
-            : undefined
-        }
-        confirmLabel="삭제하기"
-        cancelLabel="취소"
-        destructive
-        onConfirm={handleDelete}
-        onClose={() => setPendingDelete(null)}
-      />
-    </div>
-  )
+  return <div><div className="mb-8 flex items-end justify-between gap-3"><div><p className="text-xs tracking-widest text-primary">우리 아이가 만든 이야기</p><h1 className="mt-2 font-heading text-3xl">전체 책장</h1><p className="mt-2 text-sm text-muted-foreground">{data?`${data.total}권의 모험이 기다리고 있어요.`:'한 권씩 쌓이는 나만의 이야기'}</p></div>
+    <div role="group" aria-label="책장 보기 방식" className="flex rounded-full border border-border bg-card p-1">{(['grid','list'] as const).map(mode=><button key={mode} onClick={()=>screen.setValue(old=>({...old,view:mode}))} aria-pressed={screen.value.view===mode} aria-label={mode==='grid'?'표지로 보기':'목록으로 보기'} className={`flex h-11 w-11 items-center justify-center rounded-full ${screen.value.view===mode?'bg-primary text-primary-foreground':'text-muted-foreground hover:bg-secondary'}`}>{mode==='grid'?<LayoutGrid size={18}/>:<List size={18}/>}</button>)}</div></div>
+    {state.error?<div role="alert" className="rounded-3xl bg-card p-8">{state.error} <button onClick={()=>setRetry(v=>v+1)} className="underline">다시 불러오기</button></div>
+    :isGuestProfile(profileId)||data?.total===0?<div className="rounded-3xl border border-dashed border-border px-6 py-16 text-center"><BookOpen className="mx-auto mb-4 text-primary" size={36}/><h2 className="font-heading text-xl">첫 이야기를 기다리는 책장이에요</h2><Link href="/dashboard" className="mt-5 inline-block rounded-full bg-primary px-6 py-3 text-primary-foreground">내 책장으로</Link></div>
+    :!data?<div role="status" className="py-20 text-center">책들을 꺼내고 있어요…</div>
+    :<><div className={list?'space-y-3':'grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4'}>{data.stories.map(book=><article key={book.story_id} className={list?'flex items-center gap-4 rounded-2xl border border-border bg-card p-3':'min-w-0'}>
+      <Link href={bookPath(book.story_id,'library')} className={list?'w-20 shrink-0':'block'} aria-label={`${book.title} 읽기`}><BookCover book={book}/></Link>
+      <div className={list?'min-w-0 flex-1':'mt-4'}><Link href={bookPath(book.story_id,'library')} className="line-clamp-2 font-heading text-lg leading-snug hover:text-primary">{book.title}</Link><p className="mt-2 text-xs text-muted-foreground">{book.reading_progress?.completed_at?'다 읽은 책':book.reading_progress?'읽는 중':'새로운 책'}{book.created_at?` · ${new Date(book.created_at).toLocaleDateString('ko-KR')}`:''}</p></div>
+      <button aria-label={`${book.title} 삭제`} onClick={()=>setPending(book)} className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={17}/></button>
+    </article>)}</div>{data.next_offset!==null&&<div className="mt-9 text-center"><button disabled={busy} onClick={more} className="min-h-12 rounded-full border border-border bg-card px-8 py-3 disabled:opacity-50">{busy?'책을 가져오고 있어요…':'책 더 보기'}</button></div>}</>}
+    <ConfirmModal open={pending!==null} title="동화를 삭제할까요?" description={pending?`‘${pending.title}’과 읽기 위치를 삭제해요. 되돌릴 수 없어요.`:undefined} confirmLabel="삭제하기" cancelLabel="취소" destructive onConfirm={remove} onClose={()=>setPending(null)}/>
+  </div>
 }

@@ -29,7 +29,7 @@ export default function LiteracyPage() {
   const screen = useSessionView(sessionScope ? `${sessionScope}:literacy` : null, literacyInitial, validLiteracy)
   const { result, assessment, attempt } = screen.value
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const leaving = useRef(false)
@@ -49,11 +49,11 @@ export default function LiteracyPage() {
     const key = `${sessionScope}:${attempt}:${retry}`
     if (pending.current?.key !== key) pending.current = { key, task: generatePretest(profileId) }
     let active = true
-    setLoading(true); setLoadError(false)
+    setLoading(true); setLoadError(null)
     pending.current.task.then(payload => {
       if (active) screen.setValue(previous => ({ ...previous, assessment: payload }))
-    }).catch(() => {
-      if (active) { setLoadError(true); toast.error("문제를 불러오지 못했어요. 다시 시도해 주세요.") }
+    }).catch((e) => {
+      if (active) { setLoadError(e instanceof Error ? e.message : "문제를 불러오지 못했어요.") }
     }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [profileId, sessionScope, screen.ready, screen.setValue, assessment, result, attempt, retry])
@@ -81,12 +81,18 @@ export default function LiteracyPage() {
       const res = await submitAssessment(submission)
       if (!screen.isCurrent()) return
       updateProfile(currentProfile.id, { level: res.level })
+      if (res.result_id) {
+        leaving.current = true
+        screen.setValue({ ...literacyInitial, attempt: attempt + 1 })
+        router.replace(`/results/${res.result_id}?from=dashboard`)
+        return
+      }
       // 기존 문해력 데이터가 없었다면 '재시험'이 아니라 '첫 측정'으로 표시한다.
       screen.setValue(previous => ({ ...previous, result: wasFirstMeasurement && res.kind === "retest" ? { ...res, kind: "initial", delta: null } : res }))
     } catch (e) {
       if (!screen.isCurrent()) return
       console.error("[v0] 채점 제출 실패:", e)
-      toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
+      toast.error(e instanceof Error ? e.message : "결과를 저장하지 못했어요. 다시 제출해 주세요.")
     } finally { if (screen.isCurrent()) setSubmitting(false) }
   }
 
@@ -117,24 +123,24 @@ export default function LiteracyPage() {
             </div>
 
             {/* 서버 응답 대기 */}
-            {loadError ? (<div role="alert" className="text-center"><p>문제를 준비하지 못했어요.</p><button type="button" onClick={() => setRetry(value => value + 1)}>다시 시도</button></div>) : loading || !assessment ? (
+            {loadError ? (<div role="alert" className="text-center"><p>{loadError}</p><button type="button" onClick={() => setRetry(value => value + 1)}>다시 시도</button></div>) : loading || !assessment ? (
               <PretestLoading />
             ) : isChecklist ? (
-              <ToddlerChecklist
+              <fieldset disabled={submitting}><ToddlerChecklist
                 persistenceKey={`${sessionScope}:checklist:${attempt}`}
                 childName={currentProfile.name}
                 questions={assessment.quizzes}
                 onComplete={finishMeasurement}
-              />
+              /></fieldset>
             ) : (
-              <ChildQuiz
+              <fieldset disabled={submitting}><ChildQuiz
                 persistenceKey={`${sessionScope}:pretest:${attempt}`}
                 childName={currentProfile.name}
                 questions={assessment.quizzes}
                 onComplete={(quiz: QuizResult) =>
                   finishMeasurement(quiz.answers)
                 }
-              />
+              /></fieldset>
             )}
           </>
         )}

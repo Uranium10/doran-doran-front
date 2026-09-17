@@ -197,6 +197,7 @@ export function ProfileMenu({ className }: { className?: string }) {
             <Pencil className="h-4 w-4" />
             프로필 수정
           </button>
+          <a href="/" role="menuitem" className="block px-4 py-3 text-sm hover:bg-secondary">서비스 소개</a>
           <button
             type="button"
             role="menuitem"

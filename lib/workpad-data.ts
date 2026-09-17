@@ -56,6 +56,7 @@ export type AssessmentQuestion = {
 
 /** 출제 페이로드 (back -> front): 동화 + 퀴즈가 한 묶음 */
 export type AssessmentPayload = {
+  attempt_id?: string
   assessment_type: AssessmentType
   /** 동화 퀴즈(posttest)면 story_id, 아니면 null */
   story_id: string | null
@@ -110,6 +111,7 @@ export type SubmissionDetail = {
 
 /** 채점 제출 페이로드 (front -> back) */
 export type AssessmentSubmission = {
+  attempt_id?: string
   profile_id: string
   /** 출제 시 받았던 평가 유형 그대로 반환 */
   assessment_type: AssessmentType
@@ -292,7 +294,7 @@ export async function generatePretest(
 }
 
 /**
- * 분기 3: 보관함에 저장된 특정 동화 다시 읽기 (퀴즈 제외).
+ * 분기 3: 저장된 동화 상세와 퀴즈 복원. 목록에서는 이 본문을 내려받지 않는다.
  * GET /api/v1/stories/saved/{story_id}?profile_id={profile_id}
  */
 export async function fetchSavedStory(
@@ -342,6 +344,7 @@ export function buildSubmission(
   const correct = details.filter((d) => d.is_correct).length
   return {
     profile_id: profileId,
+    attempt_id: payload.attempt_id,
     assessment_type: payload.assessment_type,
     story_id: payload.story_id,
     results: {
