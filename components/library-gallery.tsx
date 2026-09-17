@@ -26,7 +26,7 @@ function coverOf(story: SavedStory): string {
   )
 }
 
-export function LibraryGallery() {
+export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading: boolean) => void }) {
   const router = useRouter()
   const { currentProfile } = useProfile()
   const [view, setView] = useState<ViewMode>("grid")
@@ -34,6 +34,8 @@ export function LibraryGallery() {
   const [loading, setLoading] = useState(true)
   // 선택된 동화 (있으면 목록 대신 팝업북을 보여준다)
   const [reading, setReading] = useState<SavedStory | null>(null)
+  // 목록에서 열린 동화는 같은 라이브러리 목록으로만 돌아간다.
+  useEffect(() => { onReadingChange?.(reading !== null) }, [reading, onReadingChange])
   // 삭제 확인 모달 대상 동화 (있으면 모달이 열린다)
   const [pendingDelete, setPendingDelete] = useState<SavedStory | null>(null)
 
@@ -44,6 +46,8 @@ export function LibraryGallery() {
 
   // 마운트/프로필 변경 시 보관함 동화 목록을 받아온다.
   useEffect(() => {
+    setReading(null)
+    setStories([])
     if (!currentProfile || isGuestProfile(currentProfile.id)) {
       setLoading(false)
       return
@@ -85,26 +89,17 @@ export function LibraryGallery() {
 
   if (!currentProfile) return null
 
-  // 동화 읽기 모드: 퀴즈 없이(library 취급) 목록으로 복귀
+  // 보관함 재열람은 기존 정책대로 퀴즈 재채점 없이 읽기 전용이다.
   if (reading) {
-    return (
-      <div>
-        <PopupBook
-          pages={reading.content?.pages ?? []}
-          childName={currentProfile.name}
-          onFinish={() => setReading(null)}
-        />
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => setReading(null)}
-            className="text-sm text-muted-foreground hover:text-primary"
-          >
-            이야기 책장으로 돌아가기
-          </button>
-        </div>
-      </div>
-    )
+    return <PopupBook
+      pages={reading.content?.pages ?? []}
+      title={reading.title}
+      coverImage={reading.content?.cover_image}
+      childName={currentProfile.name}
+      onFinish={() => setReading(null)}
+      onExit={() => setReading(null)}
+      exitLabel="라이브러리로 돌아가기"
+    />
   }
 
   return (

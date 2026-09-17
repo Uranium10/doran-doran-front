@@ -110,7 +110,7 @@ export function Quiz({
         )}
         {/* 제시 문구 */}
         {q.passage && (
-          <p className="mb-5 rounded-2xl bg-secondary/70 p-4 text-[15px] leading-relaxed text-secondary-foreground">
+          <p className="mb-5 whitespace-pre-line rounded-2xl bg-secondary/70 p-4 text-[15px] leading-relaxed text-secondary-foreground">
             {q.passage}
           </p>
         )}

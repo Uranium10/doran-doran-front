@@ -27,8 +27,14 @@ export function useReadingPages(scenes: StoryPage[], fontSize: number) {
         paragraph.textContent = text.trim()
         return paragraph.getBoundingClientRect().height <= limit
       })
-      setReading(old => ({ source: scenes, pages,
-        index: old.source === scenes ? findReadingPosition(pages, old.pages[old.index]) : 0 }))
+      setReading(old => {
+        // 다른 UI 글꼴의 로딩 알림처럼 실제 분량이 같으면 배열을 유지한다.
+        // 불필요한 재분배가 진행 중인 책장 넘김을 취소하지 않도록 한다.
+        if (old.source === scenes && old.pages.length === pages.length && old.pages.every((page, i) =>
+          page.sceneIndex === pages[i].sceneIndex && page.startOffset === pages[i].startOffset && page.endOffset === pages[i].endOffset)) return old
+        return { source: scenes, pages,
+          index: old.source === scenes ? findReadingPosition(pages, old.pages[old.index]) : 0 }
+      })
     }
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure) }
     measure()

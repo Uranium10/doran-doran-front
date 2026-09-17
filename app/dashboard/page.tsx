@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Wand2, Sparkles, BookOpen, BarChart3, Library } from "lucide-react"
+import { Wand2, Sparkles, BarChart3, Library } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
 import { HomeLink } from "@/components/home-link"
@@ -38,8 +38,6 @@ export default function DashboardPage() {
   const [view, setView] = useState<View>("home")
   const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
   const [measureModalOpen, setMeasureModalOpen] = useState(false)
-  // 동화를 다 읽었지만 퀴즈가 없을 때(posttest·퀴즈 0개) 띄우는 부모용 안내 모달
-  const [readDoneModalOpen, setReadDoneModalOpen] = useState(false)
   const [result, setResult] = useState<LiteracyResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const previousProfile = useRef<string | null>(null)
@@ -93,27 +91,17 @@ export default function DashboardPage() {
     })
   }
 
-  // 동화를 다 읽음 → assessment_type / 퀴즈 유무로 분기 (목표 1)
-  const handleBookFinish = () => {
-    const type = assessment?.assessment_type
-    const hasQuiz = (assessment?.quizzes?.length ?? 0) > 0
-
-    // 케이스 3: 라이브러리/기성 동화는 퀴즈 없이 대시보드로 복귀
-    if (type === "library" || type === "readonly") {
-      setAssessment(null)
-      setView("home")
-      return
-    }
-
-    // 케이스 2: 맞춤 동화(posttest) + 퀴즈 있음 → 퀴즈 화면
-    if (hasQuiz) {
-      setView("post-quiz")
-      return
-    }
-
-    // 케이스 1: 맞춤 동화(posttest) + 퀴즈 없음 → 대시보드 + 부모 안내 모달
+  // 생성으로 진입한 읽기/퀴즈 흐름의 상위 화면은 대시보드다.
+  // 브라우저 history.back()을 쓰면 완료한 퀴즈나 로그인 화면으로 돌아갈 수 있다.
+  const returnToDashboard = () => {
+    setAssessment(null)
+    setResult(null)
     setView("home")
-    setReadDoneModalOpen(true)
+  }
+  const handleBookFinish = () => {
+    const canTakeQuiz = assessment?.assessment_type === "posttest" && (assessment?.quizzes.length ?? 0) > 0
+    if (canTakeQuiz) setView("post-quiz")
+    else returnToDashboard()
   }
 
   // 동화 후 테스트 완료 → 제출(front→back) → 결과(back→front, 서버가 계산)
@@ -143,7 +131,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className={view === "book" ? "mx-auto max-w-[1440px] px-4 py-4 sm:px-8" : "mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14"}>
+      <main className={view === "book" ? "w-full" : "mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14"}>
         {view === "home" && (
           <div className="mx-auto max-w-2xl">
             {/* 인사 + 현재 단계 */}
@@ -242,19 +230,13 @@ export default function DashboardPage() {
             <PopupBook
               pages={assessment?.pages ?? []}
               title={assessment?.title}
+              coverImage={assessment?.cover_image}
+              hasQuiz={assessment?.assessment_type === "posttest" && (assessment?.quizzes.length ?? 0) > 0}
+              onExit={returnToDashboard}
+              exitLabel="대시보드로 돌아가기"
               childName={currentProfile.name}
               onFinish={handleBookFinish}
             />
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => setView("home")}
-                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-              >
-                <BookOpen className="h-4 w-4" />
-                대시보드로 돌아가기
-              </button>
-            </div>
           </div>
         )}
 
@@ -282,20 +264,20 @@ export default function DashboardPage() {
         )}
 
         {view === "result" && result && (
-          <LiteracyResultView
-            result={result}
-            childName={currentProfile.name}
-            primaryLabel="이야기 책장 보러 가기"
-            onPrimary={() => router.push("/library")}
-            secondaryLabel="새 동화 만들기"
-            onSecondary={() => {
-              setResult(null)
-              setView("home")
-            }}
-          />
+          <div>
+            <BackLink label="이전으로" onClick={returnToDashboard} className="mb-6" />
+            <LiteracyResultView
+              result={result}
+              childName={currentProfile.name}
+              primaryLabel="대시보드로 돌아가기"
+              onPrimary={returnToDashboard}
+              secondaryLabel="이야기 책장 보러 가기"
+              onSecondary={() => router.push("/library")}
+            />
+          </div>
         )}
 
-        <HomeLink />
+        {view !== "book" && <HomeLink />}
       </main>
 
       {/* 상황 A: 문해력 측정 안내 모달 */}
@@ -310,17 +292,6 @@ export default function DashboardPage() {
           router.push("/literacy")
         }}
         onClose={() => setMeasureModalOpen(false)}
-      />
-
-      {/* 케이스 1: 동화만 읽고 퀴즈가 없을 때 부모용 안내 모달 */}
-      <ConfirmModal
-        open={readDoneModalOpen}
-        title="동화를 다 읽었어요!"
-        description="난이도 변경을 원하시면 문해력 재측정을 진행해 주세요."
-        confirmLabel="확인"
-        hideCancel
-        onConfirm={() => setReadDoneModalOpen(false)}
-        onClose={() => setReadDoneModalOpen(false)}
       />
     </div>
   )

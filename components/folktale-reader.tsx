@@ -42,8 +42,8 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
   return (
     <>
     <SiteHeader />
-    <section className="min-h-screen bg-background pb-6 pt-20">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-8">
+    <section className="min-h-screen bg-background pt-16">
+      <div className="w-full">
         {loading ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -52,6 +52,10 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
         ) : payload ? (
           <PopupBook
             pages={payload.pages}
+            title={payload.title}
+            coverImage={payload.cover_image}
+            onExit={goBack}
+            exitLabel="전래동화 목록으로 돌아가기"
             childName={payload.title}
             onFinish={goBack}
             isLib={true}
