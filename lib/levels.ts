@@ -119,6 +119,8 @@ export type LiteracyProgress = {
  * 현재는 더미 계산으로 채우지만, 서버 연동 시 이 객체를 그대로 받아오면 된다.
  */
 export type LiteracyResult = LiteracyProgress & {
+  story_id?: string | null
+  is_practice?: boolean
   result_id?: string
   assessment_type?: string
   details?: { question_id: string; prompt?: string | null; passage?: string | null; skill?: string | null;

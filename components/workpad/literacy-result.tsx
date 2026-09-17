@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { CheckCircle2, ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { resultEncouragement } from "@/lib/result-encouragement"
@@ -36,6 +37,7 @@ export function LiteracyResultView({
   secondaryLabel,
   onSecondary,
   showScore = true,
+  rewards,
 }: {
   result: LiteracyResult
   childName: string
@@ -44,6 +46,7 @@ export function LiteracyResultView({
   secondaryLabel?: string
   onSecondary?: () => void
   /** 맞춘 개수 표시 여부. 유아용 설문에서는 false 로 숨긴다. */
+  rewards?: ReactNode
   showScore?: boolean
 }) {
   const name = childName.trim() || "아이"
@@ -83,6 +86,9 @@ export function LiteracyResultView({
       </div>
 
       </div>
+
+      {rewards}
+      {result.is_practice && <p className="mt-4 text-center text-sm text-muted-foreground">다시 풀기는 레벨을 바꾸지 않아요. 이야기와 친구들을 더 깊이 기억해요.</p>}
 
       {/* 저장 당시의 문항과 서버 채점 결과를 그대로 보여준다. 결과 열람에는 모델 호출이 없다. */}
       <section className="mt-8 space-y-4" aria-label="문항별 답안">

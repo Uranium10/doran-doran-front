@@ -36,7 +36,7 @@ export function BookQuizHistory({ book, profileId, onClose }: { book: BookSummar
         : !state.rows ? <p role="status" className="py-8 text-sm">기록을 펼치고 있어요…</p>
         : state.rows.length === 0 ? <p className="py-8 text-sm text-muted-foreground">아직 이 동화의 문제 풀이 기록이 없어요.</p>
         : <ul className={styles.records}>{state.rows.map(row => <li key={row.id}><Link href={`/results/${encodeURIComponent(row.id)}?from=library`}>
-          <span><span className="block text-xs text-muted-foreground">{row.created_at ? new Date(row.created_at).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }) : "저장된 기록"}</span><strong className="mt-1 block font-heading text-lg">{row.total_questions}문제 중 {row.correct_answers}문제 정답</strong></span>
+          <span><span className="block text-xs text-muted-foreground">{row.created_at ? new Date(row.created_at).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }) : "저장된 기록"}</span><strong className="mt-1 block font-heading text-lg">{row.is_practice ? "복습 · " : ""}{row.total_questions}문제 중 {row.correct_answers}문제 정답</strong></span>
           <span className="flex shrink-0 items-center gap-1 text-xs">답안 보기<ArrowRight size={16}/></span>
         </Link></li>)}</ul>}
     </div>
