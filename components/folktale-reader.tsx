@@ -55,6 +55,7 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
             pages={payload.pages}
             title={payload.title}
             coverImage={payload.cover_image}
+              coverColor={payload.cover_color}
             onExit={goBack}
             exitLabel="전래동화 목록으로 돌아가기"
             childName={payload.title}

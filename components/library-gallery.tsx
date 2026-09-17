@@ -101,6 +101,7 @@ export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading
       pages={reading.content?.pages ?? []}
       title={reading.title}
       coverImage={reading.content?.cover_image}
+              coverColor={reading.content?.cover_color}
       childName={currentProfile.name}
       onFinish={() => setReading(null)}
       onExit={() => setReading(null)}

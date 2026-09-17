@@ -8,6 +8,7 @@ import { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage,
 import { useReadingPages } from "./use-reading-pages"
 import { useSessionView } from "@/lib/use-session-view"
 import { useBookImages } from "./use-book-images"
+import { bookCoverStyle } from "@/lib/book-appearance"
 import styles from "./popup-book.module.css"
 
 function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
@@ -29,6 +30,7 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
 type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
 type PopupBookProps = {
+  coverColor?: string | null
   persistenceKey?: string | null
   pages: StoryPage[]; childName: string | null; title?: string | null; coverImage?: string | null
   onFinish: () => void; onExit: () => void; hasQuiz?: boolean; exitLabel?: string; isLib?: boolean
@@ -47,7 +49,7 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -167,7 +169,7 @@ function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, h
   if (!pages.length) return <div><p role="status">표시할 동화가 없어요.</p><button onClick={onExit}>돌아가기</button></div>
 
   const resting = activeTurn ? restingBookSpread(activeTurn.from, activeTurn.to, activeTurn.forward) : current
-  return <div ref={rootRef} className={styles.reader} style={{ "--reading-size": `${fontSize}px`, visibility: bookmark.ready ? "visible" : "hidden" } as CSSProperties}>
+  return <div ref={rootRef} className={styles.reader} style={{ ...bookCoverStyle(coverColor), "--reading-size": `${fontSize}px`, visibility: bookmark.ready ? "visible" : "hidden" } as CSSProperties}>
     <aside className={styles.remote} aria-label="책 리모컨">
       <button type="button" className={styles.exit} onClick={onExit} aria-label={exitLabel} title={exitLabel}><ArrowLeft size={20} /><span>이전으로</span></button>
       <div className={`${styles.remoteGroup} ${styles.pageControls}`}>

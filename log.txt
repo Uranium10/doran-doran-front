@@ -318,3 +318,9 @@
 - 검증: 기존 회귀 테스트 5개 파일 통과. 실제 로컬 브라우저에서 데스크톱 65ms/모바일 343ms 간격의 방향 전환, 최종 위치와 새로고침 복원, 회전면 그라데이션 확인.
 - 배포: 프론트만 push 대상. API/DB/백엔드 환경변수 변경 없음.
 - 최종 확인: 임시 preview 경로를 가리키던 개발 자동 생성 타입 캐시 정리 후 tsc 통과. Next.js production build 및 git diff --check 통과.
+
+[2026-09-17] 영속 표지색 표시 및 신규 책 랜덤 팔레트
+- AssessmentPayload/SavedStory.content에 cover_color 선택 필드. dashboard/library/folktale에서 PopupBook으로 전달, book-appearance.ts에서 앞뒤 표지 CSS 변수와 명암·제목 대비 파생.
+- 기존/잘못된 값은 #B97A55 기본색으로 처리하며 원래 갈색 그라데이션 그대로 유지. 신규 동화는 백엔드에서 ID 기반 8색 팔레트 선택 후 저장하여 새로고침/재열람에도 동일.
+- 검증: 회귀 테스트 6개 파일, 타입 검사, production build 통과. 로컬 브라우저에서 숲색 앞뒤/회전면, 기본 갈색 및 밝은 색상 제목 대비 확인. 유료 생성 호출 없음.
+- 문서: 통신규격.md와 docs/BOOK_READER.md 업데이트. 백엔드 저장 함수 운영 적용 완료(기존 권한/RLS 유지), 두 저장소 push 후 배포 필요. 환경변수 추가 없음.

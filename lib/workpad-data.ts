@@ -64,6 +64,8 @@ export type AssessmentPayload = {
   pages: StoryPage[]
   quizzes: AssessmentQuestion[]
   cover_image?: string | null
+  /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
+  cover_color?: string | null
   generation?: {
     /** 예전 저장 동화는 없음. 선택은 상대 비교이며 품질 보증을 뜻하지 않는다. */
     selection?: {
@@ -196,6 +198,8 @@ export type SavedStory = {
     pages: StoryPage[]
     /** 서버가 동화 표지 이미지를 생성해 넣어줄 경우의 표지 URL (없을 수 있음) */
     cover_image?: string | null
+  /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
+  cover_color?: string | null
   }
 }
 

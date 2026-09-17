@@ -230,6 +230,7 @@ export default function DashboardPage() {
               pages={assessment?.pages ?? []}
               title={assessment?.title}
               coverImage={assessment?.cover_image}
+              coverColor={assessment?.cover_color}
               hasQuiz={assessment?.assessment_type === "posttest" && (assessment?.quizzes.length ?? 0) > 0}
               onExit={returnToDashboard}
               exitLabel="대시보드로 돌아가기"

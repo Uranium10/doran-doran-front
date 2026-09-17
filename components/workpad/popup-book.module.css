@@ -36,14 +36,14 @@
 .left { border-radius:8px 0 0 8px; background:var(--paper-left); }
 .right { border-radius:0 8px 8px 0; background:var(--paper-right); }
 .outside,.endPaper { background:none; box-shadow:none; }
-.cover { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:36px 32px 26px; gap:20px; text-align:center; background:linear-gradient(100deg,#935136,#b56d4a 8%,#b97a55 95%,#92502f); color:#fff2d3; border:6px solid #9e5c3b; outline:1px solid #ddb28066; outline-offset:-18px; box-shadow:inset 7px 0 12px #512a3533; }
+.cover { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:36px 32px 26px; gap:20px; text-align:center; background:var(--cover-background,linear-gradient(100deg,#935136,#b56d4a 8%,#b97a55 95%,#92502f)); color:var(--cover-ink,#fff2d3); border:6px solid var(--cover-border,#9e5c3b); outline:1px solid var(--cover-outline,#ddb28066); outline-offset:-18px; box-shadow:inset 7px 0 12px #512a3533; }
 .cover h2 { font-family:var(--font-story),Batang,serif; font-size:clamp(22px,2.4vw,36px); font-weight:700; line-height:1.55; word-break:keep-all; overflow-wrap:anywhere; margin:0; }
 .coverSeries { font-size:11px; letter-spacing:.22em; }
 .coverArt { flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; }
 .coverArt img,.art img { display:block; width:100%; height:100%; object-fit:contain; border-radius:3px; }
 .coverBottom { font-size:12px; font-family:var(--font-story),Batang,serif; }
 .openHint { font-size:10px; display:flex; align-items:center; gap:4px; opacity:.75; }
-.backCover { justify-content:center; gap:32px; background:linear-gradient(90deg,#a66040,#b57851 90%,#925034); }
+.backCover { justify-content:center; gap:32px; background:var(--back-cover-background,linear-gradient(90deg,#a66040,#b57851 90%,#925034)); }
 .backCover p { font-family:var(--font-story),Batang,serif; font-size:clamp(19px,2vw,27px); line-height:1.85; }
 .backCover>span { margin-top:22px; font-size:12px; letter-spacing:.3em; }
 .illustration { height:100%; display:flex; flex-direction:column; padding:30px 28px; gap:20px; align-items:center; }
