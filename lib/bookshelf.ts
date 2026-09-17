@@ -35,3 +35,8 @@ export const fetchQuizResult = (profileId: string, resultId: string) => request<
 /** 외부 URL을 복귀 주소로 사용하지 않는다. 직접 링크 진입은 내 책장으로 돌아간다. */
 export const returnPath = (from?: string) => from === "parent" ? "/parent" : from === "library" ? "/library" : "/dashboard"
 export const bookPath = (id: string, from: "library" | "dashboard") => `/books/${encodeURIComponent(id)}?from=${from}`
+
+/** 기존 읽기 전용 API. 목록을 펼친 책만 조회하며 답안 상세는 결과 화면에서 연다. */
+export type QuizHistoryEntry = { id: string; created_at?: string; total_questions: number; correct_answers: number }
+export const fetchBookQuizHistory = (profileId: string, storyId: string, signal?: AbortSignal) => request<{ quiz_results: QuizHistoryEntry[] }>(
+  `/quiz-results?profile_id=${encodeURIComponent(profileId)}&story_id=${encodeURIComponent(storyId)}`, { signal })

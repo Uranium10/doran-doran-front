@@ -1,0 +1,6 @@
+/* 카드 안의 패널 대신 책 위에 얹은 종이 태그. 영역을 먼저 확보해 본문과 겹치지 않는다. */
+.wrap { position: relative; margin-top: 50px; }
+.tag { position: absolute; z-index: 1; top: -25px; left: 50%; transform: translateX(-50%) rotate(-2deg); display: inline-flex; align-items: center; justify-content: center; gap: 9px; max-width: calc(100% - 24px); min-height: 48px; padding: 10px 24px; border: 1px solid #dfb86d; border-radius: 8px 14px 12px 7px; background: #f8df9f; color: #734421; box-shadow: 0 4px 0 #c4a06428, 0 6px 12px #72502118; font-family: var(--font-heading); font-size: 22px; line-height: 1.4; text-align: center; white-space: nowrap; }
+.tag svg { flex-shrink: 0; }
+.card { padding-top: 40px; }
+@media(max-width: 480px) { .tag { gap: 6px; padding: 10px 14px; font-size: 17px; } }

@@ -1,7 +1,9 @@
 "use client"
 
-import { CheckCircle2, ArrowRight } from "lucide-react"
+import { CheckCircle2, ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { resultEncouragement } from "@/lib/result-encouragement"
+import encouragementStyles from "./result-encouragement.module.css"
 import { ResultProgress } from "./result-progress"
 import type { LiteracyResult } from "@/lib/levels"
 
@@ -47,6 +49,8 @@ export function LiteracyResultView({
   const name = childName.trim() || "아이"
   const copy = KIND_COPY[result.kind]
   const { correct, total } = result
+  // 관찰형 설문에는 정답이 없으므로 점수용 격려 태그를 붙이지 않는다.
+  const encouragement = showScore && result.assessment_type !== "checklist" ? resultEncouragement(correct,total) : null
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -60,7 +64,9 @@ export function LiteracyResultView({
         <p className="mt-2 text-pretty text-muted-foreground">{copy.sub}</p>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-md sm:p-8">
+      <div className={encouragement ? encouragementStyles.wrap : ""}>
+        {encouragement && <div className={encouragementStyles.tag} data-testid="result-encouragement"><Sparkles size={20} aria-hidden="true"/>{encouragement}</div>}
+      <div className={`rounded-3xl border border-border bg-card p-6 shadow-md sm:p-8 ${encouragement ? encouragementStyles.card : ""}`}>
         {/* 맞춘 개수 (유아용 설문에서는 숨김) */}
         {showScore && (
           <div className="flex items-center justify-center gap-3 rounded-2xl bg-secondary/60 p-5 text-center">
@@ -74,6 +80,8 @@ export function LiteracyResultView({
 
         {/* 서버가 저장한 변화량으로 이전 진척도부터 승급 과정을 재생한다. */}
         <div className={showScore ? "mt-8" : ""}><ResultProgress result={result}/></div>
+      </div>
+
       </div>
 
       {/* 저장 당시의 문항과 서버 채점 결과를 그대로 보여준다. 결과 열람에는 모델 호출이 없다. */}

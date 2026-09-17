@@ -1,0 +1,28 @@
+.row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--book-color);
+  border-radius: 16px;
+  background: var(--card);
+}
+.thumbnail { width: 88px; height: 68px; border-radius: 9px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #886e50; }
+.thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.actions { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.row .actions { margin-top: 0; }
+.record, .delete { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; border-radius: 999px; color: var(--muted-foreground); font-size: 12px; }
+.record { padding: 0 9px; }
+.delete { width: 44px; flex-shrink: 0; }
+.record:hover { color: var(--primary); background: var(--secondary); }
+.delete:hover { color: var(--destructive); background: color-mix(in srgb, var(--destructive) 10%, transparent); }
+.record:focus-visible, .delete:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media(max-width: 640px) {
+  .row { grid-template-columns: 64px minmax(0, 1fr) 44px; gap: 10px; padding: 10px; }
+  .thumbnail { width: 64px; height: 64px; }
+  .row .actions { flex-direction: column; gap: 0; }
+  .row .record { width: 44px; padding: 0; }
+  .row .record span { display: none; }
+}
