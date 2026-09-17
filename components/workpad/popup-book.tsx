@@ -71,6 +71,7 @@ export function PopupBook(props: PopupBookProps) {
 function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
+  const pageInputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const destination = useRef(0)
   const turnSequence = useRef(0)
@@ -148,12 +149,16 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
     const target = resolveBookPage(pageInput, contentCount)
     // 빈 값/문자는 현재 위치로 되돌리고, 유효한 입력만 동일한 넘김 경로로 보낸다.
     setPageInput(String(target ?? Math.max(1, Math.min(page, contentCount))))
-    if (target !== null) go(target)
+    if (target !== null) {
+      go(target)
+      // 모바일 키보드가 닫힌 뒤에도 입력칸 포커스로 화면이 끌려가지 않도록 이동 시 해제한다.
+      if (singlePage) pageInputRef.current?.blur()
+    }
   }
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
     // 두 손가락 확대는 책 넘김이 아니다. 두 번째 손가락이 닿으면 첫 입력도 취소한다.
     if (!event.isPrimary) { gesture.current = null; return }
-    if (event.button !== 0 || (event.target as HTMLElement).closest("button,a,input,textarea,select")) return
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button,a,input,textarea,select,[data-book-ending]")) return
     gesture.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, maxTravel: 0, side: (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -183,7 +188,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
     if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} unavailable={failedImages.includes(leaf.page.image ?? "")} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
     if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
     if (leaf.kind === "back") return <div className={`${styles.cover} ${styles.backCover}`}><Sparkles size={32} strokeWidth={1} aria-hidden="true" /><p>이야기는 끝나도<br />상상은 계속돼요.</p><span>도란도란</span></div>
-    if (leaf.kind === "ending") return <div className={styles.ending}><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={hasQuiz ? onFinish : onExit}>{hasQuiz ? "문제 풀러 가기" : exitLabel}<ChevronRight size={18} /></button>{hasQuiz && <button type="button" disabled={!!activeTurn} className={styles.vocabButton} onClick={onExit}>{exitLabel}</button>}{vocabulary && <button type="button" disabled={!!activeTurn} className={styles.vocabLink} onClick={() => setVocabOpen(true)}>{vocabReady ? "동화 수준 확인하기" : "동화 수준 데이터를 준비중입니다…"}</button>}<button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
+    if (leaf.kind === "ending") return <div className={styles.ending} data-book-ending><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={hasQuiz ? onFinish : onExit}>{hasQuiz ? "문제 풀러 가기" : exitLabel}<ChevronRight size={18} /></button>{hasQuiz && <button type="button" disabled={!!activeTurn} className={styles.vocabButton} onClick={onExit}>{exitLabel}</button>}{vocabulary && <button type="button" disabled={!!activeTurn} className={styles.vocabLink} onClick={() => setVocabOpen(true)}>{vocabReady ? "동화 수준 확인하기" : "동화 수준 데이터를 준비중입니다…"}</button>}<button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
     if (leaf.kind === "outside") return null
     return <div className={styles.blankPaper} aria-hidden="true"><span>✦</span></div>
   }
@@ -194,8 +199,8 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
       return <section key={side} className={`${styles.paper} ${styles[side]} ${leaf.kind === "ending" ? styles.endPaper : ""} ${leaf.kind === "outside" ? styles.outside : ""}`}
         data-side={action ? side === "left" ? "previous" : "next" : undefined}
         role={action ? "button" : undefined} tabIndex={action ? 0 : undefined}
-        aria-label={action ? side === "left" ? "왼쪽 페이지 · 이전 장" : atCover ? "책 표지 펼치기" : "오른쪽 페이지 · 다음 장" : undefined}
-        aria-disabled={action ? (side === "left" ? atCover : atEnd) : undefined}>{leafContent(leaf)}</section>
+        aria-disabled={action ? (side === "left" ? atCover : atEnd) : undefined}
+        aria-label={leaf.kind === "ending" ? "완독 안내" : action ? side === "left" ? "왼쪽 페이지 · 이전 장" : atCover ? "책 표지 펼치기" : "오른쪽 페이지 · 다음 장" : undefined}>{leafContent(leaf)}</section>
     })}
   </div>
   if (!pages.length) return <div><p role="status">표시할 동화가 없어요.</p><button onClick={onExit}>돌아가기</button></div>
@@ -210,7 +215,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
         <button type="button" aria-label="이전 장" disabled={atCover} onClick={() => step(-1)}><ChevronLeft size={23} /><span>이전 장</span></button>
         <form className={styles.position} onSubmit={event => { event.preventDefault(); jumpToInput() }}>
           <span className={styles.positionLabel} role="status" aria-live="polite">{atCover ? "앞표지" : atEnd ? "뒷표지" : "페이지"}</span>
-          <div className={styles.pageEntry}><input aria-label="이동할 페이지 번호" title={`1~${contentCount} 입력 후 Enter 또는 이동`} type="text" inputMode="numeric" enterKeyHint="go" value={pageInput}
+          <div className={styles.pageEntry}><input ref={pageInputRef} aria-label="이동할 페이지 번호" title={`1~${contentCount} 입력 후 Enter 또는 이동`} type="text" inputMode="numeric" enterKeyHint="go" value={pageInput}
             disabled={contentCount < 1} onChange={event => setPageInput(event.target.value)} onFocus={event => event.currentTarget.select()}
             onKeyDown={event => { if (event.key === "Escape") { setPageInput(String(Math.max(1, Math.min(page, contentCount)))); event.currentTarget.blur() } }} /><span>/ {contentCount}</span></div>
           <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={contentCount < 1}><span className={styles.jumpLabel}>이동</span><Check className={styles.jumpIcon} size={16} aria-hidden="true" /></button>
@@ -231,7 +236,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
     <div className={styles.bookArea}>
       <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span></header>
       <div className={styles.desk}>
-        <div className={styles.stage} aria-label="동화책" aria-busy={!!activeTurn}
+        <div className={styles.stage} data-ending={atEnd || undefined} aria-label="동화책" aria-busy={!!activeTurn}
           onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel}
           onClick={event => {
             // 보조기기의 가상 클릭은 pointer 이벤트가 없으므로 별도로 받는다.
