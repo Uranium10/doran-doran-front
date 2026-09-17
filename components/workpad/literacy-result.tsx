@@ -1,7 +1,8 @@
 "use client"
 
-import { TrendingUp, TrendingDown, CheckCircle2, ArrowRight } from "lucide-react"
+import { CheckCircle2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ResultProgress } from "./result-progress"
 import type { LiteracyResult } from "@/lib/levels"
 
 const KIND_COPY: Record<
@@ -45,9 +46,7 @@ export function LiteracyResultView({
 }) {
   const name = childName.trim() || "아이"
   const copy = KIND_COPY[result.kind]
-  const { correct, total, lowerLabel, upperLabel, achievement, delta } = result
-  // 마커/라벨이 막대 양 끝에서 잘리지 않도록 표시 위치만 살짝 안쪽으로 보정한다.
-  const markerPos = Math.min(95, Math.max(5, achievement))
+  const { correct, total } = result
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -73,57 +72,8 @@ export function LiteracyResultView({
           </div>
         )}
 
-        {/* 진행 막대: 현재 단계 → 다음 단계 */}
-        <div className={showScore ? "mt-8" : ""}>
-          <div className="flex items-end justify-between text-sm">
-            <span className="font-heading text-foreground">{lowerLabel}</span>
-            <span className="font-medium text-muted-foreground">현재 달성도</span>
-            <span className="font-heading text-foreground">{upperLabel}</span>
-          </div>
-
-          <div className="relative mt-3">
-            {/* 막대 트랙 */}
-            <div className="relative h-4 overflow-hidden rounded-full bg-secondary ring-1 ring-border">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-700"
-                style={{ width: `${achievement}%` }}
-              />
-            </div>
-
-            {/* 달성도 마커 + 수치 */}
-            <div
-              className="absolute -top-1 -translate-x-1/2"
-              style={{ left: `${markerPos}%` }}
-            >
-              <span className="block h-6 w-1 rounded-full bg-primary shadow" />
-            </div>
-            <div
-              className="mt-2 flex -translate-x-1/2 flex-col items-center"
-              style={{ marginLeft: `${markerPos}%`, width: "max-content" }}
-            >
-              <span className="font-heading text-lg text-primary">
-                {achievement}%
-              </span>
-              {/* 성장 배지: delta 는 레벨 단위 변화량. 최초 측정(null)이면 숨긴다. */}
-              {delta !== null && (
-                <span
-                  className={
-                    delta >= 0
-                      ? "inline-flex items-center gap-0.5 text-xs font-medium text-accent"
-                      : "inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground"
-                  }
-                >
-                  {delta >= 0 ? (
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5" />
-                  )}
-                  {delta >= 0 ? `레벨 +${delta}` : `레벨 ${delta}`}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* 서버가 저장한 변화량으로 이전 진척도부터 승급 과정을 재생한다. */}
+        <div className={showScore ? "mt-8" : ""}><ResultProgress result={result}/></div>
       </div>
 
       {/* 저장 당시의 문항과 서버 채점 결과를 그대로 보여준다. 결과 열람에는 모델 호출이 없다. */}
