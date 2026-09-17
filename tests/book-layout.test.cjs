@@ -10,13 +10,13 @@ function load(name) {
   return scope.exports
 }
 const { paginateStory } = load('story-pagination')
-const { buildBookSpreads, findBookPosition } = load('book-layout')
+const { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage } = load('book-layout')
 const scenes = [1,2,3].map(n=>({page_number:n,heading:`장면 ${n}`,text:'별이는 친구와 함께 걸었어요. '.repeat(n*9),image:n===3?'':`scene-${n}.jpg`}))
 const pages = paginateStory(scenes, text=>text.length<=75)
 for(const mobile of [false,true]) {
   const spreads = buildBookSpreads(pages,mobile)
   assert.equal(spreads[0].right.kind,'cover')
-  assert.equal(spreads[0].left.kind,'blank')
+  assert.equal(spreads[0].left.kind,'outside')
   assert.equal(spreads.at(-1).left.kind,'back')
   assert.equal(spreads.at(-1).right.kind,'ending')
   const leaves = spreads.flatMap(s=>[s.left,s.right])
@@ -34,3 +34,14 @@ for(const mobile of [false,true]) {
   assert.equal(findBookPosition(resized,spreads[0]),0)
 }
 console.log('PASS: covers, one illustration per scene, continuation text on both sides, exact text preservation, no-image story, resize anchors')
+
+const desktop = buildBookSpreads(pages, false)
+// 표지를 열고 닫는 중에도 고정된 왼쪽 면은 책 바깥이며 흰 종이로 변하지 않는다.
+assert.equal(restingBookSpread(desktop[0], desktop[1], true).left.kind, 'outside')
+assert.equal(restingBookSpread(desktop[1], desktop[0], false).left.kind, 'outside')
+assert.equal(restingBookSpread(desktop[1], desktop[2], true).left, desktop[1].left)
+for (const [input, expected] of [['3',3], ['0',1], ['-8',1], ['99999',9], ['3.9',3], ['',null], ['text',null], ['1e2',null], [' 4 ',4], ['9'.repeat(400),9]]) {
+  assert.equal(resolveBookPage(input,9),expected)
+}
+assert.equal(resolveBookPage('1',0),null)
+console.log('PASS: transparent cover underlay, page input bounds/decimals/invalid/huge values')

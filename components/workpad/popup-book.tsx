@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Maximize, Minimize, RotateCcw, Sparkles } from "lucide-react"
 import type { StoryPage } from "@/lib/workpad-data"
 import type { ReadingPage } from "@/lib/story-pagination"
-import { buildBookSpreads, findBookPosition, type BookLeaf, type BookSpread } from "@/lib/book-layout"
+import { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage, type BookLeaf, type BookSpread } from "@/lib/book-layout"
 import { useReadingPages } from "./use-reading-pages"
 import styles from "./popup-book.module.css"
 
@@ -20,7 +20,7 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
   return <div className={styles.words}>
     <div className={styles.runningHead}><span title={page.heading}>{page.heading}</span><span aria-hidden="true">✦</span></div>
     <div ref={areaRef} className={styles.textArea}><p className={styles.prose}>{page.text.trim()}</p></div>
-    <div className={styles.pageNote}>장면 {page.sceneIndex + 1}{page.partCount > 1 ? ` · ${page.part} / ${page.partCount}` : ""}</div>
+    <div className={styles.pageNote}>{page.sceneIndex + 1}장{page.partCount > 1 ? ` · ${page.part} / ${page.partCount}` : ""}</div>
   </div>
 }
 
@@ -42,6 +42,7 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
   const [fullscreenError, setFullscreenError] = useState(false)
   const [turn, setTurn] = useState<Turn | null>(null)
   const [index, setIndex] = useState(0)
+  const [pageInput, setPageInput] = useState("1")
   const { textAreaRef, measureRef, pages: readingPages } = useReadingPages(pages, fontSize)
   const spreads = useMemo(() => buildBookSpreads(readingPages, singlePage), [readingPages, singlePage])
   const page = Math.min(index, spreads.length - 1)
@@ -51,6 +52,8 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
   const cover = coverImage || pages[0]?.image
   const atCover = page === 0
   const atEnd = page === spreads.length - 1
+  const contentCount = spreads.length - 2
+  useEffect(() => { setPageInput(String(Math.max(1, Math.min(page, contentCount)))) }, [page, contentCount])
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)")
@@ -81,6 +84,12 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
     setTurn({ from: current, to: spreads[target], forward: target > page, spreads })
     timer.current = setTimeout(finish, 620)
   }
+  const jumpToInput = () => {
+    const target = resolveBookPage(pageInput, contentCount)
+    // 빈 값/문자는 현재 위치로 되돌리고, 유효한 입력만 동일한 넘김 경로로 보낸다.
+    setPageInput(String(target ?? Math.max(1, Math.min(page, contentCount))))
+    if (target !== null) go(target)
+  }
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary || event.button !== 0 || locked.current || (event.target as HTMLElement).closest("button,a")) return
     gesture.current = { x: event.clientX, y: event.clientY, side: (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side }
@@ -102,17 +111,18 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
   }
   const leafContent = (leaf: BookLeaf) => {
     if (leaf.kind === "text") return <Words page={leaf.page} />
-    if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>장면 {leaf.page.sceneIndex + 1}</span><div className={styles.art}><Picture src={leaf.page.image} alt={leaf.page.heading} /></div><h3>{leaf.page.heading}</h3></div>
+    if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
     if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
     if (leaf.kind === "back") return <div className={`${styles.cover} ${styles.backCover}`}><Sparkles size={32} strokeWidth={1} aria-hidden="true" /><p>이야기는 끝나도<br />상상은 계속돼요.</p><span>도란도란</span></div>
     if (leaf.kind === "ending") return <div className={styles.ending}><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={onFinish}>{hasQuiz ? "문제 풀러 가기" : "돌아가기"}<ChevronRight size={18} /></button><button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
+    if (leaf.kind === "outside") return null
     return <div className={styles.blankPaper} aria-hidden="true"><span>✦</span></div>
   }
-  const spreadView = (spread: BookSpread, interactive = false) => <div className={`${styles.spread} ${spread.right.kind === "cover" ? styles.closedFront : ""} ${spread.right.kind === "ending" ? styles.closedBack : ""}`}>
+  const spreadView = (spread: BookSpread, interactive = false) => <div className={`${styles.spread} ${spread.right.kind === "ending" ? styles.closedBack : ""}`}>
     {(["left", "right"] as const).map((side) => {
       const leaf = spread[side]
-      const action = interactive && leaf.kind !== "ending" && !(side === "left" && leaf.kind === "blank")
-      return <section key={side} className={`${styles.paper} ${styles[side]} ${leaf.kind === "blank" ? styles.blank : ""} ${leaf.kind === "ending" ? styles.endPaper : ""}`}
+      const action = interactive && leaf.kind !== "outside" && leaf.kind !== "ending" && !(side === "left" && leaf.kind === "blank")
+      return <section key={side} className={`${styles.paper} ${styles[side]} ${leaf.kind === "ending" ? styles.endPaper : ""} ${leaf.kind === "outside" ? styles.outside : ""}`}
         data-side={action ? side === "left" ? "previous" : "next" : undefined}
         role={action ? "button" : undefined} tabIndex={action ? 0 : undefined}
         aria-label={action ? side === "left" ? "왼쪽 페이지 · 이전 장" : atCover ? "책 표지 펼치기" : "오른쪽 페이지 · 다음 장" : undefined}
@@ -121,13 +131,19 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
   </div>
   if (!pages.length) return <div><p role="status">표시할 동화가 없어요.</p><button onClick={onExit}>돌아가기</button></div>
 
-  const resting = activeTurn ? { left: activeTurn.forward ? activeTurn.from.left : activeTurn.to.left, right: activeTurn.forward ? activeTurn.to.right : activeTurn.from.right } : current
+  const resting = activeTurn ? restingBookSpread(activeTurn.from, activeTurn.to, activeTurn.forward) : current
   return <div ref={rootRef} className={styles.reader} style={{ "--reading-size": `${fontSize}px` } as CSSProperties}>
     <aside className={styles.remote} aria-label="책 리모컨">
       <button type="button" className={styles.exit} onClick={onExit} aria-label={exitLabel} title={exitLabel}><ArrowLeft size={20} /><span>이전으로</span></button>
       <div className={styles.remoteGroup}>
         <button type="button" aria-label="이전 장" disabled={atCover || !!activeTurn} onClick={() => go(page - 1)}><ChevronLeft size={23} /><span>이전 장</span></button>
-        <div className={styles.position} role="status" aria-live="polite">{atCover ? "앞표지" : atEnd ? "뒷표지" : <><strong>{page}</strong><span>/ {spreads.length - 2}</span></>}</div>
+        <form className={styles.position} onSubmit={event => { event.preventDefault(); jumpToInput() }}>
+          <span className={styles.positionLabel} role="status" aria-live="polite">{atCover ? "앞표지" : atEnd ? "뒷표지" : "페이지"}</span>
+          <div className={styles.pageEntry}><input aria-label="이동할 페이지 번호" title={`1~${contentCount} 입력 후 Enter 또는 이동`} type="text" inputMode="numeric" enterKeyHint="go" value={pageInput}
+            disabled={!!activeTurn || contentCount < 1} onChange={event => setPageInput(event.target.value)} onFocus={event => event.currentTarget.select()}
+            onKeyDown={event => { if (event.key === "Escape") { setPageInput(String(Math.max(1, Math.min(page, contentCount)))); event.currentTarget.blur() } }} /><span>/ {contentCount}</span></div>
+          <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={!!activeTurn || contentCount < 1}>이동</button>
+        </form>
         <button type="button" className={styles.next} aria-label={atCover ? "책 펼치기" : "다음 장"} disabled={atEnd || !!activeTurn} onClick={() => go(page + 1)}><ChevronRight size={23} /><span>{atCover ? "펼치기" : "다음 장"}</span></button>
       </div>
       <div className={styles.remoteGroup}>
@@ -138,7 +154,7 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
       <button type="button" aria-label={fullscreen ? "전체 화면 닫기" : "전체 화면으로 읽기"} onClick={toggleFullscreen}>{fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}<span>전체 화면</span></button>
     </aside>
     <div className={styles.bookArea}>
-      <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span><span className={styles.hint}>누르거나 옆으로 밀어 넘겨 보세요</span></header>
+      <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span></header>
       <div className={styles.desk}>
         <div className={styles.stage} aria-label="동화책" aria-busy={!!activeTurn}
           onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { gesture.current = null }} onLostPointerCapture={() => { gesture.current = null }}
@@ -155,6 +171,8 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
             else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); go(page + ((event.target as HTMLElement).dataset.side === "previous" ? -1 : 1)) }
           }}>
           {spreadView(resting, !activeTurn)}
+          {/* 안내는 책 바깥에 두고 표지를 넘기기 시작하면 숨긴다. 종이 복제면에는 넣지 않는다. */}
+          {atCover && !activeTurn && <div className={styles.coverGuide}><BookOpen size={28} strokeWidth={1} aria-hidden="true" /><p>누르거나 옆으로 밀어<br className={styles.guideBreak} /> 넘겨 보세요</p><ChevronRight size={20} aria-hidden="true" /></div>}
           {/* 표지에서도 실제 종이와 같은 본문 상자로 페이지 분량을 미리 측정한다. */}
           <div className={styles.measurePage} aria-hidden="true"><Words page={readingPages[0]} areaRef={textAreaRef} /></div>
           {activeTurn && <>

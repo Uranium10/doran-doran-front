@@ -1,13 +1,13 @@
 import type { ReadingPage } from "./story-pagination"
 
-export type BookLeaf = { kind: "blank" | "cover" | "back" | "ending" }
+export type BookLeaf = { kind: "outside" | "blank" | "cover" | "back" | "ending" }
   | { kind: "image" | "text"; page: ReadingPage }
 export type BookSpread = { left: BookLeaf; right: BookLeaf }
 const blank: BookLeaf = { kind: "blank" }
 
 /** 서버 장면 → 실제 종이 배치. 삽화는 장면 시작에 한 번, 이어지는 종이는 본문만 담는다. */
 export function buildBookSpreads(pages: ReadingPage[], singlePage: boolean): BookSpread[] {
-  const spreads: BookSpread[] = [{ left: blank, right: { kind: "cover" } }]
+  const spreads: BookSpread[] = [{ left: { kind: "outside" }, right: { kind: "cover" } }]
   const scenes = [...new Set(pages.map(page => page.sceneIndex))]
   for (const scene of scenes) {
     const parts = pages.filter(page => page.sceneIndex === scene)
@@ -40,4 +40,15 @@ export function findBookPosition(spreads: BookSpread[], old?: BookSpread): numbe
       && (leaf.page.endOffset > wanted.startOffset || !leaf.page.text)
   }))
   return Math.max(0, index)
+}
+
+/** 표지 바깥은 빈 종이와 다르다. 넘김 중에도 투명한 바깥 공간이라는 정보를 보존한다. */
+export function restingBookSpread(from: BookSpread, to: BookSpread, forward: boolean): BookSpread {
+  return { left: forward ? from.left : to.left, right: forward ? to.right : from.right }
+}
+
+/** 리모컨 번호는 본문 펼침 기준이다. 소수는 버리고 범위를 벗어난 숫자는 양 끝으로 제한한다. */
+export function resolveBookPage(input: string, count: number): number | null {
+  if (count < 1 || !/^[+-]?\d+(?:\.\d+)?$/.test(input.trim())) return null
+  return Math.max(1, Math.min(count, Math.trunc(Number(input))))
 }
