@@ -10,6 +10,7 @@ import { libraryInitial,validLibrary } from "@/lib/view-state"
 import { isGuestProfile } from "@/lib/api"
 import { fetchBookshelf,bookPath,type BookSummary,type Bookshelf } from "@/lib/bookshelf"
 import { deleteStory } from "@/lib/workpad-data"
+import { readingLabel } from "@/lib/book-status"
 import { BookCover } from "./book-cover"
 import { ConfirmModal } from "./confirm-modal"
 import { ProfileRecovery } from "./profile-recovery"
@@ -31,6 +32,11 @@ export function LibraryGallery(){
       .catch(()=>{if(active)setState({key:profileId,error:'책장을 불러오지 못했어요.'})})
     return()=>{active=false}
   },[profileId,retry])
+  useEffect(()=>{
+    const saved=(event: Event)=>{if((event as CustomEvent).detail?.profileId===profileId)setRetry(v=>v+1)}
+    window.addEventListener("doran-reading-saved",saved)
+    return()=>window.removeEventListener("doran-reading-saved",saved)
+  },[profileId])
   if(!currentProfile||!screen.ready)return <ProfileRecovery/>
   const data=state.key===profileId?state.data:undefined
   const list=screen.value.view==='list'
@@ -53,8 +59,8 @@ export function LibraryGallery(){
     :isGuestProfile(profileId)||data?.total===0?<div className="rounded-3xl border border-dashed border-border px-6 py-16 text-center"><BookOpen className="mx-auto mb-4 text-primary" size={36}/><h2 className="font-heading text-xl">첫 이야기를 기다리는 책장이에요</h2><Link href="/dashboard" className="mt-5 inline-block rounded-full bg-primary px-6 py-3 text-primary-foreground">내 책장으로</Link></div>
     :!data?<div role="status" className="py-20 text-center">책들을 꺼내고 있어요…</div>
     :<><div className={list?'space-y-3':'grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4'}>{data.stories.map(book=><article key={book.story_id} className={list?'flex items-center gap-4 rounded-2xl border border-border bg-card p-3':'min-w-0'}>
-      <Link href={bookPath(book.story_id,'library')} className={list?'w-20 shrink-0':'block'} aria-label={`${book.title} 읽기`}><BookCover book={book}/></Link>
-      <div className={list?'min-w-0 flex-1':'mt-4'}><Link href={bookPath(book.story_id,'library')} className="line-clamp-2 font-heading text-lg leading-snug hover:text-primary">{book.title}</Link><p className="mt-2 text-xs text-muted-foreground">{book.reading_progress?.completed_at?'다 읽은 책':book.reading_progress?'읽는 중':'새로운 책'}{book.created_at?` · ${new Date(book.created_at).toLocaleDateString('ko-KR')}`:''}</p></div>
+      <Link href={bookPath(book.story_id,'library')} className={list?'w-20 shrink-0':'block'} aria-label={`${book.title} 읽기`}><BookCover book={book} compact={list}/></Link>
+      <div className={list?'min-w-0 flex-1':'mt-4'}><Link href={bookPath(book.story_id,'library')} className="line-clamp-2 font-heading text-lg leading-snug hover:text-primary">{book.title}</Link><p className="mt-2 text-xs text-muted-foreground">{readingLabel(book)}{book.created_at?` · ${new Date(book.created_at).toLocaleDateString('ko-KR')}`:''}</p></div>
       <button aria-label={`${book.title} 삭제`} onClick={()=>setPending(book)} className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={17}/></button>
     </article>)}</div>{data.next_offset!==null&&<div className="mt-9 text-center"><button disabled={busy} onClick={more} className="min-h-12 rounded-full border border-border bg-card px-8 py-3 disabled:opacity-50">{busy?'책을 가져오고 있어요…':'책 더 보기'}</button></div>}</>}
     <ConfirmModal open={pending!==null} title="동화를 삭제할까요?" description={pending?`‘${pending.title}’과 읽기 위치를 삭제해요. 되돌릴 수 없어요.`:undefined} confirmLabel="삭제하기" cancelLabel="취소" destructive onConfirm={remove} onClose={()=>setPending(null)}/>

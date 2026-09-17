@@ -1,7 +1,7 @@
 .shelf { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:38px 32px; padding:28px 28px 32px; border-radius:24px; background:repeating-linear-gradient(2deg,#ffffff03 0 1px,transparent 1px 7px),repeating-linear-gradient(91deg,transparent 0 110px,#170e0938 111px 113px),linear-gradient(110deg,#3e2b22,#51362a 48%,#35251e); box-shadow:inset 0 8px 20px #160d0866; }
 .slot { position:relative; min-width:0; padding:0 6px 23px; }
 .slot::after { content:""; position:absolute; bottom:0; left:-16px; right:-16px; height:15px; border-radius:2px; background:linear-gradient(#b2865e,#825b3f 36%,#543925 42%,#684830); box-shadow:0 9px 10px #31201428,inset 0 1px #c8986d; }
-.cover { aspect-ratio:3/4; min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center; padding:14px 14px 12px 22px; border-radius:3px 12px 12px 3px; background:var(--cover-background,linear-gradient(100deg,#70442c,#b97a55 9%,#b97a55 94%,#885336)); color:var(--cover-ink,#fff2d3); box-shadow:5px 8px 13px #24170d28,inset 5px 0 #0002,inset -3px 0 #0001; transition:transform .18s ease; }
+.cover { position:relative; isolation:isolate; aspect-ratio:3/4; min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center; padding:14px 14px 12px 22px; border-radius:3px 12px 12px 3px; background:var(--cover-background,linear-gradient(100deg,#70442c,#b97a55 9%,#b97a55 94%,#885336)); color:var(--cover-ink,#fff2d3); box-shadow:5px 8px 13px #24170d28,inset 5px 0 #0002,inset -3px 0 #0001; transition:transform .18s ease; }
 a:hover .cover { transform:translateY(-5px) rotate(-1deg); }
 .series { font-size:10px; letter-spacing:.1em; opacity:.85; }
 .coverTitle { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin:12px 0; font-family:var(--font-heading); font-size:clamp(14px,1.6vw,21px); line-height:1.4; word-break:keep-all; overflow-wrap:anywhere; text-wrap:balance; }
@@ -23,3 +23,14 @@ a:hover .cover { transform:translateY(-5px) rotate(-1deg); }
 .measureButton:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
 
 @media(max-width:640px) { .measureTip { left:0;right:auto; } }
+
+/* 표지 위에 겹쳐 그려 태그 유무에 따라 책 높이/제목 위치가 바뀌지 않는다. */
+.statusBadge { position:absolute; z-index:2; left:-7px; top:-10px; display:inline-flex; white-space:nowrap; border-radius:7px 7px 7px 2px; padding:6px 10px; color:#fff; font:600 12px/1.3 var(--font-sans),sans-serif; letter-spacing:0; box-shadow:0 3px 6px #0002; }
+.statusNew { background:#b73532; }.statusReading { background:#245cab; }.statusQuiz { background:#277342; }
+.compactCover .statusBadge { top:-4px;left:-4px;font-size:9px;padding:4px 5px; }
+
+/* 표지 뒤의 얇은 속지 단면. absolute라 책/선반 배치를 밀지 않고 표지와 함께 움직인다. */
+.cover::before { content:""; position:absolute; z-index:-1; left:6px; right:-3px; height:7px; bottom:-5px; border-radius:2px 10px 9px 2px; background:repeating-linear-gradient(to bottom,#efe4cb 0 1px,#d4c5a9 1px 2px,#faf1df 2px 4px); box-shadow:1px 2px 2px #150d0840; }
+.cover::after { content:""; position:absolute; z-index:-1; left:3px; right:-1px; bottom:-7px; height:3px; border-radius:1px 2px 7px 2px; background:var(--cover-background,#885336); box-shadow:0 2px 3px #150d0833; }
+.compactCover::before { left:3px;right:-2px;bottom:-3px; }
+.compactCover::after { bottom:-5px; }

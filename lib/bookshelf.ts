@@ -1,14 +1,17 @@
 import { request } from "./api"
+import type { ReadingStatus } from "./book-status"
 import type { BookBookmark } from "./book-layout"
 import type { AssessmentQuestion } from "./workpad-data"
 import type { LiteracyResult } from "./levels"
 
 export type ReadingProgress = { bookmark: BookBookmark; completed_at: string | null; quiz_completed?: boolean; updated_at: string }
 export type BookSummary = {
+  reading_status?: ReadingStatus
   story_id: string; title: string; theme?: string; created_at?: string
   cover_color?: string | null; cover_image?: string | null; reading_progress?: ReadingProgress | null
 }
 export type Bookshelf = {
+  latest_unread?: BookSummary | null
   stories: BookSummary[]; total: number; next_offset: number | null; resume: BookSummary | null
   latest_result: { id: string; kind: string; correct: number; total: number; created_at: string } | null
   measured_today: boolean
@@ -18,7 +21,11 @@ export const fetchBookshelf = (profileId: string, offset = 0, limit = 12) => req
 export const fetchReading = (profileId: string, storyId: string) => request<{ progress: ReadingProgress | null }>(
   `/stories/${encodeURIComponent(storyId)}/reading-progress?profile_id=${encodeURIComponent(profileId)}`)
 export const saveReading = (profileId: string, storyId: string, bookmark: BookBookmark) => request<{ progress: ReadingProgress }>(
-  `/stories/${encodeURIComponent(storyId)}/reading-progress`, { method: "PUT", keepalive: true, body: JSON.stringify({ profile_id: profileId, bookmark }) })
+  `/stories/${encodeURIComponent(storyId)}/reading-progress`, { method: "PUT", keepalive: true, body: JSON.stringify({ profile_id: profileId, bookmark }) }).then(result => {
+    // 돌아간 책장 첫 조회보다 저장이 늦게 끝나도 완료 이벤트로 상태를 다시 읽는다.
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("doran-reading-saved", { detail: { profileId } }))
+    return result
+  })
 export const openStoryAssessment = (profileId: string, storyId: string) => request<{
   attempt_id: string; quizzes: AssessmentQuestion[]; result: LiteracyResult | null
 }>(`/assessments/story/${encodeURIComponent(storyId)}?profile_id=${encodeURIComponent(profileId)}`, { method: "POST" })

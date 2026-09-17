@@ -367,3 +367,10 @@
 - 내장 image_gen 종이인형 5종 생성, WebP 161,286 bytes. transform 애니메이션, 화면 밖/hidden/완료/실패 정지, reduced-motion/수동정지.
 - 검증: Python 인증25/책장8/부모6/단계3 및 생성 그래프, node 기존 테스트12, tsc, production build, Playwright 데스크톱·모바일, SQL 합성계정 롤백 통합검증. 자세한 내용 docs/PARENT_AND_THEATRE.md.
 - 배포 순서: DB 적용 → 백엔드 push/Render 확인 → 프론트 push. 신규 환경변수 없음.
+
+[2026-09-18] 책 상태 태그 / 실제 미열람 책 완료 카드 / 얇은 속지 단면
+- bookshelf_page에 reading_status 및 전체 책장 기준 latest_unread 추가. 읽기·채점 기록 및 퀴즈 유무로 4개 상태 판정, 소유권과 경량 목록 유지.
+- 공유 표지의 빨강 새 동화/파랑 읽는 중/초록 퀴즈 푸는 중 태그, 완료는 태그 없음. 미색 속지/뒷표지 CSS 단면, 책 크기 불변.
+- 대시보드 완료 카드는 최신 미열람 책 링크. queued/running 우선, 둘 다 없으면 제거. 읽기 저장 지연 이벤트/탭 재진입 조회/응답 순서 보호.
+- 검증: DB 합성 계정 롤백 통합검증(상태·목록 밖 조회·카드 제거·타 계정 거부), 상태 단위 테스트, tsc, production build, Playwright 데스크톱·모바일 표지/목록과 생성 상태 전환 통과.
+- 통신규격 및 docs/BOOKSHELF_STATUS.md 갱신. DB RPC 먼저 적용 후 두 저장소 push, 신규 환경변수 없음.
