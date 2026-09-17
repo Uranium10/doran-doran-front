@@ -11,6 +11,7 @@ import { useBookImages } from "./use-book-images"
 import { bookCoverStyle } from "@/lib/book-appearance"
 import { bookGestureDirection, trackBookGesture, type BookGesture } from "@/lib/book-gesture"
 import styles from "./popup-book.module.css"
+import { StoryVocabulary } from "./story-vocabulary"
 
 function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null)
@@ -45,6 +46,7 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
 type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
 type PopupBookProps = {
+  vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown }
   initialBookmark?: BookBookmark
   onBookmarkChange?: (bookmark: BookBookmark) => void
   coverColor?: string | null
@@ -66,7 +68,7 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -77,6 +79,7 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
   const source = useRef(pages)
   const toolsId = useId()
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [vocabOpen, setVocabOpen] = useState(false)
   const [fontSize, setFontSize] = useState(22)
   const [singlePage, setSinglePage] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -179,7 +182,7 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
     if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} unavailable={failedImages.includes(leaf.page.image ?? "")} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
     if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
     if (leaf.kind === "back") return <div className={`${styles.cover} ${styles.backCover}`}><Sparkles size={32} strokeWidth={1} aria-hidden="true" /><p>이야기는 끝나도<br />상상은 계속돼요.</p><span>도란도란</span></div>
-    if (leaf.kind === "ending") return <div className={styles.ending}><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={onFinish}>{hasQuiz ? "문제 풀러 가기" : "돌아가기"}<ChevronRight size={18} /></button><button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
+    if (leaf.kind === "ending") return <div className={styles.ending}><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={onFinish}>{hasQuiz ? "문제 풀러 가기" : "돌아가기"}<ChevronRight size={18} /></button>{vocabulary && <button type="button" disabled={!!activeTurn} className={styles.vocabButton} onClick={() => setVocabOpen(true)}>동화 수준 확인하기</button>}<button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
     if (leaf.kind === "outside") return null
     return <div className={styles.blankPaper} aria-hidden="true"><span>✦</span></div>
   }
@@ -198,6 +201,8 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
 
   const resting = activeTurn ? restingBookSpread(activeTurn.from, activeTurn.to, activeTurn.forward) : current
   return <div ref={rootRef} className={styles.reader} style={{ ...bookCoverStyle(coverColor), "--reading-size": `${fontSize}px`, visibility: bookmark.ready ? "visible" : "hidden" } as CSSProperties}>
+    {/* 모달은 회전 복제면 밖에 한 번만 렌더한다. 마지막 페이지 진입 시 분석만 조회한다. */}
+    {vocabulary && <StoryVocabulary key={`${vocabulary.profileId}:${vocabulary.storyId}`} {...vocabulary} active={atEnd || vocabOpen} open={vocabOpen} onClose={() => setVocabOpen(false)} />}
     <aside className={styles.remote} aria-label="책 리모컨">
       <button type="button" className={styles.exit} onClick={onExit} aria-label={exitLabel} title={exitLabel}><ArrowLeft size={20} /><span>이전으로</span></button>
       <div className={`${styles.remoteGroup} ${styles.pageControls}`}>

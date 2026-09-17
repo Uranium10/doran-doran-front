@@ -1,0 +1,29 @@
+.dialog { width:min(620px,calc(100vw - 28px)); max-height:calc(100dvh - 40px); margin:auto; padding:0; border:1px solid #e8dac4; border-radius:24px; color:#483b2d; background:#fffcf5; box-shadow:0 24px 80px #25170844; overflow:auto; overscroll-behavior:contain; }
+.dialog::backdrop { background:#28201866; backdrop-filter:blur(4px); }
+.sheet { padding:28px; }
+.header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+.eyebrow { font-size:11px; letter-spacing:.1em; color:#93775d; }
+.header h2 { font-size:25px; margin:5px 0 0; font-family:var(--font-story),serif; }
+.close { flex-shrink:0; display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:#f0e7d8; }
+.close:hover { background:#e7d9c3; }
+.dialog button:focus-visible { outline:3px solid #b55e3e; outline-offset:3px; }
+.total { display:flex; gap:14px; align-items:flex-start; padding:18px; border-radius:15px; background:#f4eddf; }
+.total svg { flex-shrink:0; margin-top:2px; }
+.total p { margin:0 0 5px; font-size:15px; }
+.total small { display:block; font-size:11px; line-height:1.7; color:#796a58; }
+.challenge,.expression { padding:22px 0; }
+.challenge { border-bottom:1px solid #e9decc; }
+.sectionHeading { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sectionHeading h3 { font-size:17px; margin:0; }
+.sectionHeading strong { margin-left:auto; border-radius:20px; padding:5px 12px; font-size:16px; background:#a55635; color:#fffaf0; }
+.expression .sectionHeading strong { background:#517263; }
+.challenge p,.expression p { font-size:13px; color:#806d57; margin:12px 0; line-height:1.7; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; list-style:none; padding:0; margin:0; }
+.chips li { max-width:100%; overflow-wrap:anywhere; border-radius:11px; padding:8px 13px; background:#f7e5d5; color:#885035; font-size:15px; }
+.expression .chips li { background:#e8eee3; color:#466252; }
+.note { margin:0; font-size:11px; line-height:1.8; color:#857969; }
+.pending { padding:24px 6px; display:flex; align-items:center; flex-direction:column; gap:16px; text-align:center; }
+.pending h3 { margin:0; font-size:19px; }
+.pending p { margin:0; max-width:360px; line-height:1.8; font-size:14px; color:#85735f; }
+.retry { border-radius:20px; padding:10px 20px; background:#a55635; color:#fffaf0; }
+@media (max-width:600px) { .sheet { padding:22px 18px; } .header h2 { font-size:22px; } .sectionHeading h3 { font-size:15px; } .chips li { font-size:14px; } }

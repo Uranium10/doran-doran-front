@@ -157,3 +157,8 @@
 .preparing progress { width:180px; height:6px; accent-color:#ac5737; }
 .preparing button { margin-top:8px; padding:12px 24px; border-radius:24px; background:#ac5737; color:#fffaf0; cursor:pointer; }
 .preparing button:hover { background:#8a3f24; }
+
+/* 완독 화면의 보조 동작. 모바일에서도 세 버튼이 책 안에 들어가게 간격을 줄인다. */
+.ending .vocabButton { border:1px solid #b88865; background:#f5e8d4; color:#75482d; font-size:13px; padding:11px 20px; }
+.ending .vocabButton:hover:not(:disabled) { background:#e7d4b8; color:#58311b; }
+@media (max-width:767px) { .ending { gap:9px; } .ending .readAgain { padding:8px 14px; } }

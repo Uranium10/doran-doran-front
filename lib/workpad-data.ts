@@ -68,6 +68,8 @@ export type AssessmentPayload = {
   /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
   cover_color?: string | null
   generation?: {
+    /** 외부分석 완료 전 null. 오래된 분석은 필드 누락이 있어 런타임 검증한다. */
+    vocab_analysis?: unknown
     /** 예전 저장 동화는 없음. 선택은 상대 비교이며 품질 보증을 뜻하지 않는다. */
     selection?: {
       /** 두 후보 모두 낮게 평가된 경우의 제한된 보수 결과. 이전 결과는 없음/null. */
