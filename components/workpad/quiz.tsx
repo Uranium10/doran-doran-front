@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useSessionView, questionKey, objectValue, answerValues } from "@/lib/use-session-view"
 import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -24,16 +24,23 @@ export function Quiz({
   title,
   intro,
   onComplete,
+  persistenceKey,
 }: {
+  persistenceKey?: string | null
   questions: AssessmentQuestion[]
   title: string
   intro: string
   onComplete: (result: QuizResult) => void
 }) {
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const progressState = useSessionView<{ index: number; answers: Record<string,string> }>(persistenceKey ? `${persistenceKey}:${questionKey(questions)}` : null, { index: 0, answers: {} },
+    (value): value is { index: number; answers: Record<string,string> } => objectValue(value) && Number.isInteger(value.index) && Number(value.index) >= 0 && Number(value.index) < questions.length && answerValues(value.answers) && Object.entries(value.answers).every(([id, selected]) => questions.some(q => q.question_id === id && q.options.some(o => o.value === selected))))
+  const { index, answers } = progressState.value
+  const setIndex = (change: (before: number) => number) => progressState.setValue(previous => ({ ...previous, index: change(previous.index) }))
+  const setAnswers = (change: (before: Record<string,string>) => Record<string,string>) => progressState.setValue(previous => ({ ...previous, answers: change(previous.answers) }))
+  if (!progressState.ready) return <p role="status">풀던 문제를 준비하고 있어요…</p>
 
   const q = questions[index]
+  if (!q) return <p role="status">표시할 문제가 없어요.</p>
   const isLast = index === questions.length - 1
   const isFirst = index === 0
   // 현재 문제의 선택값은 저장된 답안에서 가져온다 (이전/다음 이동 시 체크 상태 유지)

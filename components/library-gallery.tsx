@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSessionView } from "@/lib/use-session-view"
+import { libraryInitial, validLibrary } from "@/lib/view-state"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { LayoutGrid, List, Calendar, Sprout, BookOpen, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ProfileRecovery } from "@/components/profile-recovery"
 import { useProfile } from "@/lib/profile-context"
 import { isGuestProfile } from "@/lib/api"
 import { fetchSavedStories, deleteStory, type SavedStory } from "@/lib/workpad-data"
@@ -28,12 +31,15 @@ function coverOf(story: SavedStory): string {
 
 export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading: boolean) => void }) {
   const router = useRouter()
-  const { currentProfile } = useProfile()
-  const [view, setView] = useState<ViewMode>("grid")
+  const { currentProfile, loading: profileLoading, error: profileError, sessionScope } = useProfile()
+  const screen = useSessionView(sessionScope ? `${sessionScope}:library` : null, libraryInitial, validLibrary)
+  const view = screen.value.view
+  const setView = (view: ViewMode) => screen.setValue(previous => ({ ...previous, view }))
   const [stories, setStories] = useState<SavedStory[]>([])
   const [loading, setLoading] = useState(true)
   // 선택된 동화 (있으면 목록 대신 팝업북을 보여준다)
-  const [reading, setReading] = useState<SavedStory | null>(null)
+  const reading = stories.find(story => story.story_id === screen.value.readingId) ?? null
+  const setReading = (story: SavedStory | null) => screen.setValue(previous => ({ ...previous, readingId: story?.story_id ?? null }))
   // 목록에서 열린 동화는 같은 라이브러리 목록으로만 돌아간다.
   useEffect(() => { onReadingChange?.(reading !== null) }, [reading, onReadingChange])
   // 삭제 확인 모달 대상 동화 (있으면 모달이 열린다)
@@ -41,12 +47,11 @@ export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로
   useEffect(() => {
-    if (!currentProfile) router.replace("/profiles")
-  }, [currentProfile, router])
+    if (!profileLoading && !profileError && !currentProfile) router.replace("/profiles")
+  }, [currentProfile, profileLoading, profileError, router])
 
   // 마운트/프로필 변경 시 보관함 동화 목록을 받아온다.
   useEffect(() => {
-    setReading(null)
     setStories([])
     if (!currentProfile || isGuestProfile(currentProfile.id)) {
       setLoading(false)
@@ -87,11 +92,12 @@ export function LibraryGallery({ onReadingChange }: { onReadingChange?: (reading
     }
   }
 
-  if (!currentProfile) return null
+  if (!currentProfile || !screen.ready) return <ProfileRecovery />
 
   // 보관함 재열람은 기존 정책대로 퀴즈 재채점 없이 읽기 전용이다.
   if (reading) {
     return <PopupBook
+      persistenceKey={`${sessionScope}:book:${reading.story_id}`}
       pages={reading.content?.pages ?? []}
       title={reading.title}
       coverImage={reading.content?.cover_image}

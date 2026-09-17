@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -13,6 +13,7 @@ import { PopupBook } from "@/components/workpad/popup-book"
 import { StorySetup } from "@/components/workpad/story-setup"
 import { Quiz, type QuizResult } from "@/components/workpad/quiz"
 import { LiteracyResultView } from "@/components/workpad/literacy-result"
+import { ProfileRecovery } from "@/components/profile-recovery"
 import { useProfile } from "@/lib/profile-context"
 import { isGuestProfile } from "@/lib/api"
 import { useGeneration } from "@/lib/generation-context"
@@ -29,40 +30,36 @@ import {
   type StoryInput,
 } from "@/lib/workpad-data"
 
-type View = "home" | "form" | "book" | "post-quiz" | "result"
+import { useSessionView } from "@/lib/use-session-view"
+import { dashboardInitial, validDashboard, type DashboardView } from "@/lib/view-state"
 
 export default function DashboardPage() {
   const router = useRouter()
   const generation = useGeneration()
-  const { currentProfile, updateProfile } = useProfile()
-  const [view, setView] = useState<View>("home")
-  const [assessment, setAssessment] = useState<AssessmentPayload | null>(null)
+  const { currentProfile, updateProfile, loading: profileLoading, error: profileError, sessionScope } = useProfile()
+  const screen = useSessionView(sessionScope ? `${sessionScope}:dashboard` : null, dashboardInitial, validDashboard)
+  const { view, assessment, result } = screen.value
+  const setView = useCallback((view: DashboardView["view"]) => screen.setValue(previous => ({ ...previous, view })), [screen.setValue])
+  const setAssessment = useCallback((assessment: AssessmentPayload | null) => screen.setValue(previous => ({ ...previous, assessment })), [screen.setValue])
+  const setResult = (result: LiteracyResult | null) => screen.setValue(previous => ({ ...previous, result }))
   const [measureModalOpen, setMeasureModalOpen] = useState(false)
-  const [result, setResult] = useState<LiteracyResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const previousProfile = useRef<string | null>(null)
-  // 다른 아이의 프로필로 바뀌면 이전 읽기/채점 화면을 남기지 않는다.
-  useEffect(() => {
-    if (previousProfile.current !== currentProfile?.id) {
-      previousProfile.current = currentProfile?.id ?? null
-      setAssessment(null); setResult(null); setView("home")
-    }
-  }, [currentProfile?.id])
+  useEffect(() => { setSubmitting(false) }, [sessionScope])
   // 완료 알림의 '동화 읽기'를 눌렀을 때만 이동한다. 다른 활동을 강제로 중단하지 않는다.
   useEffect(() => {
-    if (generation.requestedStory?.profileId === currentProfile?.id && generation.requestedStory) {
+    if (screen.ready && generation.requestedStory?.profileId === currentProfile?.id && generation.requestedStory) {
       setAssessment(generation.requestedStory.payload)
       setView("book")
       generation.consumeStory()
     }
-  }, [currentProfile?.id, generation.requestedStory, generation.consumeStory])
+  }, [currentProfile?.id, generation.requestedStory, generation.consumeStory, screen.ready, setAssessment, setView])
 
   // 선택된 프로필이 없으면 프로필 선택 화면으로 보낸다.
   useEffect(() => {
-    if (!currentProfile) router.replace("/profiles")
-  }, [currentProfile, router])
+    if (!profileLoading && !profileError && !currentProfile) router.replace("/profiles")
+  }, [currentProfile, profileLoading, profileError, router])
 
-  if (!currentProfile) return null
+  if (!currentProfile || !screen.ready) return <ProfileRecovery />
 
   const stage = getStageInfo(currentProfile.level)
   const mustMeasure = needsMeasurement(currentProfile.level)
@@ -94,9 +91,7 @@ export default function DashboardPage() {
   // 생성으로 진입한 읽기/퀴즈 흐름의 상위 화면은 대시보드다.
   // 브라우저 history.back()을 쓰면 완료한 퀴즈나 로그인 화면으로 돌아갈 수 있다.
   const returnToDashboard = () => {
-    setAssessment(null)
-    setResult(null)
-    setView("home")
+    screen.setValue(dashboardInitial)
   }
   const handleBookFinish = () => {
     const canTakeQuiz = assessment?.assessment_type === "posttest" && (assessment?.quizzes.length ?? 0) > 0
@@ -115,15 +110,17 @@ export default function DashboardPage() {
         quiz.answers,
       )
       const res = await submitAssessment(submission)
+      if (!screen.isCurrent()) return
       updateProfile(currentProfile.id, { level: res.level })
       setResult(res)
       setView("result")
     } catch (e) {
+      if (!screen.isCurrent()) return
       console.error("[v0] 채점 제출 실패:", e)
       toast.error("서버와 연결할 수 없어요. 잠시 후 다시 시도해 주세요.")
       setView("home")
     } finally {
-      setSubmitting(false)
+      if (screen.isCurrent()) setSubmitting(false)
     }
   }
 
@@ -216,6 +213,7 @@ export default function DashboardPage() {
             </div>
             <StorySetup
               key={currentProfile.id}
+              persistenceKey={`${sessionScope}:story-form`}
               defaultName={currentProfile.name}
               onSubmit={handleStorySubmit}
             />
@@ -228,6 +226,7 @@ export default function DashboardPage() {
               <p role="status" className="mb-4 text-center text-sm text-muted-foreground">이번 이야기의 퀴즈를 준비하지 못했어요. 동화는 읽을 수 있어요.</p>
             )}
             <PopupBook
+              persistenceKey={`${sessionScope}:book:${assessment?.story_id ?? "current"}`}
               pages={assessment?.pages ?? []}
               title={assessment?.title}
               coverImage={assessment?.cover_image}
@@ -255,6 +254,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <Quiz
+              persistenceKey={`${sessionScope}:post-quiz:${assessment?.story_id ?? "current"}`}
               questions={assessment?.quizzes ?? []}
               title="이야기 속 문제를 풀어 볼까요?"
               intro="방금 읽은 전래동화 내용을 바탕으로 한 문제씩 풀어 보세요."

@@ -45,3 +45,27 @@ for (const [input, expected] of [['3',3], ['0',1], ['-8',1], ['99999',9], ['3.9'
 }
 assert.equal(resolveBookPage('1',0),null)
 console.log('PASS: transparent cover underlay, page input bounds/decimals/invalid/huge values')
+
+// 짧은 장면끼리도 양면을 채우며 마지막 홀수 쪽만 비운다.
+const shortScenes = [1,2,3,4,5].map(n=>({page_number:n,heading:`${n}장`,text:`${n}번째 짧은 장면`,image:''}))
+const shortPages = paginateStory(shortScenes,()=>true)
+const textBook = buildBookSpreads(shortPages,false)
+assert.equal(textBook.length,5)
+assert.equal(textBook[1].left.page.sceneIndex,0)
+assert.equal(textBook[1].right.page.sceneIndex,1)
+assert.equal(textBook[2].left.page.sceneIndex,2)
+assert.equal(textBook[2].right.page.sceneIndex,3)
+assert.equal(textBook[3].right.kind,'blank')
+assert.equal(textBook.flatMap(s=>[s.left,s.right]).filter(l=>l.kind==='text').map(l=>l.page.text).join(''),shortScenes.map(s=>s.text).join(''))
+const {bookBookmark,bookmarkPosition,validBookmark}=load('book-layout')
+for(const mobile of [true,false]) {
+ const target=buildBookSpreads(shortPages,mobile)
+ const saved=JSON.parse(JSON.stringify(bookBookmark(textBook[2])))
+ assert.ok(validBookmark(saved))
+ const restored=target[bookmarkPosition(target,saved)]
+ assert.ok([restored.left,restored.right].some(l=>l.kind==='text'&&l.page.sceneIndex===2))
+ assert.equal(bookmarkPosition(target,{kind:'ending'}),target.length-1)
+}
+assert.equal(validBookmark({kind:'text',sceneIndex:-1,offset:0}),false)
+assert.equal(validBookmark({kind:'text',sceneIndex:0,offset:'bad'}),false)
+console.log('PASS: image-free short scenes fill both sides, exact text order, persisted desktop/mobile bookmark')

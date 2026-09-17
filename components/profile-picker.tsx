@@ -16,6 +16,7 @@ export function ProfilePicker() {
   const {
     profiles,
     loading,
+    error,
     selectProfile,
     addProfile,
     deleteProfile,
@@ -78,6 +79,7 @@ export function ProfilePicker() {
         <p className="mt-3 text-pretty text-muted-foreground">
           <b>우리 아이 프로필</b>을 선택하면, 꼭 맞는 <span className="font-medium">동화 여정</span>이 시작돼요.
         </p>
+        {error && <p role="alert" className="mt-4">{error} <button type="button" onClick={() => void refreshProfiles()}>다시 시도</button></p>}
         {loading && profiles.length === 0 && (
           <p
             className="mt-4 text-sm text-muted-foreground"

@@ -51,6 +51,7 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
           </div>
         ) : payload ? (
           <PopupBook
+            persistenceKey={`doran-public-book:${storyId}`}
             pages={payload.pages}
             title={payload.title}
             coverImage={payload.cover_image}

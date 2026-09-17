@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useSessionView, questionKey, answerValues } from "@/lib/use-session-view"
 import { Heart, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -17,13 +17,18 @@ export function ToddlerChecklist({
   childName,
   questions,
   onComplete,
+  persistenceKey,
 }: {
+  persistenceKey?: string | null
   childName: string
   questions: AssessmentQuestion[]
   /** question_id -> 선택한 보기 value */
   onComplete: (answers: Record<string, string>) => void
 }) {
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const saved = useSessionView<Record<string,string>>(persistenceKey ? `${persistenceKey}:${questionKey(questions)}` : null, {}, (value): value is Record<string,string> => answerValues(value) && Object.entries(value).every(([id, selected]) => questions.some(q => q.question_id === id && q.options.some(o => o.value === selected))))
+  const answers = saved.value
+  const setAnswers = saved.setValue
+  if (!saved.ready) return <p role="status">작성하던 답안을 준비하고 있어요…</p>
 
   const allAnswered = questions.every((q) => answers[q.question_id])
 

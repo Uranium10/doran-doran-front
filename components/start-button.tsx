@@ -20,7 +20,7 @@ type StartButtonProps = {
  */
 export function StartButton({ light = false, className }: StartButtonProps) {
   const router = useRouter()
-  const { currentProfile } = useProfile()
+  const { currentProfile, loading: profileLoading } = useProfile()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isReady, setIsReady] = useState(false) // 깜빡임 방지용
 
@@ -78,6 +78,7 @@ export function StartButton({ light = false, className }: StartButtonProps) {
   return (
     <Button
       onClick={handleClick}
+      disabled={isLoggedIn && profileLoading}
       // 세션 확인 전까지는 버튼을 살짝 투명하게 처리하여 텍스트 깜빡임 방지
       className={cn(
         "rounded-full transition-opacity duration-300",

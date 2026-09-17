@@ -1,5 +1,6 @@
 "use client"
 
+import { useSessionView, objectValue } from "@/lib/use-session-view"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Wand2 } from "lucide-react"
@@ -54,16 +55,22 @@ const MOODS = [
 
 export function StorySetup({
   defaultName,
+  persistenceKey,
   onSubmit,
 }: {
   /** 기본값은 프로필 이름이며 이번 동화에서 쓸 이름을 직접 바꿀 수 있다. */
+  persistenceKey?: string | null
   defaultName: string
   /** 폼 입력이 완료되면 구조화된 StoryInput 을 넘긴다. 추후 서버 호출 지점. */
   onSubmit: (input: StoryInput) => void
 }) {
-  const [favorite, setFavorite] = useState("")
-  const [protagonistName, setProtagonistName] = useState(defaultName)
-  const [eventText, setEventText] = useState("")
+  const draft = useSessionView<{ favorite:string; protagonistName:string; eventText:string; moodId:string|null }>(persistenceKey ?? null, { favorite:"", protagonistName:defaultName, eventText:"", moodId:null },
+    (value): value is { favorite:string; protagonistName:string; eventText:string; moodId:string|null } => objectValue(value) && ["favorite","protagonistName","eventText"].every(key => typeof value[key] === "string") && (value.moodId === null || typeof value.moodId === "string"))
+  const { favorite, protagonistName, eventText, moodId } = draft.value
+  const setFavorite = (favorite:string) => draft.setValue(old => ({...old,favorite}))
+  const setProtagonistName = (protagonistName:string) => draft.setValue(old => ({...old,protagonistName}))
+  const setEventText = (eventText:string) => draft.setValue(old => ({...old,eventText}))
+  const setMoodId = (moodId:string|null) => draft.setValue(old => ({...old,moodId}))
   const [preferences, setPreferences] = useState<GenerationPreferences | null>(null)
   const [saving, setSaving] = useState(false)
   const [settingsError, setSettingsError] = useState("")
@@ -82,13 +89,12 @@ export function StorySetup({
     finally { setSaving(false) }
   }
   // 선택된 기분 id (없으면 null)
-  const [moodId, setMoodId] = useState<string | null>(null)
 
   const selectedMood = MOODS.find((m) => m.id === moodId)
   const todayEvent = [eventText.trim(), selectedMood?.event].filter(Boolean).join(" ")
 
   // favorite 와 today_event 중 하나라도 채워지면 제출 가능
-  const canSubmit = Boolean(preferences) && !saving && protagonistName.trim().length > 0
+  const canSubmit = draft.ready && Boolean(preferences) && !saving && protagonistName.trim().length > 0
     && (favorite.trim().length > 0 || todayEvent.length > 0)
 
   const handleSubmit = () => {
@@ -103,6 +109,8 @@ export function StorySetup({
       useJobs: preferences?.jobs_enabled ?? false,
     })
   }
+
+  if (!draft.ready) return <p role="status">작성하던 내용을 준비하고 있어요…</p>
 
   return (
     <div className="mx-auto w-full max-w-2xl">
