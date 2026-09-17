@@ -42,8 +42,8 @@ export function FolktaleReader({ storyId }: { storyId: string }) {
   return (
     <>
     <SiteHeader />
-    <section className="min-h-screen bg-background py-10 sm:py-14">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="min-h-screen bg-background pb-6 pt-20">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-8">
         {loading ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -1,8 +1,10 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
-import { Jua, Noto_Sans_KR, Geist_Mono } from 'next/font/google'
+import { Jua, Noto_Sans_KR, Geist_Mono, Gowun_Batang } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
+
+const storyFont = Gowun_Batang({ weight: '400', variable: '--font-story', subsets: ['latin'], display: 'swap' })
 
 const jua = Jua({
   weight: '400',
@@ -33,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${jua.variable} ${notoSansKr.variable} ${geistMono.variable} bg-background`}
+      className={`${storyFont.variable} ${jua.variable} ${notoSansKr.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>

@@ -143,7 +143,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <main className={view === "book" ? "mx-auto max-w-[1440px] px-4 py-4 sm:px-8" : "mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14"}>
         {view === "home" && (
           <div className="mx-auto max-w-2xl">
             {/* 인사 + 현재 단계 */}
@@ -241,6 +241,7 @@ export default function DashboardPage() {
             )}
             <PopupBook
               pages={assessment?.pages ?? []}
+              title={assessment?.title}
               childName={currentProfile.name}
               onFinish={handleBookFinish}
             />

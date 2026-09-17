@@ -1,199 +1,162 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type RefObject } from "react"
+import { BookOpen, ChevronLeft, ChevronRight, Maximize, Minimize, RotateCcw } from "lucide-react"
 import type { StoryPage } from "@/lib/workpad-data"
+import type { ReadingPage } from "@/lib/story-pagination"
 import { useReadingPages } from "./use-reading-pages"
+import styles from "./popup-book.module.css"
 
-export function PopupBook({
-  pages,
-  childName,
-  onFinish,
-  isLib = false,
-}: {
-  pages: StoryPage[]
-  childName: string|null
-  onFinish: () => void
-  isLib?: boolean
-}) {
-  const { bookRef, imageTextRef, plainTextRef, layout, pages: readingPages, page, setPage } = useReadingPages(pages)
-  const total = readingPages.length
-  const current = readingPages[page]
-  const isLast = page === total - 1
-  // 해당 페이지에 삽화가 없으면 이미지 레이아웃 대신 텍스트 중심 레이아웃을 보여준다.
-  const hasImage = Boolean(current?.image)
-  if (!current) return <div ref={bookRef}><p role="status">표시할 동화가 없어요.</p></div>
-
-  return (
-    <div ref={bookRef} className="mx-auto w-full max-w-3xl">
-      {/* 실제 본문과 같은 CSS로 높이를 잰다. 서버에 보관한 장면 원문은 변경하지 않는다. */}
-      <div aria-hidden="true" className="pointer-events-none invisible fixed -left-[10000px] top-0"
-        style={{ width: Math.max(1, layout.width - 8) }}>
-        <p ref={imageTextRef} className="mx-6 whitespace-pre-wrap break-words text-lg leading-relaxed sm:mx-8" />
-        <p ref={plainTextRef} className="mx-6 max-w-2xl whitespace-pre-wrap break-words text-center text-2xl leading-relaxed text-pretty sm:mx-10 sm:text-3xl" />
-      </div>
-      <div className="mb-5 text-center">
-        <p className="font-mono text-xs tracking-widest text-primary">
-          나만의 전래동화
-        </p>
-        { isLib 
-          ?
-          <h2 className="mt-1 font-heading text-3xl text-foreground">
-              {childName?.trim()}
-          </h2>
-          :
-          <h2 className="mt-1 font-heading text-3xl text-foreground">
-            {childName?.trim() ?? "아이"} (이)의 도란도란 이야기
-          </h2>
-        }
-      </div>
-
-      {/* 3D pop-up book stage */}
-      <div className="perspective-book">
-        <div
-          key={page}
-          className="preserve-3d relative overflow-hidden rounded-[2rem] border-4 border-card bg-card shadow-2xl"
-          style={{ animation: "popOpen 0.6s ease-out" }}
-        >
-          {hasImage ? (
-            <>
-              {/* Illustration with layered pop-up feel */}
-              <div className="relative aspect-[16/10] max-h-[32vh] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={current.image || "/placeholder.svg"}
-                  alt={current.heading}
-                  className="h-full w-full object-cover"
-                  style={{ animation: "layerRise 0.7s ease-out" }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                {/* center book spine */}
-                <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-black/10" />
-                <h3 className="absolute bottom-4 left-5 right-5 font-heading text-2xl text-white text-shadow-storybook">
-                  {current.heading}
-                </h3>
-              </div>
-
-              {/* Story text */}
-              <div className="bg-card p-6 sm:p-8">
-                <p
-                  className="whitespace-pre-wrap break-words text-lg leading-relaxed text-card-foreground"
-                  style={{ animation: "layerRise 0.9s ease-out" }}
-                >
-                  {current.text.trim()}
-                </p>
-              </div>
-            </>
-          ) : (
-            // 삽화가 없는 페이지: 글자만 가운데에 큼지막하게 보여준다.
-            <div className="flex min-h-[24rem] flex-col items-center justify-center gap-6 bg-card px-6 py-12 text-center sm:min-h-[28rem] sm:px-10">
-              <h3
-                className="font-heading text-3xl text-foreground sm:text-4xl text-balance"
-                style={{ animation: "layerRise 0.7s ease-out" }}
-              >
-                {current.heading}
-              </h3>
-              <p
-                className="max-w-2xl whitespace-pre-wrap break-words text-2xl leading-relaxed text-card-foreground sm:text-3xl text-pretty"
-                style={{ animation: "layerRise 0.9s ease-out" }}
-              >
-                {current.text.trim()}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Page dots */}
-      {current.image_status === "failed" && (
-        <p className="mt-3 text-center text-sm text-muted-foreground">이 장면의 그림을 만들지 못했어요. 이야기는 계속 읽을 수 있어요.</p>
-      )}
-      <p className="mt-4 text-center text-sm text-muted-foreground" aria-live="polite">
-        {page + 1} / {total}쪽
-        {current.partCount > 1 && <span className="ml-2">같은 장면 {current.part} / {current.partCount}</span>}
-      </p>
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2" aria-label="동화 쪽 이동">
-        {readingPages.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={`${i + 1}쪽으로 이동`}
-            aria-current={i === page ? "page" : undefined}
-            onClick={() => setPage(i)}
-            className={cn(
-              "h-2.5 rounded-full transition-all",
-              i === page ? "w-7 bg-primary" : "w-2.5 bg-border hover:bg-primary/40",
-            )}
-          />
-        ))}
-      </div>
-
-      {/* Controls */}
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <Button
-          variant="secondary"
-          size="lg"
-          className="h-12 rounded-full"
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-          disabled={page === 0}
-        >
-          <ChevronLeft className="h-5 w-5" />
-          이전 장
-        </Button>
-
-        {isLast ? (
-          <Button
-            size="lg"
-            className="h-12 flex-1 rounded-full text-base sm:flex-none sm:px-8"
-            onClick={onFinish}
-          >
-            다 읽었어요
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            className="h-12 rounded-full"
-            onClick={() => setPage((p) => Math.min(total - 1, p + 1))}
-          >
-            다음 장
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setPage(0)}
-        className="mx-auto mt-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-      >
-        <RotateCcw className="h-4 w-4" />
-        처음부터 다시 보기
-      </button>
-
-      <style jsx>{`
-        @keyframes popOpen {
-          0% {
-            opacity: 0;
-            transform: rotateX(-22deg) translateY(24px) scale(0.96);
-          }
-          100% {
-            opacity: 1;
-            transform: rotateX(0deg) translateY(0) scale(1);
-          }
-        }
-        @keyframes layerRise {
-          0% {
-            opacity: 0;
-            transform: translateY(16px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+function Illustration({ page }: { page: ReadingPage }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const available = page.image && page.image !== failedUrl
+  return <div className={styles.illustration}>
+    <div className={styles.art}>
+      {available ? <>
+        {/* 이미지를 잘라 확대하지 않는다. 장면의 전체 구도가 종이 안에 들어가게 한다. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={page.image} alt={page.heading} draggable={false} onError={() => setFailedUrl(page.image)} />
+      </> : <div className={styles.emptyArt}>
+        <BookOpen size={56} strokeWidth={1} aria-hidden="true" />
+        <span>{page.image_status === "failed" || failedUrl === page.image ? "그림은 잠시 쉬고 있어요" : "상상 속 풍경을 펼쳐 보세요"}</span>
+      </div>}
     </div>
-  )
+    <div className={styles.caption}>
+      <span className={styles.eyebrow}>장면 {page.sceneIndex + 1}</span>
+      <h3>{page.heading}</h3>
+    </div>
+  </div>
+}
+
+function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLDivElement | null> }) {
+  return <div className={styles.words}>
+    <div className={styles.runningHead}><span>도란도란 이야기</span><span aria-hidden="true">✦</span></div>
+    <div ref={areaRef} className={styles.textArea}><p className={styles.prose}>{page.text.trim()}</p></div>
+    <div className={styles.pageNote}>{page.partCount > 1 ? `같은 장면의 이야기 · ${page.part} / ${page.partCount}` : "이야기 속으로 한 걸음 더"}</div>
+  </div>
+}
+
+type Turn = { from: ReadingPage; to: ReadingPage; target: number; forward: boolean }
+
+export function PopupBook({ pages, childName, title, onFinish, isLib = false }: {
+  pages: StoryPage[]; childName: string | null; title?: string | null; onFinish: () => void; isLib?: boolean
+}) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const locked = useRef(false)
+  const gesture = useRef<{ x: number; y: number; side: string | undefined } | null>(null)
+  const [fontSize, setFontSize] = useState(22)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenError, setFullscreenError] = useState(false)
+  const [turn, setTurn] = useState<Turn | null>(null)
+  const { textAreaRef, measureRef, pages: readingPages, page, setPage } = useReadingPages(pages, fontSize)
+  const current = readingPages[page]
+  const total = readingPages.length
+  const bookTitle = title?.trim() || (isLib ? childName?.trim() : `${childName?.trim() || "아이"}의 도란도란 이야기`)
+
+  useEffect(() => {
+    const changed = () => setFullscreen(document.fullscreenElement === rootRef.current)
+    document.addEventListener("fullscreenchange", changed)
+    return () => document.removeEventListener("fullscreenchange", changed)
+  }, [])
+  // 리사이즈로 쪽 번호가 달라지면 이전 크기로 만든 애니메이션과 타이머를 버린다.
+  useEffect(() => {
+    setTurn(null); locked.current = false
+    if (timer.current) clearTimeout(timer.current)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+  }, [readingPages])
+
+  const go = (target: number) => {
+    if (locked.current || target < 0 || target >= total || target === page || !current) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setPage(target); return }
+    locked.current = true
+    setTurn({ from: current, to: readingPages[target], target, forward: target > page })
+    timer.current = setTimeout(() => { setPage(target); setTurn(null); locked.current = false }, 620)
+  }
+  const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary || event.button !== 0 || locked.current) return
+    gesture.current = { x: event.clientX, y: event.clientY,
+      side: (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const pointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const start = gesture.current
+    gesture.current = null
+    if (!start) return
+    const dx = event.clientX - start.x, dy = event.clientY - start.y
+    if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.3) go(page + (dx < 0 ? 1 : -1))
+    else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && start.side) go(page + (start.side === "previous" ? -1 : 1))
+  }
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await rootRef.current?.requestFullscreen()
+      setFullscreenError(false)
+    } catch { setFullscreenError(true) }
+  }
+  if (!current) return <p role="status">표시할 동화가 없어요.</p>
+
+  return <div ref={rootRef} className={styles.reader} style={{ "--reading-size": `${fontSize}px` } as CSSProperties}>
+    <header className={styles.toolbar}>
+      <div className={styles.bookTitle}><span className={styles.eyebrow}>{isLib ? "우리의 전래동화" : "나만의 전래동화"}</span><h2 title={bookTitle}>{bookTitle}</h2></div>
+      <div className={styles.tools}>
+        <button type="button" aria-label="글자 작게" disabled={fontSize <= 20 || !!turn} onClick={() => setFontSize(v => v - 2)}>가−</button>
+        <button type="button" aria-label="글자 크게" disabled={fontSize >= 28 || !!turn} onClick={() => setFontSize(v => v + 2)}>가+</button>
+        <button type="button" aria-label={fullscreen ? "전체 화면 닫기" : "전체 화면으로 읽기"} onClick={toggleFullscreen}>
+          {fullscreen ? <Minimize size={19} /> : <Maximize size={19} />}
+        </button>
+      </div>
+    </header>
+    <div className={styles.stage} aria-label="동화책" aria-busy={!!turn}
+      onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { gesture.current = null }}
+      onLostPointerCapture={() => { gesture.current = null }}
+      onClick={event => {
+        // 보조기기의 가상 클릭은 pointer 이벤트가 없으므로 별도로 지원한다.
+        if (event.detail !== 0) return
+        const side = (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side
+        if (side) go(page + (side === "previous" ? -1 : 1))
+      }}
+      onKeyDown={event => {
+        if (event.key === "ArrowLeft") { event.preventDefault(); go(page - 1) }
+        if (event.key === "ArrowRight") { event.preventDefault(); go(page + 1) }
+        if (event.key === "Home") { event.preventDefault(); go(0) }
+        if (event.key === "End") { event.preventDefault(); go(total - 1) }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          go(page + ((event.target as HTMLElement).dataset.side === "previous" ? -1 : 1))
+        }
+      }}>
+      <div className={styles.spread}>
+        <section className={styles.leftPage} data-side="previous" role="button" tabIndex={0} aria-label="왼쪽 페이지 · 이전 장" aria-disabled={page === 0 || !!turn}>
+          <Illustration page={turn ? (turn.forward ? turn.from : turn.to) : current} />
+        </section>
+        <section className={styles.rightPage} data-side="next" role="button" tabIndex={0} aria-label="오른쪽 페이지 · 다음 장" aria-disabled={page === total - 1 || !!turn}>
+          <Words page={turn ? (turn.forward ? turn.to : turn.from) : current} areaRef={textAreaRef} />
+        </section>
+      </div>
+      {/* 책등을 축으로 종이 한 장의 앞면/뒷면을 회전시킨다. 복제면은 접근성 트리에서 제외한다. */}
+      {turn && <div aria-hidden="true" className={`${styles.leaf} ${turn.forward ? styles.forward : styles.backward}`}>
+        <div className={styles.front}>{turn.forward ? <Words page={turn.from} /> : <Illustration page={turn.from} />}</div>
+        <div className={styles.back}>{turn.forward ? <Illustration page={turn.to} /> : <Words page={turn.to} />}</div>
+      </div>}
+      {turn && <div aria-hidden="true" className={styles.mobileUnderlay}>
+        <div className={styles.spread}><Illustration page={turn.to} /><Words page={turn.to} /></div>
+      </div>}
+      {turn && <div aria-hidden="true" className={`${styles.mobileLeaf} ${turn.forward ? styles.mobileForward : styles.mobileBackward}`}>
+        <div className={styles.spread}><Illustration page={turn.from} /><Words page={turn.from} /></div>
+      </div>}
+    </div>
+    <p ref={measureRef} aria-hidden="true" className={`${styles.prose} ${styles.measure}`} />
+    <footer className={styles.footer}>
+      <div className={styles.progressTrack} aria-hidden="true"><span style={{ width: `${(page + 1) / total * 100}%` }} /></div>
+      <div className={styles.controls}>
+        <button type="button" onClick={() => go(page - 1)} disabled={page === 0 || !!turn}><ChevronLeft size={19} /> 이전 장</button>
+        <div className={styles.position} role="status" aria-live="polite"><strong>{page + 1}</strong> / {total} 펼침<span>장면 {current.sceneIndex + 1} / {pages.length}</span></div>
+        {page === total - 1 ? <button type="button" className={styles.finish} disabled={!!turn} onClick={onFinish}>다 읽었어요 <ChevronRight size={19} /></button>
+          : <button type="button" onClick={() => go(page + 1)} disabled={!!turn}>다음 장 <ChevronRight size={19} /></button>}
+      </div>
+      <div className={styles.hints}><button type="button" onClick={() => go(0)} disabled={page === 0 || !!turn}><RotateCcw size={13} /> 처음으로</button><span>왼쪽은 이전 · 오른쪽은 다음 · 옆으로 밀어 넘기기</span></div>
+      {fullscreenError && <p role="status">이 브라우저에서는 전체 화면을 열 수 없어요. 현재 화면에서도 읽을 수 있어요.</p>}
+    </footer>
+  </div>
 }

@@ -1,62 +1,55 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { StoryPage } from "@/lib/workpad-data"
 import { findReadingPosition, paginateStory } from "@/lib/story-pagination"
 
-export function useReadingPages(scenes: StoryPage[]) {
-  const bookRef = useRef<HTMLDivElement>(null)
-  const imageTextRef = useRef<HTMLParagraphElement>(null)
-  const plainTextRef = useRef<HTMLParagraphElement>(null)
-  const [layout, setLayout] = useState({ width: 0, height: 0, fonts: 0 })
+/** 실제 오른쪽 페이지의 남은 공간을 측정한다. 원문·장면별 이미지 URL은 바꾸지 않는다. */
+export function useReadingPages(scenes: StoryPage[], fontSize: number) {
+  const textAreaRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLParagraphElement>(null)
+  const initialPages = useMemo(() => paginateStory(scenes, text => text.length <= 180), [scenes])
   const [reading, setReading] = useState(() => ({
-    source: scenes, pages: paginateStory(scenes, (text) => text.length <= 180), index: 0,
+    source: scenes, pages: initialPages, index: 0,
   }))
 
   useLayoutEffect(() => {
     let active = true
+    let frame = 0
     const measure = () => {
-      if (!active || !bookRef.current) return
-      const width = Math.floor(bookRef.current.getBoundingClientRect().width)
-      const height = window.innerHeight
-      setLayout((old) => old.width === width && old.height === height ? old : { ...old, width, height })
+      const area = textAreaRef.current
+      const paragraph = measureRef.current
+      if (!active || !area || !paragraph) return
+      // 숨은 문단에도 본문과 같은 폰트/CSS를 적용한다. 글꼴 로딩·확대·회전 후 다시 나눈다.
+      paragraph.style.width = `${area.clientWidth}px`
+      const limit = Math.max(40, area.clientHeight - 2)
+      const pages = paginateStory(scenes, text => {
+        paragraph.textContent = text.trim()
+        return paragraph.getBoundingClientRect().height <= limit
+      })
+      setReading(old => ({ source: scenes, pages,
+        index: old.source === scenes ? findReadingPosition(pages, old.pages[old.index]) : 0 }))
     }
-    const fontsChanged = () => {
-      if (active) setLayout((old) => ({ ...old, fonts: old.fonts + 1 }))
-    }
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure) }
     measure()
-    const observer = new ResizeObserver(measure)
-    if (bookRef.current) observer.observe(bookRef.current)
-    window.addEventListener("resize", measure)
-    document.fonts?.ready.then(fontsChanged)
-    document.fonts?.addEventListener("loadingdone", fontsChanged)
+    const observer = new ResizeObserver(schedule)
+    if (textAreaRef.current) observer.observe(textAreaRef.current)
+    document.fonts?.ready.then(schedule)
+    document.fonts?.addEventListener("loadingdone", schedule)
+    window.addEventListener("resize", schedule)
     return () => {
       active = false
+      cancelAnimationFrame(frame)
       observer.disconnect()
-      window.removeEventListener("resize", measure)
-      document.fonts?.removeEventListener("loadingdone", fontsChanged)
+      document.fonts?.removeEventListener("loadingdone", schedule)
+      window.removeEventListener("resize", schedule)
     }
-  }, [])
+  }, [scenes, fontSize])
 
-  useLayoutEffect(() => {
-    // 실제 본문과 같은 폭·폰트의 보이지 않는 문단으로 줄바꿈 높이를 측정한다.
-    // 글자 수를 고정해 자르는 방식과 달리 모바일/큰 글꼴에서도 같은 기준을 적용한다.
-    const pages = paginateStory(scenes, (text, scene) => {
-      const target = scene.image ? imageTextRef.current : plainTextRef.current
-      if (!layout.width || !target) return text.length <= 180
-      target.textContent = text.trim()
-      const imageHeight = Math.min((layout.width - 8) * 10 / 16, layout.height * .32)
-      const available = scene.image ? layout.height - imageHeight - 320 : layout.height - 330
-      const heightLimit = Math.max(120, Math.min(scene.image ? 300 : 420, available))
-      const measured = target.getBoundingClientRect().height
-      return measured > 0 ? measured <= heightLimit : text.length <= 180
-    })
-    setReading((old) => ({ source: scenes, pages,
-      index: old.source === scenes ? findReadingPosition(pages, old.pages[old.index]) : 0 }))
-  }, [scenes, layout])
-
-  const setPage = (next: number | ((index: number) => number)) => setReading((old) => ({
-    ...old, index: Math.max(0, Math.min(old.pages.length - 1, typeof next === "function" ? next(old.index) : next)),
+  const setPage = (next: number) => setReading(old => ({
+    ...old, index: Math.max(0, Math.min(old.pages.length - 1, next)),
   }))
-  return { bookRef, imageTextRef, plainTextRef, layout, pages: reading.pages, page: reading.index, setPage }
+  // 빈 목록으로 마운트된 뒤 동화가 도착해도 우선 종이를 렌더해야 실제 높이를 잴 수 있다.
+  const visible = reading.source === scenes ? reading : { pages: initialPages, index: 0 }
+  return { textAreaRef, measureRef, pages: visible.pages, page: visible.index, setPage }
 }
