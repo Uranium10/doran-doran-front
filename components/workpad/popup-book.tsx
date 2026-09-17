@@ -9,6 +9,7 @@ import { useReadingPages } from "./use-reading-pages"
 import { useSessionView } from "@/lib/use-session-view"
 import { useBookImages } from "./use-book-images"
 import { bookCoverStyle } from "@/lib/book-appearance"
+import { bookGestureDirection, trackBookGesture, type BookGesture } from "@/lib/book-gesture"
 import styles from "./popup-book.module.css"
 
 function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
@@ -20,9 +21,23 @@ function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: 
 }
 
 function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLDivElement | null> }) {
+  const localArea = useRef<HTMLDivElement>(null)
+  const [scrollable, setScrollable] = useState(false)
+  useLayoutEffect(() => {
+    const area = localArea.current
+    if (!area) return
+    // 보통은 페이지 분할 덕분에 본문이 모두 들어간다. 실제로 넘칠 때만
+    // 세로 스크롤을 브라우저에 맡겨 확대 글꼴 등에서도 마지막 줄을 읽게 한다.
+    const measure = () => setScrollable(area.scrollHeight > area.clientHeight + 2)
+    const observer = new ResizeObserver(measure)
+    observer.observe(area)
+    if (area.firstElementChild) observer.observe(area.firstElementChild)
+    measure()
+    return () => observer.disconnect()
+  }, [page.text])
   return <div className={styles.words}>
     <div className={styles.runningHead}><span title={page.heading}>{page.heading}</span><span aria-hidden="true">✦</span></div>
-    <div ref={areaRef} className={styles.textArea}><p className={styles.prose}>{page.text.trim()}</p></div>
+    <div ref={element => { localArea.current = element; if (areaRef) areaRef.current = element }} className={styles.textArea} data-scrollable={scrollable || undefined}><p className={styles.prose}>{page.text.trim()}</p></div>
     <div className={styles.pageNote}>{page.sceneIndex + 1}장{page.partCount > 1 ? ` · ${page.part} / ${page.partCount}` : ""}</div>
   </div>
 }
@@ -57,7 +72,7 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const destination = useRef(0)
   const turnSequence = useRef(0)
-  const gesture = useRef<{ x: number; y: number; side?: string } | null>(null)
+  const gesture = useRef<BookGesture | null>(null)
   const anchor = useRef<BookSpread | undefined>(undefined)
   const source = useRef(pages)
   const toolsId = useId()
@@ -132,16 +147,25 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
     if (target !== null) go(target)
   }
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!event.isPrimary || event.button !== 0 || (event.target as HTMLElement).closest("button,a")) return
-    gesture.current = { x: event.clientX, y: event.clientY, side: (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side }
+    // 두 손가락 확대는 책 넘김이 아니다. 두 번째 손가락이 닿으면 첫 입력도 취소한다.
+    if (!event.isPrimary) { gesture.current = null; return }
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button,a,input,textarea,select")) return
+    gesture.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, maxTravel: 0, side: (event.target as HTMLElement).closest<HTMLElement>("[data-side]")?.dataset.side }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
+  const pointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = gesture.current
+    if (start?.pointerId === event.pointerId) gesture.current = trackBookGesture(start, event.clientX, event.clientY)
+  }
+  const pointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (gesture.current?.pointerId === event.pointerId) gesture.current = null
+  }
   const pointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    const start = gesture.current; gesture.current = null
-    if (!start) return
-    const dx = event.clientX - start.x, dy = event.clientY - start.y
-    if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.3) step(dx < 0 ? 1 : -1)
-    else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && start.side) step(start.side === "previous" ? -1 : 1)
+    const start = gesture.current
+    if (!start || start.pointerId !== event.pointerId) return
+    gesture.current = null
+    const direction = bookGestureDirection(start, event.clientX, event.clientY)
+    if (direction) step(direction)
   }
   const toggleFullscreen = async () => {
     try {
@@ -202,7 +226,7 @@ function PreparedBook({ pages, childName, title, coverImage, coverColor, onFinis
       <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span></header>
       <div className={styles.desk}>
         <div className={styles.stage} aria-label="동화책" aria-busy={!!activeTurn}
-          onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { gesture.current = null }} onLostPointerCapture={() => { gesture.current = null }}
+          onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel}
           onClick={event => {
             // 보조기기의 가상 클릭은 pointer 이벤트가 없으므로 별도로 받는다.
             if (event.detail !== 0 || (event.target as HTMLElement).closest("button,a")) return

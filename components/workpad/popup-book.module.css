@@ -29,7 +29,7 @@
 .coverGuide p { font-family:var(--font-story),Batang,serif; font-size:18px; line-height:1.9; margin:0; }
 .desk { flex:1; min-height:0; container-type:size; display:flex; align-items:center; justify-content:center; }
 /* 펼침의 가로:세로=1.42, 한 쪽은 0.71:1인 세로형 책. 창의 높이와 폭에 함께 맞춘다. */
-.stage { width:min(100cqw,calc(100cqh * 1.42)); aspect-ratio:1.42; position:relative; perspective:2200px; touch-action:pan-y; user-select:none; }
+.stage { width:min(100cqw,calc(100cqh * 1.42)); aspect-ratio:1.42; position:relative; perspective:2200px; touch-action:pinch-zoom; user-select:none; }
 .spread { display:grid; grid-template-columns:1fr 1fr; height:100%; }
 .paper { min-width:0; min-height:0; background:var(--paper); overflow:hidden; box-shadow:0 16px 30px -13px #50351670,0 3px #d2bfa1,0 6px #f4e8d5,0 8px #b19b7f; }
 .paper[role=button] { cursor:pointer; }
@@ -60,7 +60,11 @@
 .words { height:100%; display:flex; flex-direction:column; padding:30px 34px; gap:22px; }
 .runningHead { display:flex; justify-content:space-between; gap:15px; height:28px; flex-shrink:0; border-bottom:1px solid #dfd4c2; font-size:11px; color:#9a8061; }
 .runningHead span:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.textArea { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; }
+/* 스크롤 가능한 요소에서는 조상(stage)의 touch-action만으로 제스처를 제어할 수 없다.
+   본문에도 직접 적용해야 가로 스와이프가 pointercancel로 끊기지 않는다.
+   두 손가락 확대는 허용하고, 실제 넘치는 본문에서만 기본 세로 스크롤을 허용한다. */
+.textArea { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; touch-action:pinch-zoom; }
+.textArea[data-scrollable=true] { touch-action:pan-y pinch-zoom; }
 .prose { font-family:var(--font-story),Batang,"Noto Serif KR",serif; font-size:var(--reading-size); font-weight:400; line-height:1.85; letter-spacing:-.025em; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; margin:0; }
 .pageNote { flex-shrink:0; font-size:11px; color:#ac967a; text-align:center; }
 .blankPaper { height:100%; display:flex; align-items:center; justify-content:center; color:#d7c8af; }
@@ -91,8 +95,9 @@
 .mobileLeaf,.mobileUnderlay { display:none; }
 @media (max-width:1023px) and (min-width:768px) { .reader { gap:12px; padding:14px 16px 20px; } .words { padding:24px; gap:16px; } .prose { font-size:calc(var(--reading-size) - 1px); } }
 @media (max-width:767px) {
-  /* 모바일은 책을 먼저 가득 펼치고, 하단 한 줄 도구막대만 공간을 차지한다. */
-  .reader { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; gap:14px; padding:10px 10px calc(8px + env(safe-area-inset-bottom)); min-height:460px; }
+  /* 주소창·하단 브라우저 바가 나타나도 종이 높이/쪽수가 흔들리지 않도록
+     바가 보이는 작은 뷰포트 높이를 쓴다. 화면 회전과 전체 화면은 별도로 대응한다. */
+  .reader { height:calc(100svh - 64px); grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; gap:14px; padding:10px 10px calc(8px + env(safe-area-inset-bottom)); min-height:460px; }
   .bookArea { grid-row:1; gap:0; }
   .bookHeader,.coverGuide { display:none; }
   .desk { align-items:flex-start; }
