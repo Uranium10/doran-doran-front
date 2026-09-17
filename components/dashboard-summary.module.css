@@ -1,3 +1,69 @@
-.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:32px}.card{min-width:0;min-height:405px;border:1px solid #e6d9c5;border-radius:30px;padding:25px 20px 23px;display:flex;flex-direction:column;align-items:center;text-align:center;background:#fffbf3;box-shadow:0 4px 8px #382a1c05}.eyebrow{font-size:11px;color:#947c5d;letter-spacing:.04em}.progress{background:#fbfcf4}.tier{width:190px;height:190px;position:relative;margin-top:15px;flex-shrink:0}.ring{position:absolute;inset:0;width:100%;height:100%}.tierInside{position:absolute;inset:17px;border-radius:50%;background:#eff1e5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:inset 0 2px 4px #4f6c3910}.tierArt{width:87px;height:59px}.tierInside strong{font:20px var(--font-heading);color:#385b47}.tierInside span{font:23px var(--font-heading);color:#578b70}.next{font-size:10px;color:#8d9278;margin:12px 0 15px}.latest{font-size:11px;color:#8e806b;text-decoration:underline;text-underline-offset:4px;min-height:36px;display:flex;align-items:center;margin-top:auto}.adventure{background:#f8eee0}.title{font:23px var(--font-heading);margin-top:9px;color:#69482e}.miniBook{width:111px;margin:19px 0 16px;flex-shrink:0}.miniBook>div{min-height:143px}.miniBook [class*=coverTitle]{font-size:12px;-webkit-line-clamp:2;margin:6px 0}.miniBook [class*=series],.miniBook [class*=coverFoot]{font-size:7px}.miniBook [class*=coverArt]{min-height:40px}.bookTitle{font:16px/1.5 var(--font-heading);word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:48px;max-width:100%}.continue{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:auto;color:#825735;font-size:13px}.noAdventure{height:182px;position:relative;display:flex;align-items:center;justify-content:center;color:#b6956b}.noAdventure svg:last-child{position:absolute;top:36px;right:-20px}.stickerCard{background:#eef1ec;transition:border-color .2s}.stickerCard:hover{border-color:#88a994}.album{position:relative;isolation:isolate;width:158px;height:216px;flex-shrink:0;margin:20px 0 13px;padding:18px 12px 14px 22px;border-radius:5px 15px 15px 5px;background:repeating-linear-gradient(0deg,#ffffff08 0 1px,transparent 1px 4px),#5d8675;color:#fff4ce;box-shadow:inset 8px 0 #345d50,5px 7px #dbd2b7,7px 10px #426454,10px 15px 17px #3b514d22;transform:rotate(-5deg)}.album::before{content:"";position:absolute;top:14px;bottom:14px;left:6px;width:4px;background:radial-gradient(circle,#edddb2 2px,transparent 2.5px) center/4px 20px}.albumSmall{font-size:8px;letter-spacing:.1em}.album h2{font:27px/1.25 var(--font-heading);text-align:left;margin:9px 0 0 3px}.tiger{position:absolute;width:75px;height:88px;object-fit:contain;right:12px;bottom:25px;transform:rotate(10deg);filter:drop-shadow(1px 2px 0 #fff)}.sun{position:absolute;width:46px;height:46px;object-fit:contain;left:18px;bottom:39px;transform:rotate(-15deg);filter:drop-shadow(1px 2px 0 #fff)}.albumFoot{position:absolute;bottom:10px;left:19px;font-size:8px}.stickerNote{font-size:12px;line-height:1.7;color:#657568}.openAlbum{display:flex;align-items:center;gap:8px;font-size:13px;color:#446a58;min-height:40px;margin-top:auto}
-@media(max-width:760px){.cards{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 14px;margin-right:-4px;scrollbar-width:thin}.card{flex:0 0 min(82vw,300px);scroll-snap-align:start;min-height:405px}.cards::after{content:"";flex:0 0 1px}.tier{width:185px;height:185px}}
-@media(prefers-reduced-motion:reduce){.stickerCard{transition:none}}
+/* 인쇄물처럼 색을 제한한다. 서로 다른 카드의 중심 그림과 행동 버튼이 먼저 읽히게 한다. */
+.welcome{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 25px;padding:0 3px}
+.welcome p{font-size:12px;font-weight:600;color:#89705a;margin-bottom:7px;letter-spacing:.04em}
+.welcome h1{font:32px/1.2 var(--font-heading);color:#45362c;letter-spacing:-.025em}
+.welcomeNote{display:flex;align-items:center;gap:6px;font-size:12px;color:#94743e;padding-bottom:4px}
+.welcomeNote svg{color:#d99737}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:23px;margin-bottom:38px;padding-right:7px}
+.card{position:relative;min-width:0;height:442px;border-radius:28px;padding:25px 22px 19px;display:flex;flex-direction:column;align-items:center;text-align:center;isolation:isolate}
+.eyebrow{font-size:11px;font-weight:500;color:#6f7253;letter-spacing:.03em}
+.title{font:25px/1.2 var(--font-heading);margin-top:7px;color:#375c48;letter-spacing:-.03em}
+.progress{background:#f7f1cf;border:1px solid #e8dfb7;box-shadow:0 4px 0 #e9dfb8,0 9px 18px #75583406}
+.badgeStage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:221px;flex-shrink:0}
+.tier{width:188px;height:188px;position:relative;flex-shrink:0;border-radius:50%;background:#fffcf1;box-shadow:0 3px 0 #d9d5b4,0 7px 12px #82744010}
+.ring{position:absolute;inset:0;width:100%;height:100%}
+.tierInside{position:absolute;inset:19px;border-radius:50%;background:#f5f6e7;border:1px dashed #d4dcbf;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.tierArt{width:84px;height:56px;margin-top:-4px}
+.tierInside strong{font:19px/1.3 var(--font-heading);color:#345d45}
+.tierInside span{font:33px/1.15 var(--font-heading);color:#347554;font-variant-numeric:tabular-nums}
+.tierInside small{font-size:17px;margin-left:2px}
+.littleStar{position:absolute;right:0;top:35px;font-size:26px;color:#dd9c35;transform:rotate(15deg)}
+.littleDot{position:absolute;left:0;bottom:47px;width:9px;height:9px;border-radius:50%;background:#dc8d68}
+.growthTag{position:absolute;bottom:4px;left:50%;transform:translateX(-50%) rotate(-3deg);white-space:nowrap;border:1px solid #cf774d;background:#e79766;color:#492d1e;box-shadow:0 2px 0 #c9855b;font:13px/1 var(--font-heading);padding:8px 14px;border-radius:5px}
+.next{font-size:11px;color:#6b7154;margin:10px 0 16px}
+.next strong{color:#425b3e;font-weight:600}
+.measureWrap{position:relative;width:100%;margin-top:auto}
+.measureButton{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;width:100%;padding:10px 13px;border:1.5px solid #578461;border-radius:14px;background:#fffcf0;color:#31573b;font:16px/1.2 var(--font-heading);box-shadow:0 3px 0 #c1c9a3;transition:transform .18s,background .18s,box-shadow .18s}
+.measureButton:hover{background:#f1f6df;transform:translateY(-2px);box-shadow:0 5px 0 #c1c9a3}
+.measureButton:active{transform:translateY(2px);box-shadow:0 1px 0 #c1c9a3}
+.measureButton[aria-disabled=true]{color:#637052;border-color:#a4ad86;background:#ebeacd;cursor:help;box-shadow:0 3px 0 #c8ccaa}
+.measureTip{position:absolute;z-index:10;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:195px;padding:11px;border-radius:12px;background:#345840;color:#fffbed;font-size:12px;line-height:1.6;box-shadow:0 5px 15px #284b3926;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s}
+.measureWrap:hover .measureTip,.measureWrap:focus-within .measureTip{opacity:1;visibility:visible}
+.latest{display:flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding-top:7px;font-size:11px;color:#616949;text-decoration:underline;text-underline-offset:4px}
+.adventure{background:#e7eef3;border:1px solid #cddde5;box-shadow:0 4px 0 #cbdce5,0 9px 18px #36536c06}
+.adventure .eyebrow{color:#576e7c}.adventure .title{color:#31546c}
+.bookStage{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;width:100%;height:197px;margin-top:12px;flex-shrink:0}
+.bookStage::before{content:"";position:absolute;z-index:-1;width:205px;height:180px;bottom:0;border-radius:110px 110px 38px 38px;background:#d3e1e9;border:1px solid #c3d7e1}
+.bookStage::after{content:"";position:absolute;bottom:1px;left:12%;right:12%;height:17px;border-radius:50%;background:#91b1bd33;z-index:-1}
+.miniBook{position:relative;width:117px;display:block;transform:rotate(-8deg);margin:8px 0 0;filter:drop-shadow(5px 8px 5px #234f5c16);transition:transform .22s}
+.miniBook:hover{transform:rotate(-3deg) translateY(-4px)}
+.miniBook>div{min-height:157px}.miniBook [class*=coverTitle]{font-size:13px;-webkit-line-clamp:2;margin:8px 0}.miniBook [class*=series],.miniBook [class*=coverFoot]{font-size:7px}.miniBook [class*=coverArt]{min-height:40px}.miniBook [class*=statusBadge]{display:none}
+.sunshine{position:absolute;top:3px;right:18px;color:#dba34a;font-size:39px;transform:rotate(15deg)}
+.cloud{position:absolute;left:10px;top:52px;width:42px;height:17px;background:#fffaf0;border-radius:30px;transform:rotate(-8deg)}
+.cloud::before{content:"";position:absolute;left:8px;bottom:5px;width:23px;height:22px;background:inherit;border-radius:50%}
+.bookmark{position:absolute;width:20px;height:39px;top:30px;right:calc(50% - 48px);background:#df7c56;clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%);transform:rotate(-8deg);pointer-events:none}
+.noAdventure{position:relative;color:#588095;transform:rotate(-7deg)}.noAdventure svg:last-child{position:absolute;right:-12px;top:-16px;color:#c9943e}
+.bookTitle{flex-shrink:0;font:17px/1.4 var(--font-heading);color:#304f64;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;height:48px;max-width:100%;margin-top:9px;align-content:center}
+.storyNote{font-size:10px;color:#566e7d;margin:2px 0 14px;word-break:keep-all}
+.continue{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:47px;margin-top:auto;border:1px solid #b65336;border-radius:15px;padding:7px 10px 7px 18px;background:#d76542;color:#fffaf0;font:18px var(--font-heading);box-shadow:0 4px 0 #aa4931;transition:transform .18s,box-shadow .18s,background .18s}
+.continue span{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:#b74e33;color:white}
+.continue:hover{background:#c95a38;color:#fff;transform:translateY(-2px);box-shadow:0 6px 0 #aa4931}.continue:active{transform:translateY(3px);box-shadow:0 1px 0 #aa4931}
+/* 카드 전체를 누를 수 있는 갈색 양장본. 속지와 책등은 배치 크기를 바꾸지 않는 장식이다. */
+.stickerCard{color:#fff0cb;background:repeating-linear-gradient(0deg,#ffffff04 0 1px,transparent 1px 4px),#965b3f;border:1px solid #75422d;border-radius:9px 25px 25px 9px;padding:24px 23px 18px 37px;box-shadow:inset 3px 0 #b47d51,inset -3px 0 #77432c,5px 3px 0 #f3e5c5,8px 5px 0 #c8b899,9px 8px 0 #75422d,10px 13px 19px #51371f20;transition:transform .23s,box-shadow .23s}
+.stickerCard::before{content:"";position:absolute;inset:11px 12px 12px 29px;border:1px solid #e3b47b66;border-radius:4px 16px 16px 4px;z-index:-1;pointer-events:none}
+.bookSpine{position:absolute;left:0;top:0;bottom:0;width:20px;border-radius:8px 0 0 8px;background:repeating-linear-gradient(0deg,#ffffff06 0 1px,transparent 1px 3px),#6f442f;border-right:1px solid #4d2d2270;box-shadow:3px 0 3px #67382340}
+.bookSpine::after{content:"";position:absolute;top:18px;bottom:18px;left:8px;width:2px;background:repeating-linear-gradient(#dbb68499 0 4px,transparent 4px 9px)}
+.albumSmall{font-size:10px;font-weight:500;letter-spacing:.12em;color:#f2d5ab}
+.albumTitle{font:30px/1.2 var(--font-heading);color:#fff0c8;letter-spacing:-.025em;margin:10px 0 17px;text-shadow:0 2px #694026}
+.albumPicture{position:relative;width:100%;max-width:197px;aspect-ratio:1;flex-shrink:0;padding:5px;background:#f9ecca;border-radius:6px;transform:rotate(-4deg);box-shadow:2px 4px 0 #68382150}
+.albumPicture img{width:100%;height:100%;object-fit:cover;border-radius:3px}
+.seal{position:absolute;right:-16px;bottom:-8px;width:57px;height:57px;border-radius:50%;border:3px double #eed5a1;background:#e2ad50;color:#664423;display:flex;flex-direction:column;align-items:center;justify-content:center;font:11px/1.2 var(--font-heading);transform:rotate(13deg);box-shadow:0 2px 2px #5d371b2b}
+.seal svg{width:12px;height:12px;margin-bottom:1px}
+.stickerNote{font:14px/1.45 var(--font-heading);color:#f3ddbc;margin:17px 0 12px}
+.openAlbum{display:flex;align-items:center;justify-content:center;gap:13px;width:100%;min-height:44px;border-radius:13px;border:1px solid #ffe7b7;background:#f7e5b7;color:#70472f;font:18px var(--font-heading);box-shadow:0 3px 0 #69402c;margin-top:auto;transition:background .18s}
+.albumFoot{font-size:8px;color:#efcda4;letter-spacing:.1em;margin-top:11px}
+.stickerCard:hover{color:#fff0cb;transform:translateY(-4px) rotate(1deg);box-shadow:inset 3px 0 #b47d51,inset -3px 0 #77432c,5px 3px 0 #f3e5c5,8px 5px 0 #c8b899,9px 8px 0 #75422d,10px 18px 24px #51371f25}.stickerCard:hover .openAlbum{background:#fff2d0}.stickerCard:active{transform:translateY(1px)}
+.cards a:focus-visible,.cards button:focus-visible{outline:3px solid #245a9b;outline-offset:5px}
+@media(max-width:1000px) and (min-width:761px){.cards{gap:16px}.card{padding-left:16px;padding-right:16px}.stickerCard{padding-left:30px}.title{font-size:22px}.albumTitle{font-size:27px}.albumPicture{max-width:185px}}
+@media(max-width:760px){.welcome{margin-bottom:20px;align-items:center}.welcome h1{font-size:27px}.welcome p{font-size:11px}.welcomeNote{display:none}.cards{display:flex;gap:17px;overflow-x:auto;scroll-snap-type:x proximity;padding:3px 12px 20px 2px;margin-right:-6px;margin-bottom:24px;scrollbar-width:thin;scrollbar-color:#c7b99b transparent}.card{flex:0 0 min(80vw,300px);scroll-snap-align:start;height:435px}.cards::after{content:"";flex:0 0 1px}.albumPicture{max-width:185px}.stickerCard{margin-right:6px}.tier{width:182px;height:182px}.badgeStage{height:215px}}
+@media(prefers-reduced-motion:reduce){.cards *{transition:none!important}.stickerCard:hover,.miniBook:hover{transform:none}}

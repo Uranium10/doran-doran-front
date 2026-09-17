@@ -405,3 +405,12 @@
 - Python 스티커9/생성14/인증25/책장8/내장워커8, 프론트 타입·production build·Playwright 데스크톱/모바일/재도전/실패 상태 검증.
 - API 규격과 docs/STICKER_BOOK_IMPLEMENTATION.md 정리. 과거 보상 자동 소급·꾸미기 편집기·Storage 고아 객체 자동 정리는 미구현.
 - 신규 필수 환경변수 없음. STICKERS_ENABLED=false는 선택적 소비기 중지. DB→백엔드→프론트 배포 순서.
+
+
+[2026-09-18] 대시보드·스티커북 비주얼 개선
+- 사용자 요청: 단조로운 카드 색감·버튼 개선, 스티커북 바로가기 전체를 갈색 책 표지로 변경.
+- 버터색 성장 배지 / 하늘색 이어 읽기 / 갈색 양장 앨범. 살구색 입체 버튼, 호버·포커스·모션 감소 대응.
+- 내장 image_gen 전용 삽화 제작 후 WebP 600px, 91,230 bytes로 최적화. 고도화 폴더에 원본, docs/DASHBOARD_VISUAL_REFRESH.md에 생성 프롬프트 보존.
+- 스티커 모음은 제본 속지·종이테이프·인사말 메모지로 구성. 빈 앨범에 책장 이동 버튼. 기존 보상/재도전/API/DB 유지.
+- 검증: TypeScript/production build, Playwright 이동·보상 표시·재도전·오류/빈 상태. 320~1440px 5개 폭의 카드/문서 넘침, 긴 제목, 툴팁 크기, 키보드 포커스, reduced-motion 확인.
+- 프론트만 main push. 백엔드·환경변수·통신규격 변경 없음. 기존 next-env.d.ts 변경은 커밋에서 제외.

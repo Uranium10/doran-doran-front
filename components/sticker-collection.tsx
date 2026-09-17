@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Sparkles, Star } from "lucide-react"
+import { Sparkles, Star, ArrowRight } from "lucide-react"
 import { fetchStickers, type Sticker, type StickerBook } from "@/lib/stickers"
 import styles from "./sticker-book.module.css"
 
@@ -57,8 +57,8 @@ export function StickerCollection({ profileId, storyId }: { profileId: string; s
     {storyId && <div className={styles.rewardHeading}><h2>이야기 속 친구의 선물</h2><Link href="/stickers">스티커북 보기 →</Link></div>}
     {state.error && <p role="alert">{state.error} <button onClick={() => setRetry(v => v + 1)} className="min-h-11 underline">다시 불러오기</button></p>}
     {!state.data && !state.error && <p role="status" className="py-8 text-center">스티커북을 펼치고 있어요…</p>}
-    {state.data?.total === 0 && <div className={styles.empty}><Sparkles size={40} strokeWidth={1}/><h3>첫 번째 이야기 친구를 기다려요</h3><p>동화 문제를 5개 이상 맞히면 친구 스티커를,<br/>전부 맞히면 별빛 스티커도 받아요.</p><small>다시 풀어서 도전해도 괜찮아요.</small></div>}
-    {!!state.data?.total && <><p className={styles.count}>소중히 모은 선물 {state.data.total}장</p><div className={styles.grid}>{state.data.stickers.map(sticker => <StickerCard key={sticker.id} sticker={sticker}/>)}</div><button className={styles.refresh} onClick={() => setRetry(v => v + 1)}>스티커 소식 새로고침</button></>}
+    {state.data?.total === 0 && <div className={styles.empty}><img className={styles.emptyPicture} src="/images/stickers/reading-friends.webp" alt="이야기책을 함께 읽는 호랑이, 토끼, 도깨비" width="190" height="190"/><h3>첫 번째 이야기 친구를 기다려요</h3><p>동화 문제를 5개 이상 맞히면 친구 스티커를,<br/>전부 맞히면 별빛 스티커도 받아요.</p><small>다시 풀어서 도전해도 괜찮아요.</small><Link className={styles.emptyLink} href="/library">이야기 만나러 가기 <ArrowRight size={17}/></Link></div>}
+    {!!state.data?.total && <><p className={styles.count}><Star size={17} fill="currentColor" aria-hidden="true"/>소중히 모은 선물 {state.data.total}장</p><div className={styles.grid}>{state.data.stickers.map(sticker => <StickerCard key={sticker.id} sticker={sticker}/>)}</div><button className={styles.refresh} onClick={() => setRetry(v => v + 1)}>스티커 소식 새로고침</button></>}
     {state.data?.next_offset != null && <button className={styles.more} disabled={busy} onClick={more}>{busy ? "펼치는 중…" : "스티커 더 보기"}</button>}
   </section>
 }
