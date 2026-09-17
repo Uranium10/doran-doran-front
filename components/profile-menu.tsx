@@ -124,6 +124,7 @@ export function ProfileMenu({ className }: { className?: string }) {
           role="menu"
           className="absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150"
         >
+          <button type="button" role="menuitem" className="w-full px-4 py-3 text-left text-sm hover:bg-secondary" onClick={() => { setMenuOpen(false); router.push("/parent") }}>부모님 관리 화면</button>
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
               {currentProfile.avatar_url && !imgError ? (

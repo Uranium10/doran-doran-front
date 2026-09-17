@@ -162,3 +162,7 @@
 .ending .vocabButton { border:1px solid #b88865; background:#f5e8d4; color:#75482d; font-size:13px; padding:11px 20px; }
 .ending .vocabButton:hover:not(:disabled) { background:#e7d4b8; color:#58311b; }
 @media (max-width:767px) { .ending { gap:9px; } .ending .readAgain { padding:8px 14px; } }
+
+/* 보조 정보 링크는 종료/문제 버튼보다 작은 위계로 둔다. */
+.ending .vocabLink { background:transparent; color:#756e65; border:0; box-shadow:none; font:inherit; font-size:12px; padding:8px 4px; text-decoration:underline; text-underline-offset:4px; }
+.ending .vocabLink:hover:not(:disabled),.ending .vocabLink:focus-visible { background:transparent; color:#433d35; }

@@ -3,7 +3,7 @@ import type { BookBookmark } from "./book-layout"
 import type { AssessmentQuestion } from "./workpad-data"
 import type { LiteracyResult } from "./levels"
 
-export type ReadingProgress = { bookmark: BookBookmark; completed_at: string | null; updated_at: string }
+export type ReadingProgress = { bookmark: BookBookmark; completed_at: string | null; quiz_completed?: boolean; updated_at: string }
 export type BookSummary = {
   story_id: string; title: string; theme?: string; created_at?: string
   cover_color?: string | null; cover_image?: string | null; reading_progress?: ReadingProgress | null
@@ -26,5 +26,5 @@ export const fetchQuizResult = (profileId: string, resultId: string) => request<
   `/quiz-results/${encodeURIComponent(resultId)}?profile_id=${encodeURIComponent(profileId)}`)
 
 /** 외부 URL을 복귀 주소로 사용하지 않는다. 직접 링크 진입은 내 책장으로 돌아간다. */
-export const returnPath = (from?: string) => from === "library" ? "/library" : "/dashboard"
+export const returnPath = (from?: string) => from === "parent" ? "/parent" : from === "library" ? "/library" : "/dashboard"
 export const bookPath = (id: string, from: "library" | "dashboard") => `/books/${encodeURIComponent(id)}?from=${from}`

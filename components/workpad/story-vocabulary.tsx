@@ -7,11 +7,12 @@ import { vocabAnalysis } from "@/lib/vocab-analysis"
 import styles from "./story-vocabulary.module.css"
 
 /** 책 마지막 화면에서만 가벼운 분석 API를 조회한다. 책 전체/삽화는 다시 받지 않는다. */
-export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, open, onClose }: {
+export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, open, onClose, onReady }: {
   profileId: string; storyId: string; initialAnalysis?: unknown
-  active: boolean; open: boolean; onClose: () => void
+  active: boolean; open: boolean; onClose: () => void; onReady?: (ready: boolean) => void
 }) {
   const [analysis, setAnalysis] = useState(() => vocabAnalysis(initialAnalysis))
+  useEffect(() => { onReady?.(Boolean(analysis)) }, [analysis, onReady])
   const [error, setError] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [retry, setRetry] = useState(0)

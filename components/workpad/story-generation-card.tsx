@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpen, Sparkles } from "lucide-react"
+import { PaperTheatre } from "./paper-theatre"
 import { useGeneration } from "@/lib/generation-context"
 import { useProfile } from "@/lib/profile-context"
 import { generationMessage } from "@/lib/generation-messages"
@@ -12,10 +12,8 @@ export function StoryGenerationCard() {
   const name = profiles.find(p => p.id === job?.profile_id)?.name ?? "우리 아이"
   const done = job?.status === "completed" && Boolean(job.result)
   const failed = job?.status === "failed" || (!job && Boolean(error))
-  return <div className="mt-10 overflow-hidden rounded-3xl border border-primary/30 bg-card p-8 text-center shadow-md" aria-busy={!done && !failed}>
-    <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-      {done ? <BookOpen className="h-9 w-9 text-primary" /> : <Sparkles className={`h-9 w-9 text-primary ${failed ? "" : "motion-safe:animate-pulse"}`} />}
-    </span>
+  return <div className="mt-10 overflow-hidden rounded-3xl border border-primary/30 bg-card p-5 sm:p-8 text-center shadow-md" aria-busy={!done && !failed}>
+    <PaperTheatre stopped={done || failed}/>
     <h2 className="mt-5 font-heading text-2xl text-foreground">{done ? "따끈한 동화가 완성되었어요!" : failed ? "이야기를 잠시 쉬어 가고 있어요" : `${name}님의 동화를 짓고 있어요`}</h2>
     <p role="status" aria-live="polite" className="mt-4 font-heading text-lg text-primary">
       {done ? "책장에 새 이야기가 도착했어요. 함께 펼쳐 볼까요?" : failed ? (error ?? "이번 동화를 완성하지 못했어요. 다시 시작해 주세요.") : generationMessage(job?.stage ?? "queued")}

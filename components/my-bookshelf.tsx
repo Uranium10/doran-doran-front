@@ -35,9 +35,12 @@ export function MyBookshelf({ onCreate }: { onCreate: () => void }) {
       <div className="min-w-44 flex-1">
         <p className="text-xs text-muted-foreground">{profile.name}님의 읽기 여정</p>
         <div className="mt-1 flex items-baseline justify-between gap-3"><h1 className="font-heading text-xl">{progress?.currentLabel ?? "첫 이야기를 준비해요"}</h1><span className="text-xs text-muted-foreground">{progress?.nextLabel ?? (progress ? "최고 단계" : "측정 전")}</span></div>
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="다음 읽기 단계까지 진척도" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress?.achievement ?? 0}><div className="h-full rounded-full bg-accent" style={{width:`${progress?.achievement ?? 0}%`}}/></div>
+        <p className="mt-2 text-right text-sm text-muted-foreground">단계 진척도 <strong className="ml-2 text-2xl font-semibold tabular-nums text-accent">{progress ? `${progress.achievement}%` : "—"}</strong></p><div className="mt-2 h-2.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="다음 읽기 단계까지 진척도" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress?.achievement ?? 0}><div className="h-full rounded-full bg-accent" style={{width:`${progress?.achievement ?? 0}%`}}/></div>
       </div>
-      {data?.measured_today ? <span className="rounded-full bg-secondary px-4 py-3 text-xs text-muted-foreground">오늘 측정 완료</span> : <Link href="/literacy" className="rounded-full border border-border px-4 py-3 text-sm hover:bg-secondary">{progress ? "다시 측정" : "단계 알아보기"}<span className="ml-2 text-xs text-muted-foreground">하루 1회</span></Link>}
+      {/* 안내는 절대 위치로 겹쳐 그려 마우스를 올려도 버튼/카드 크기가 변하지 않는다. */}
+      <div className={styles.measureWrap}>
+        {data?.measured_today ? <><button type="button" aria-disabled="true" aria-describedby="daily-measure-tip" className={styles.measureButton}>다시 측정</button><span role="tooltip" id="daily-measure-tip" className={styles.measureTip}>문해력 재측정은<br/>하루 한 번 할 수 있어요</span></> : <Link href="/literacy" className={styles.measureButton}>{progress ? "다시 측정" : "단계 알아보기"}</Link>}
+      </div>
     </section>
     {data?.resume && <Link href={bookPath(data.resume.story_id,"dashboard")} className="mb-8 flex items-center gap-5 rounded-3xl bg-[#e8efea] px-5 py-4 text-[#315447] transition-colors hover:bg-[#dce8df]">
       <BookOpen size={30} strokeWidth={1.5}/><span className="min-w-0 flex-1"><span className="text-xs">아직 끝나지 않은 모험</span><strong className="mt-1 block truncate font-heading text-xl">{data.resume.title}</strong></span><span className="flex items-center gap-1 text-sm">이어 읽기 <ArrowRight size={18}/></span>

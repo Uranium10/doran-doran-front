@@ -25,7 +25,7 @@ export function ResultPage({resultId,from}:{resultId:string;from:string}) {
   },[currentProfile?.id,resultId,key,retry])
   if(!currentProfile)return <ProfileRecovery/>
   const result=state.key===key?state.result:undefined
-  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink href={returnPath(from)} label={from==='library'?'전체 책장으로 돌아가기':'내 책장으로 돌아가기'} className="mb-6"/>
-    {state.error?<p role="alert">{state.error} <button onClick={()=>setRetry(v=>v+1)} className="underline">다시 시도</button></p>:result?<LiteracyResultView result={result} childName={currentProfile.name} showScore={result.assessment_type!=='checklist'} primaryLabel={from==='library'?'전체 책장으로 돌아가기':'내 책장으로 돌아가기'} onPrimary={()=>router.push(returnPath(from))}/>:<p role="status" className="py-16 text-center">답안지를 펼치고 있어요…</p>}
+  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink href={returnPath(from)} label={from==='parent'?'부모님 책방으로 돌아가기':from==='library'?'전체 책장으로 돌아가기':'내 책장으로 돌아가기'} className="mb-6"/>
+    {state.error?<p role="alert">{state.error} <button onClick={()=>setRetry(v=>v+1)} className="underline">다시 시도</button></p>:result?<LiteracyResultView result={result} childName={currentProfile.name} showScore={result.assessment_type!=='checklist'} primaryLabel={from==='parent'?'부모님 책방으로 돌아가기':from==='library'?'전체 책장으로 돌아가기':'내 책장으로 돌아가기'} onPrimary={()=>router.push(returnPath(from))}/>:<p role="status" className="py-16 text-center">답안지를 펼치고 있어요…</p>}
   </main></div>
 }

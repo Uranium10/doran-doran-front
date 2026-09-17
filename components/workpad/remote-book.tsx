@@ -43,7 +43,9 @@ export function RemoteBook(props: ComponentProps<typeof PopupBook> & { storyId: 
     void (writes.get(key)??Promise.resolve()).catch(()=>{}).then(()=>fetchReading(props.profileId,props.storyId)).then(({progress})=>{
       if(!alive)return
       const saved=local()
-      const bookmark=saved?.pending ? saved.bookmark : progress?.bookmark ?? saved?.bookmark
+      let bookmark=saved?.pending ? saved.bookmark : progress?.bookmark ?? saved?.bookmark
+      // 마지막 장에 머문 완독+풀이 완료 책만 새로 펼친다. 다시 읽던 중간 위치는 보존한다.
+      if (bookmark?.kind === "ending" && progress?.completed_at && (progress.quiz_completed || !props.hasQuiz)) bookmark={kind:"cover"}
       setLoaded({key,bookmark})
       if(saved?.pending) void persist(saved.bookmark).catch(()=>{})
     }).catch(()=>{
@@ -54,7 +56,7 @@ export function RemoteBook(props: ComponentProps<typeof PopupBook> & { storyId: 
     const retry=()=>{const saved=local();if(saved?.pending)void persist(saved.bookmark).catch(()=>{})}
     window.addEventListener('pagehide',flush);document.addEventListener('visibilitychange',visibility);window.addEventListener('online',retry)
     return ()=>{alive=false;active.current=false;flush();window.removeEventListener('pagehide',flush);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('online',retry)}
-  },[key,props.profileId,props.storyId,persist])
+  },[key,props.profileId,props.storyId,props.hasQuiz,persist])
   const change = (bookmark: BookBookmark) => {
     try {sessionStorage.setItem(key,JSON.stringify({bookmark,pending:true}))} catch {}
     pending.current=bookmark

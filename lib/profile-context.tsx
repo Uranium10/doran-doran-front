@@ -41,6 +41,9 @@ export type EditProfileInput = {
 }
 
 type ProfileContextValue = {
+  /** UI 상태 초기화용 계정 키. API 권한은 서버 JWT로 검사한다. */
+  accountId: string | null
+
   profiles: Profile[]
   currentProfile: Profile | null
   /** 프로필 목록을 처음 불러오는 중인지 여부 */
@@ -173,6 +176,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const currentProfile =
       profiles.find((p) => p.id === state.selected) ?? null
     return {
+      accountId: state.owner ?? null,
       profiles,
       currentProfile,
       loading,
