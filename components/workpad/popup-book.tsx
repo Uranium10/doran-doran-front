@@ -6,11 +6,12 @@ import type { StoryPage } from "@/lib/workpad-data"
 import type { ReadingPage } from "@/lib/story-pagination"
 import { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage, type BookLeaf, type BookSpread } from "@/lib/book-layout"
 import { useReadingPages } from "./use-reading-pages"
+import { useBookImages } from "./use-book-images"
 import styles from "./popup-book.module.css"
 
-function Picture({ src, alt }: { src?: string | null; alt: string }) {
+function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null)
-  if (!src || src === failed) return <div className={styles.emptyArt}><BookOpen size={52} strokeWidth={1} aria-hidden="true" /><span>{src ? "그림은 잠시 쉬고 있어요" : "상상으로 펼치는 이야기"}</span></div>
+  if (!src || unavailable || src === failed) return <div className={styles.emptyArt}><BookOpen size={52} strokeWidth={1} aria-hidden="true" /><span>{src ? "그림은 잠시 쉬고 있어요" : "상상으로 펼치는 이야기"}</span></div>
   // 비율을 유지해 그림 전체를 담는다. 오류가 나도 본문/다음 장 이동은 계속 가능하다.
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={alt} draggable={false} onError={() => setFailed(src)} />
@@ -26,10 +27,25 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
 
 type Turn = { from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
-export function PopupBook({ pages, childName, title, coverImage, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false }: {
+type PopupBookProps = {
   pages: StoryPage[]; childName: string | null; title?: string | null; coverImage?: string | null
   onFinish: () => void; onExit: () => void; hasQuiz?: boolean; exitLabel?: string; isLib?: boolean
-}) {
+}
+
+/** 모든 진입 경로에서 표지와 전체 컷이 준비된 뒤 실제 책을 마운트한다. */
+export function PopupBook(props: PopupBookProps) {
+  const images = useBookImages(props.pages, props.coverImage)
+  if (!images.ready) return <div className={styles.preparing} aria-busy="true">
+    <BookOpen size={44} strokeWidth={1} aria-hidden="true" />
+    <h2>그림들을 책 속에 담고 있어요</h2>
+    <p role="status" aria-live="polite">{images.completed} / {images.total}개 그림 준비 중</p>
+    <progress aria-label="동화 이미지 준비" value={images.completed} max={images.total} />
+    <button type="button" onClick={props.onExit}>이전으로</button>
+  </div>
+  return <PreparedBook key={images.key} {...props} failedImages={images.failedUrls} />
+}
+
+function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages }: PopupBookProps & { failedImages: string[] }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const locked = useRef(false)
@@ -111,8 +127,8 @@ export function PopupBook({ pages, childName, title, coverImage, onFinish, onExi
   }
   const leafContent = (leaf: BookLeaf) => {
     if (leaf.kind === "text") return <Words page={leaf.page} />
-    if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
-    if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
+    if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} unavailable={failedImages.includes(leaf.page.image ?? "")} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
+    if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
     if (leaf.kind === "back") return <div className={`${styles.cover} ${styles.backCover}`}><Sparkles size={32} strokeWidth={1} aria-hidden="true" /><p>이야기는 끝나도<br />상상은 계속돼요.</p><span>도란도란</span></div>
     if (leaf.kind === "ending") return <div className={styles.ending}><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={onFinish}>{hasQuiz ? "문제 풀러 가기" : "돌아가기"}<ChevronRight size={18} /></button><button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
     if (leaf.kind === "outside") return null

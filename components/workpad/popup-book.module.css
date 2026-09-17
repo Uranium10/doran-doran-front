@@ -1,4 +1,6 @@
-.reader { --paper:#fffaf0; --ink:#423429; display:grid; grid-template-columns:76px minmax(0,1fr); gap:24px; padding:18px 28px 24px; height:calc(100dvh - 64px); min-height:550px; width:100%; color:var(--ink); background:radial-gradient(ellipse at 55% 45%,#e9dbc7a0,transparent 70%); }
+/* 회전한 종이의 투영 영역이 문서 크기를 키워 스크롤바/재페이징을 유발하지 않게 한다.
+   짧은 화면의 정상적인 문서 스크롤과 본문 내부 스크롤은 그대로 유지한다. */
+.reader { --paper:#fffaf0; --ink:#423429; display:grid; grid-template-columns:76px minmax(0,1fr); gap:24px; padding:18px 28px 24px; height:calc(100dvh - 64px); min-height:550px; width:100%; overflow:clip; color:var(--ink); background:radial-gradient(ellipse at 55% 45%,#e9dbc7a0,transparent 70%); }
 .reader:fullscreen { height:100dvh; background:#f5eddf; }
 .reader button { cursor:pointer; }
 .reader button:disabled { opacity:.3; cursor:default; }
@@ -126,3 +128,11 @@
   @keyframes mobilePrevious { to { transform:rotateY(100deg); opacity:0; } }
 }
 @media (prefers-reduced-motion:reduce) { .leaf,.mobileLeaf,.mobileUnderlay { display:none; } }
+
+/* API 수신 후 전체 삽화 다운로드/디코딩이 끝날 때까지 공통 준비 화면을 표시한다. */
+.preparing { min-height:calc(100dvh - 64px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:32px; color:#76563e; background:radial-gradient(ellipse at center,#e9dbc750,transparent 70%); text-align:center; }
+.preparing h2 { font-family:var(--font-story),Batang,serif; font-size:24px; margin:0; }
+.preparing p { font-size:14px; margin:0; }
+.preparing progress { width:180px; height:6px; accent-color:#ac5737; }
+.preparing button { margin-top:8px; padding:12px 24px; border-radius:24px; background:#ac5737; color:#fffaf0; cursor:pointer; }
+.preparing button:hover { background:#8a3f24; }

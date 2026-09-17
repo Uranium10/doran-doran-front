@@ -288,3 +288,10 @@
 - popup-book.module.css: 어두운 hover/키보드 focus 배경에 따뜻한 흰색(#fffaf0) 글자를 적용. padding 12px 20px, 최소 높이44px로 클릭 여백 확대.
 - 기본 글자색도 더 진한 갈색으로 조정. 비활성 버튼은 hover 배경 변화를 적용하지 않음.
 - CSS 선택자 우선순위와 모바일 여백 적용 확인. API/백엔드/환경변수 변경 없음. 프론트 배포 후 반영.
+
+[2026-09-17] 전체 이미지 사전 로딩 및 책장 넘김 스크롤바 흔들림 수정
+- PopupBook/use-book-images/book-image-preload: 표지+모든 컷 중복 제거 병렬 다운로드/decode 후 책 표시. 진행 개수 표시, URL별15초 한도, 오류 컷 대체 표시, 화면 이탈 취소와 이미지 참조 유지.
+- popup-book.module.css: reader overflow:clip으로 3D 회전의 문서 넘침 차단. 정상적인 짧은 화면/본문 스크롤은 유지.
+- 검증: 사전 로딩/배치/페이징/생성 상태 테스트, TypeScript, production build 통과. 느린 이미지 준비/404 대체 표시 확인. 애니메이션 중 desktop19회/mobile20회 측정에서 스크롤 영역1440x900/390x844 고정.
+- docs/BOOK_READER.md에 흐름·실패 처리·검증 기록. 임시 검증 화면/API/이미지 제거. API/백엔드/DB/환경변수 변경, 유료 호출 없음.
+- 프론트 main push 후 프론트 배포 대상. 백엔드 Render 재배포 없음. 운영 배포 완료는 별도 확인 필요.
