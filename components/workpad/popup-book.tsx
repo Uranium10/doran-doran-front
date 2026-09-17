@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type RefObject } from "react"
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Maximize, Minimize, RotateCcw, Sparkles } from "lucide-react"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type RefObject } from "react"
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Maximize, Minimize, RotateCcw, Sparkles, SlidersHorizontal, Check } from "lucide-react"
 import type { StoryPage } from "@/lib/workpad-data"
 import type { ReadingPage } from "@/lib/story-pagination"
 import { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage, type BookLeaf, type BookSpread } from "@/lib/book-layout"
@@ -52,6 +52,8 @@ function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, h
   const gesture = useRef<{ x: number; y: number; side?: string } | null>(null)
   const anchor = useRef<BookSpread | undefined>(undefined)
   const source = useRef(pages)
+  const toolsId = useId()
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [fontSize, setFontSize] = useState(22)
   const [singlePage, setSinglePage] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -91,6 +93,7 @@ function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, h
 
   const go = (target: number) => {
     if (locked.current || target < 0 || target >= spreads.length || target === page) return
+    setToolsOpen(false)
     const finish = () => { anchor.current = spreads[target]; setIndex(target); setTurn(null); locked.current = false }
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return }
     // 넘김 도중 글꼴/화면 재측정이 발생해도 요청한 목적지로 이동한다.
@@ -151,23 +154,27 @@ function PreparedBook({ pages, childName, title, coverImage, onFinish, onExit, h
   return <div ref={rootRef} className={styles.reader} style={{ "--reading-size": `${fontSize}px` } as CSSProperties}>
     <aside className={styles.remote} aria-label="책 리모컨">
       <button type="button" className={styles.exit} onClick={onExit} aria-label={exitLabel} title={exitLabel}><ArrowLeft size={20} /><span>이전으로</span></button>
-      <div className={styles.remoteGroup}>
+      <div className={`${styles.remoteGroup} ${styles.pageControls}`}>
         <button type="button" aria-label="이전 장" disabled={atCover || !!activeTurn} onClick={() => go(page - 1)}><ChevronLeft size={23} /><span>이전 장</span></button>
         <form className={styles.position} onSubmit={event => { event.preventDefault(); jumpToInput() }}>
           <span className={styles.positionLabel} role="status" aria-live="polite">{atCover ? "앞표지" : atEnd ? "뒷표지" : "페이지"}</span>
           <div className={styles.pageEntry}><input aria-label="이동할 페이지 번호" title={`1~${contentCount} 입력 후 Enter 또는 이동`} type="text" inputMode="numeric" enterKeyHint="go" value={pageInput}
             disabled={!!activeTurn || contentCount < 1} onChange={event => setPageInput(event.target.value)} onFocus={event => event.currentTarget.select()}
             onKeyDown={event => { if (event.key === "Escape") { setPageInput(String(Math.max(1, Math.min(page, contentCount)))); event.currentTarget.blur() } }} /><span>/ {contentCount}</span></div>
-          <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={!!activeTurn || contentCount < 1}>이동</button>
+          <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={!!activeTurn || contentCount < 1}><span className={styles.jumpLabel}>이동</span><Check className={styles.jumpIcon} size={16} aria-hidden="true" /></button>
         </form>
         <button type="button" className={styles.next} aria-label={atCover ? "책 펼치기" : "다음 장"} disabled={atEnd || !!activeTurn} onClick={() => go(page + 1)}><ChevronRight size={23} /><span>{atCover ? "펼치기" : "다음 장"}</span></button>
       </div>
+      {/* 모바일은 자주 쓰는 넘김/번호만 남기고 보조 도구를 한 번에 펼친다. */}
+      <button type="button" className={styles.toolsToggle} aria-label="읽기 설정" title="읽기 설정" aria-expanded={toolsOpen} aria-controls={toolsId} onClick={() => setToolsOpen(open => !open)}><SlidersHorizontal size={20} /></button>
+      <div id={toolsId} className={styles.readerTools} data-open={toolsOpen} role="group" aria-label="읽기 설정 도구">
       <div className={styles.remoteGroup}>
         <button type="button" aria-label="글자 크게" disabled={fontSize >= 28 || !!activeTurn} onClick={() => setFontSize(v => v + 2)}>가+<span>크게</span></button>
         <button type="button" aria-label="글자 작게" disabled={fontSize <= 18 || !!activeTurn} onClick={() => setFontSize(v => v - 2)}>가−<span>작게</span></button>
       </div>
       <button type="button" aria-label="처음부터 다시 보기" disabled={atCover || !!activeTurn} onClick={() => go(0)}><RotateCcw size={18} /><span>처음</span></button>
       <button type="button" aria-label={fullscreen ? "전체 화면 닫기" : "전체 화면으로 읽기"} onClick={toggleFullscreen}>{fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}<span>전체 화면</span></button>
+      </div>
     </aside>
     <div className={styles.bookArea}>
       <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span></header>
