@@ -460,3 +460,8 @@
 - 사용자 승인으로 미배포 UI 변경과 최근원전 감점/LLM 재정렬 통신규격을 main에 반영. 부모님 드롭다운/탭/전용삽화, 생성카드 마운트 후1회 스크롤, 어휘분석 선정기준 설명.
 - 이번 UI 변경의 TypeScript·next build --webpack 및1440/768/390/320px Playwright 검증 통과. 백엔드 재정렬156테스트 통과. 새환경변수/DB작업 불필요. next-env.d.ts 자동생성 변경은 커밋 제외.
 - 원격fetch 결과 동일 HEAD. 프론트 먼저 push해 Vercel 자동배포, 이후 API호환 백엔드 push. 배포 상태는 커밋별로 별도 확인.
+
+[2026-09-18] 만점일 때 동화당 스티커 한 장
+- components/sticker-collection.tsx 빈 목록 안내를 전부 정답일 때 한 장, 같은 동화 중복 지급 없음으로 변경. 통신규격.md와 docs/STICKER_BOOK_IMPLEMENTATION.md에 지급/목록/기존 기록 보존 규칙 반영.
+- 운영 DB 후속 마이그레이션 적용 완료: friend 추가 지급 중단, 기존 friend는 삭제 없이 목록/총수에서 제외. mastery 획득일과 이미지는 유지.
+- 검증: TypeScript noEmit 통과, DB 합성 데이터 트랜잭션 롤백 검증 통과. API 응답 구조/환경변수 변경 없음. 배포용 커밋 준비. next-env.d.ts 기존 변경 제외.
