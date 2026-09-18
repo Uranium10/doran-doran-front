@@ -68,6 +68,9 @@ export type AssessmentPayload = {
   /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
   cover_color?: string | null
   generation?: {
+    /** 공통 장면 설계 버전과 성공/기존 집필 전환 상태. 오래된 동화에는 없다. */
+    planning_version?: string | null
+    planning_status?: "ready" | "fallback" | null
     /** 외부分석 완료 전 null. 오래된 분석은 필드 누락이 있어 런타임 검증한다. */
     vocab_analysis?: unknown
     /** 예전 저장 동화는 없음. 선택은 상대 비교이며 품질 보증을 뜻하지 않는다. */
@@ -86,6 +89,7 @@ export type AssessmentPayload = {
       selected_candidate: "A" | "B"
       review_version: string
       review_model: string | null
+      /** 답 전용 판별기는 점수를 생성하지 않으므로 null. 이전 점수는 그대로 읽는다. */
       coherence_score: number | null
       level_fit_score: number | null
     } | null
