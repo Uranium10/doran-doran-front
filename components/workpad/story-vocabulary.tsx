@@ -72,14 +72,17 @@ export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, o
       {analysis ? <>
         <section className={styles.total}><BookOpen size={23} aria-hidden="true"/><div><p>뜻을 담은 단어가 총 <strong>{analysis.총_내용형태소_수.toLocaleString()}번</strong> 등장해요</p><small>장면 제목과 본문에서 센 수예요. 같은 단어가 다시 나오면 함께 세어요.</small></div></section>
         <section className={styles.challenge}><div className={styles.sectionHeading}><Sparkles size={21} aria-hidden="true"/><h3>이야기 속 도전 어휘</h3><strong>{analysis.상위등급_어휘_개수}종류</strong></div>
-          <p>{analysis.상위등급_어휘_개수 ? "이야기를 읽으며 이런 단어도 만나보았어요." : "이번 동화는 기초 어휘를 중심으로 편하게 읽을 수 있어요."}</p>
+          {/* 실제 분류는 고정된 어휘 등급 기준이다. 아이의 나이·또래 사용 빈도와 비교한 결과로 표현하지 않는다. */}
+          <p>국립국어원 어휘 등급 자료를 바탕으로, 이야기 속 2·3등급 단어를 모았어요.</p>
+          {analysis.상위등급_어휘_개수 === 0 && <p>이번 이야기에서 이 기준에 해당하는 단어는 찾지 못했어요.</p>}
           <ul className={styles.chips}>{analysis.상위등급_어휘_목록.map(w => <li key={w}>{w}</li>)}</ul>
         </section>
         <section className={styles.expression}><div className={styles.sectionHeading}><h3>느낌과 모습을 표현하는 말</h3><strong>{analysis.표현_어휘_개수}종류</strong></div>
-          <p>{analysis.표현_어휘_개수 ? "장면을 상상하게 해 주는 형용사와 부사예요." : "이번에는 간결한 말로 이야기를 전했어요."}</p>
+          <p>장면이나 마음을 더 생생하게 그려주는 형용사·부사 표현들을 모았어요.</p>
+          {analysis.표현_어휘_개수 === 0 && <p>이번 이야기에서 형용사·부사로 분류된 말은 없어요.</p>}
           <ul className={styles.chips}>{analysis.표현_어휘_목록.map(w => <li key={w}>{w}</li>)}</ul>
         </section>
-        <p className={styles.note}>단어 목록은 같은 말을 한 번씩만 세고, 기본형으로 보여드려요. 도전 어휘는 기준 어휘 자료에서 골랐어요. 아이의 능력이나 또래 순위를 평가한 결과는 아니에요.</p>
+        <p className={styles.note}>단어 목록은 같은 말을 한 번씩만 세고, 기본형으로 보여드려요. 아이의 능력이나 또래 순위를 평가한 결과는 아니에요.</p>
       </> : <section className={styles.pending} role="status"><BookOpen size={36} aria-hidden="true"/><h3>{error ? "분석 결과를 불러오지 못했어요" : "동화 속 단어를 살펴보고 있어요"}</h3><p>{error ? "연결을 확인한 뒤 다시 눌러 주세요. 책은 계속 읽을 수 있어요." : waiting ? "분석 준비에 조금 더 시간이 필요해요. 나중에 이 책에서 다시 확인할 수 있어요." : "이야기는 완성되었고, 단어 분석을 준비하고 있어요. 잠시 후 자동으로 확인할게요."}</p>{(error || waiting) && <button className={styles.retry} type="button" onClick={() => setRetry(v => v + 1)}>다시 확인</button>}</section>}
     </div>
   </dialog>

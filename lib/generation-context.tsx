@@ -10,7 +10,11 @@ import { generateAssessment, type AssessmentPayload, type GenerationJob, type St
 import { GenerationController, type GenerationState, type TrackedJob } from "./generation-controller"
 
 type ReadyStory = { profileId: string; payload: AssessmentPayload }
+type GenerationScrollRequest = { id: string; profileId: string }
+
 type Value = GenerationState & {
+  scrollRequest: GenerationScrollRequest | null
+  consumeGenerationScroll: (id: string) => void
   start: (profileId: string, input: StoryInput) => Promise<void>
   dismiss: () => void
   openStory: (job: TrackedJob) => void
@@ -26,6 +30,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const { selectProfile } = useProfile()
   const [state, setState] = useState<GenerationState>(EMPTY)
   const [requestedStory, setRequestedStory] = useState<ReadyStory | null>(null)
+  const [scrollRequest, setScrollRequest] = useState<GenerationScrollRequest | null>(null)
   const controller = useRef<GenerationController | null>(null)
   const openRef = useRef<(job: TrackedJob) => void>(() => {})
   const openStory = useCallback((job: TrackedJob) => {
@@ -50,7 +55,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       owner = userId
       unsubscribe?.(); controller.current?.dispose(); controller.current = null
       notices.forEach(id => toast.dismiss(id)); notices.clear()
-      setState(EMPTY); setRequestedStory(null)
+      setState(EMPTY); setRequestedStory(null); setScrollRequest(null)
       if (!userId) return
       const instance = new GenerationController(userId, {
         current: () => request<{ available: boolean; job: GenerationJob | null }>("/stories/generation-jobs/current"),
@@ -97,11 +102,19 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(async (profileId: string, input: StoryInput) => {
     if (!controller.current) throw new Error("로그인 상태를 확인하고 있어요. 잠시 후 다시 시도해 주세요.")
-    await controller.current.start(profileId, input)
+    // 라우트 전환보다 먼저 이동 의도를 남긴다. 실제 스크롤은 카드가 마운트된 화면에서 한다.
+    const id = crypto.randomUUID()
+    setScrollRequest({ id, profileId })
+    try { await controller.current.start(profileId, input) }
+    catch (error) {
+      setScrollRequest(previous => previous?.id === id ? null : previous)
+      throw error
+    }
   }, [])
   const dismiss = useCallback(() => controller.current?.dismiss(), [])
   const consumeStory = useCallback(() => setRequestedStory(null), [])
-  return <Context.Provider value={{ ...state, start, dismiss, openStory, requestedStory, consumeStory }}>{children}</Context.Provider>
+  const consumeGenerationScroll = useCallback((id: string) => setScrollRequest(previous => previous?.id === id ? null : previous), [])
+  return <Context.Provider value={{ ...state, start, dismiss, openStory, requestedStory, consumeStory, scrollRequest, consumeGenerationScroll }}>{children}</Context.Provider>
 }
 export function useGeneration() {
   const context = useContext(Context)

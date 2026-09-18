@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Minus, HeartHandshake } from "lucide-react"
+import Image from "next/image"
+import { Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile, type Profile } from "@/lib/profile-context"
 import { ageLabel, getStageInfo, needsMeasurement } from "@/lib/levels"
@@ -138,7 +139,7 @@ export function ProfilePicker() {
         })}
 
         <button type="button" onClick={() => router.push("/parent")} className="group flex w-28 flex-col items-center gap-3 sm:w-32">
-          <span className="flex h-28 w-28 items-center justify-center rounded-full bg-[#e4ede5] text-[#42624e] ring-4 ring-transparent group-hover:ring-[#b9ccb9] sm:h-32 sm:w-32"><HeartHandshake size={46} strokeWidth={1.4}/></span>
+          <span className="block h-28 w-28 overflow-hidden rounded-full bg-[#ebeede] ring-4 ring-transparent transition-shadow group-hover:ring-[#b9ccb9] sm:h-32 sm:w-32"><Image src="/images/parent/reading-together-thumb.webp" alt="함께 책을 읽는 부모와 아이" width={320} height={320} className="h-full w-full object-cover"/></span>
           <span className="font-heading text-lg">부모님</span><span className="-mt-2 text-xs text-muted-foreground">우리 아이 성장 기록</span>
         </button>
         {/* 새 프로필 추가 */}

@@ -42,14 +42,35 @@ export function MyBookshelf({ onCreate }: { onCreate: () => void }) {
     window.addEventListener("doran-reading-saved",saved);window.addEventListener("focus",refresh);document.addEventListener("visibilitychange",visible)
     return () => { active=false;window.removeEventListener("doran-reading-saved",saved);window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",visible) }
   },[profileId,jobKey,retry])
-  if (!profile) return null
-  const data = state.profileId === profile.id ? state.data : undefined
+  const data = state.profileId === profileId ? state.data : undefined
   // 이 화면에서 진행을 지켜본 작업만 완료→책장 갱신 사이를 연결한다.
   // 첫 방문 때 남아 있는 오래된 완료 job으로 카드를 다시 띄우지는 않는다.
   const finishing = generation.job?.status === "completed" && lastActiveJob.current === generation.job.job_id && state.jobKey !== jobKey
+  const generationCard = useRef<HTMLDivElement>(null)
+  const cardVisible = Boolean(generating || finishing || data?.latest_unread)
+  const { scrollRequest, consumeGenerationScroll } = generation
+  useEffect(() => {
+    if (!scrollRequest || scrollRequest.profileId !== profileId) return
+    if (!generation.job && generation.error) { consumeGenerationScroll(scrollRequest.id); return }
+    if (!cardVisible || generation.job?.profile_id !== profileId) return
+    // 임의의 대기 시간 대신 DOM 생성과 다음 레이아웃을 기다린다.
+    // 한 번 소비한 요청은 폴링·책장 갱신·일반 대시보드 방문 때 다시 스크롤하지 않는다.
+    let layoutFrame = 0
+    const mountFrame = requestAnimationFrame(() => {
+      layoutFrame = requestAnimationFrame(() => {
+        const card = generationCard.current
+        if (!card?.isConnected) return
+        card.focus({ preventScroll: true })
+        card.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
+        consumeGenerationScroll(scrollRequest.id)
+      })
+    })
+    return () => { cancelAnimationFrame(mountFrame); cancelAnimationFrame(layoutFrame) }
+  }, [scrollRequest, profileId, cardVisible, generation.job?.profile_id, generation.error, consumeGenerationScroll])
+  if (!profile) return null
   return <div>
     <DashboardSummary profile={profile} data={data}/>
-    {(generating || finishing || data?.latest_unread) && <div className="mb-8"><StoryGenerationCard bookshelfMode finishing={finishing} latestUnread={data?.latest_unread}/></div>}
+    {cardVisible && <div ref={generationCard} tabIndex={-1} aria-label="동화 생성 소식" className="mb-8 scroll-mt-24 rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"><StoryGenerationCard bookshelfMode finishing={finishing} latestUnread={data?.latest_unread}/></div>}
     <div className="mb-5 flex items-end justify-between"><div><p className="text-xs tracking-widest text-primary">나만의 작은 책방</p><h2 className="mt-2 font-heading text-3xl">내 책장</h2></div><Link href="/library" className="flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-primary">전체 보기{data ? ` · ${data.total}권` : ""}<ArrowRight size={16}/></Link></div>
     {state.error && <p role="alert" className="mb-4 text-sm">{state.error} <button className="underline" onClick={()=>setRetry(v=>v+1)}>다시 불러오기</button></p>}
     <div className={styles.shelf}>
