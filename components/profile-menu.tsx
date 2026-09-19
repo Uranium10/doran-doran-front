@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { ChevronDown, Users, Pencil, LogOut } from "lucide-react"
+import { ChevronDown, Users, Pencil, LogOut, House } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/lib/profile-context"
 import { getStageInfo, getTierProgress } from "@/lib/levels"
@@ -198,7 +198,7 @@ export function ProfileMenu({ className }: { className?: string }) {
             <Pencil className="h-4 w-4" />
             프로필 수정
           </button>
-          <a href="/" role="menuitem" className="block px-4 py-3 text-sm hover:bg-secondary">메인 페이지로</a>
+          <a href="/" role="menuitem" className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"><House className="h-4 w-4" aria-hidden="true" />메인 페이지로</a>
           <button
             type="button"
             role="menuitem"

@@ -145,6 +145,7 @@ export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: Ab
 export type StoryInput = {
   mode?: StoryMode
   themeId?: string
+  customTopic?: string
   protagonistName: string
   favorite: string
   todayEvent: string
@@ -258,7 +259,7 @@ export async function generateAssessment(
   const body = JSON.stringify({
     profile_id: profileId, assessment_type: assessmentType,
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
-    mode: input.mode ?? "personalized", theme_id: input.themeId,
+    mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
     page_images: input.pageImages ?? false, tts: false,
   })
   if (input.useJobs) {

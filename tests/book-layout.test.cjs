@@ -69,3 +69,23 @@ for(const mobile of [true,false]) {
 assert.equal(validBookmark({kind:'text',sceneIndex:-1,offset:0}),false)
 assert.equal(validBookmark({kind:'text',sceneIndex:0,offset:'bad'}),false)
 console.log('PASS: image-free short scenes fill both sides, exact text order, persisted desktop/mobile bookmark')
+
+// 삽화 1장 + 본문 2장 뒤 다음 장 삽화는 오른쪽에 곧바로 이어져야 한다.
+const joinedPages = [
+ {sceneIndex:0, image:'one.jpg', text:'첫 장 앞', startOffset:0,endOffset:5},
+ {sceneIndex:0, image:'one.jpg', text:'첫 장 뒤', startOffset:5,endOffset:10},
+ {sceneIndex:1, image:'two.jpg', text:'둘째 장', startOffset:0,endOffset:4},
+ {sceneIndex:2, image:'', text:'셋째 장', startOffset:0,endOffset:4},
+]
+const joined=buildBookSpreads(joinedPages,false)
+assert.equal(joined[2].left.page.text,'첫 장 뒤')
+assert.equal(joined[2].right.kind,'image')
+assert.equal(joined[2].right.page.sceneIndex,1)
+assert.equal(joined[3].left.page.sceneIndex,1)
+assert.equal(joined[3].right.page.sceneIndex,2)
+assert.equal(joined.slice(1,-1).flatMap(s=>[s.left,s.right]).filter(l=>l.kind==='blank').length,0)
+const mobileJoined=buildBookSpreads(joinedPages,true)
+const pictureBookmark={kind:'image',sceneIndex:1,offset:0}
+assert.equal(bookmarkPosition(joined,pictureBookmark),2)
+assert.equal(mobileJoined[bookmarkPosition(mobileJoined,pictureBookmark)].right.page.sceneIndex,1)
+console.log('PASS: illustrated chapters flow across both sides without interior blanks, image bookmarks survive mobile layout')

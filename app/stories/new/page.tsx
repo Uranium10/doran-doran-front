@@ -1,7 +1,6 @@
 "use client"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
 import { ProfileRecovery } from "@/components/profile-recovery"
@@ -20,6 +19,11 @@ export default function Page(){
     else if(needsMeasurement(currentProfile.level))router.replace('/literacy')
   },[currentProfile,loading,error,router])
   if(!currentProfile||isGuestProfile(currentProfile.id)||needsMeasurement(currentProfile.level))return <ProfileRecovery/>
-  const submit=(input:StoryInput)=>{void generation.start(currentProfile.id,input).catch(e=>toast.error(e instanceof Error?e.message:'동화를 시작하지 못했어요.'));router.push('/dashboard', { scroll: false })}
-  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink label="내 책장으로" className="mb-6"/><StorySetup key={currentProfile.id} profileId={currentProfile.id} persistenceKey={`${sessionScope}:story-form`} defaultName={currentProfile.name} onSubmit={submit}/></main></div>
+  const submit=async(input:StoryInput)=>{
+    const accepted=await generation.start(currentProfile.id,input)
+    // 응답 유실/생성 거부도 대시보드의 기존 추적·오류 화면에서 안내한다. 폼은 유지한다.
+    if(!accepted)router.push('/dashboard', { scroll: false })
+    return accepted
+  }
+  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink label="내 책장으로" className="mb-6"/><StorySetup key={currentProfile.id} profileId={currentProfile.id} persistenceKey={`${sessionScope}:story-form`} defaultName={currentProfile.name} onSubmit={submit} onAccepted={()=>router.push('/dashboard', { scroll: false })}/></main></div>
 }

@@ -8,24 +8,19 @@ const blank: BookLeaf = { kind: "blank" }
 /** 서버 장면 → 실제 종이 배치. 삽화는 장면 시작에 한 번, 이어지는 종이는 본문만 담는다. */
 export function buildBookSpreads(pages: ReadingPage[], singlePage: boolean): BookSpread[] {
   const spreads: BookSpread[] = [{ left: { kind: "outside" }, right: { kind: "cover" } }]
-  // 삽화가 없는 책은 장면마다 펼침을 끊지 않아 짧은 본문도 양쪽으로 이어진다.
-  if (!singlePage && !pages.some(page => page.image)) {
-    for (let i = 0; i < pages.length; i += 2) spreads.push({ left: { kind: "text", page: pages[i] }, right: pages[i + 1] ? { kind: "text", page: pages[i + 1] } : blank })
-    spreads.push({ left: { kind: "back" }, right: { kind: "ending" } })
-    return spreads
-  }
+  // 장 경계에서 빈 종이를 넣지 않는다. 삽화와 본문을 순서대로 이어 붙인 뒤
+  // 마지막에만 양면으로 묶어 새 장이 오른쪽에서 시작하는 경우도 자연스럽게 이어진다.
+  const leaves: BookLeaf[] = []
   const scenes = [...new Set(pages.map(page => page.sceneIndex))]
   for (const scene of scenes) {
     const parts = pages.filter(page => page.sceneIndex === scene)
-    const leaves: BookLeaf[] = []
     if (parts[0].image) leaves.push({ kind: "image", page: parts[0] })
     leaves.push(...parts.map(page => ({ kind: "text" as const, page })))
-    if (singlePage) {
-      for (const leaf of leaves) spreads.push({ left: blank, right: leaf })
-    } else {
-      // 새 장면은 새 펼침에서 시작한다. 마지막 홀수 쪽은 빈 종이로 남겨 다른 장면과 섞지 않는다.
-      for (let i = 0; i < leaves.length; i += 2) spreads.push({ left: leaves[i], right: leaves[i + 1] ?? blank })
-    }
+  }
+  if (singlePage) {
+    for (const leaf of leaves) spreads.push({ left: blank, right: leaf })
+  } else {
+    for (let i = 0; i < leaves.length; i += 2) spreads.push({ left: leaves[i], right: leaves[i + 1] ?? blank })
   }
   spreads.push({ left: { kind: "back" }, right: { kind: "ending" } })
   return spreads

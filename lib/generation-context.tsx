@@ -15,7 +15,7 @@ type GenerationScrollRequest = { id: string; profileId: string }
 type Value = GenerationState & {
   scrollRequest: GenerationScrollRequest | null
   consumeGenerationScroll: (id: string) => void
-  start: (profileId: string, input: StoryInput) => Promise<void>
+  start: (profileId: string, input: StoryInput) => Promise<boolean>
   dismiss: () => void
   openStory: (job: TrackedJob) => void
   requestedStory: ReadyStory | null
@@ -63,7 +63,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         enqueue: (profileId, input, key) => request<GenerationJob>("/stories/generation-jobs", {
           method: "POST", headers: { "Idempotency-Key": key },
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
-            mode: input.mode ?? "personalized", theme_id: input.themeId,
+            mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
             favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: false }),
         }),
         legacy: (profileId, input) => generateAssessment(profileId, "posttest", { ...input, useJobs: false }),
@@ -106,7 +106,13 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     // 라우트 전환보다 먼저 이동 의도를 남긴다. 실제 스크롤은 카드가 마운트된 화면에서 한다.
     const id = crypto.randomUUID()
     setScrollRequest({ id, profileId })
-    try { await controller.current.start(profileId, input) }
+    try {
+      const instance = controller.current
+      await instance.start(profileId, input)
+      const result = instance.snapshot()
+      // 네트워크 불명/거부/로그아웃을 접수 성공으로 오인해 작성 폼을 비우지 않는다.
+      return controller.current === instance && Boolean(result.job) && !result.connectionLost && !result.error
+    }
     catch (error) {
       setScrollRequest(previous => previous?.id === id ? null : previous)
       throw error
