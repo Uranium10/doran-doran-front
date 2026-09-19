@@ -470,3 +470,9 @@
 - generation-controller는 failed+safety_blocked에 입력 수정 안내를 유지. 생성카드 제목을 다른 소재 안내로, 버튼은 확인으로 표시. 자동 POST 재전송 없음. 동기 HTTP422는 기존 detail 문자열 경로 사용. 통신규격.md에 새 오류 의미 기록.
 - 검증: 추적기 테스트(차단 안내/복원/재전송 없음) 및 TypeScript noEmit 통과. 백엔드173개 회귀·스티커 SQL 합성 롤백 검증 통과, SQL 운영 적용 완료.
 - 프론트→백엔드 자동배포 순서로 push 준비. 신규 환경변수 없음. next-env.d.ts 기존 변경 제외.
+
+[2026-09-19] 부모님 최근 결과지에 생성 동화 제목 표시
+- parent-dashboard.tsx/module.css: 최근 결과지를 실제 동화 제목 + 퀴즈로 표시. 제목 누락 시 동화 퀴즈 유지, 측정 명칭 유지. 긴 제목 줄바꿈과 축소 가능 너비 적용.
+- 통신규격.md: recent_results.story_title nullable/하위 호환 동작 기록.
+- 검증: Next.js 프로덕션 빌드 및 tsc --noEmit --incremental false 통과.
+- 사용자 요청으로 백엔드 → 프론트 순서 main push 배포. 추가 환경변수 없음. 기존 미커밋 변경은 제외·보존.

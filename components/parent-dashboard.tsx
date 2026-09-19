@@ -16,7 +16,8 @@ type Child = {
   id: string; name: string; avatar_url: string | null; level: number | null; guidance: string
   books_total: number; books_read: number; quizzes_completed: number
   skills: { name: string; total: number; correct: number }[]
-  recent_results: { id: string; kind: string; created_at: string; correct_answers: number; total_questions: number; level_after: number }[]
+  // 삭제된 책/구버전 API는 제목이 없을 수 있어 기존 이름으로 표시한다.
+  recent_results: { id: string; kind: string; story_title?: string | null; created_at: string; correct_answers: number; total_questions: number; level_after: number }[]
 }
 const TABS = [
   { id: "growth", label: "읽기 성장", icon: Leaf },
@@ -153,7 +154,7 @@ function ParentWorkspace({ accountId, selectProfile }: { accountId: string | nul
                 {child.skills.length ? child.skills.map(skill => <div className={styles.skill} key={skill.name}><div><span>{skill.name}</span><strong>{skill.correct}<span> / {skill.total}문제</span></strong></div><div className={styles.skillTrack} role="meter" aria-label={skill.name + " 정답률"} aria-valuenow={percent(skill.correct, skill.total)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: percent(skill.correct, skill.total) + "%" }}/></div></div>) : <p className={styles.empty}>첫 문제를 풀면 이곳에 기록이 쌓여요.<br/>부모님 체크리스트는 정답률에 포함하지 않아요.</p>}
               </section>
               <section className={styles.resultHistory}><h3 className={styles.subheading}>최근 결과지</h3><p className={styles.hint}>최근 5개의 기록을 다시 펼쳐보세요.</p>
-                {child.recent_results.length ? <ul className={styles.results}>{child.recent_results.map(r => <li key={r.id}><button onClick={() => result(r.id)}><span><small>{new Date(r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" })}</small><strong>{r.kind === "post-story" ? "동화 퀴즈" : "읽기 단계 측정"}</strong></span><ArrowRight size={18}/></button></li>)}</ul> : <p className={styles.empty}>아직 펼쳐볼 결과지가 없어요.<br/>첫 기록을 기다릴게요.</p>}
+                {child.recent_results.length ? <ul className={styles.results}>{child.recent_results.map(r => <li key={r.id}><button onClick={() => result(r.id)}><span><small>{new Date(r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" })}</small><strong>{r.kind === "post-story" ? (r.story_title?.trim() ? `${r.story_title.trim()} 퀴즈` : "동화 퀴즈") : "읽기 단계 측정"}</strong></span><ArrowRight size={18}/></button></li>)}</ul> : <p className={styles.empty}>아직 펼쳐볼 결과지가 없어요.<br/>첫 기록을 기다릴게요.</p>}
               </section>
             </div>
             <p className={styles.footnote}>영역별 현황은 문제 풀이 기록이에요. 발달 진단이나 또래 비교 결과는 아니에요.</p>
