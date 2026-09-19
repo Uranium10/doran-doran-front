@@ -465,3 +465,8 @@
 - components/sticker-collection.tsx 빈 목록 안내를 전부 정답일 때 한 장, 같은 동화 중복 지급 없음으로 변경. 통신규격.md와 docs/STICKER_BOOK_IMPLEMENTATION.md에 지급/목록/기존 기록 보존 규칙 반영.
 - 운영 DB 후속 마이그레이션 적용 완료: friend 추가 지급 중단, 기존 friend는 삭제 없이 목록/총수에서 제외. mastery 획득일과 이미지는 유지.
 - 검증: TypeScript noEmit 통과, DB 합성 데이터 트랜잭션 롤백 검증 통과. API 응답 구조/환경변수 변경 없음. 배포용 커밋 준비. next-env.d.ts 기존 변경 제외.
+
+[2026-09-19] 안전 차단 전용 생성 실패 안내
+- generation-controller는 failed+safety_blocked에 입력 수정 안내를 유지. 생성카드 제목을 다른 소재 안내로, 버튼은 확인으로 표시. 자동 POST 재전송 없음. 동기 HTTP422는 기존 detail 문자열 경로 사용. 통신규격.md에 새 오류 의미 기록.
+- 검증: 추적기 테스트(차단 안내/복원/재전송 없음) 및 TypeScript noEmit 통과. 백엔드173개 회귀·스티커 SQL 합성 롤백 검증 통과, SQL 운영 적용 완료.
+- 프론트→백엔드 자동배포 순서로 push 준비. 신규 환경변수 없음. next-env.d.ts 기존 변경 제외.

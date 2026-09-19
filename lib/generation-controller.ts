@@ -49,7 +49,10 @@ export class GenerationController {
     if (this.read("dismissed") === job.job_id && !active(job)) {
       this.update({ job: null, connectionLost: false, error: null }); return
     }
-    this.update({ job: tracked, connectionLost: false, error: null })
+    // 안전 차단은 다시 같은 입력을 보내도록 권하지 않고, 입력 수정이 필요함을 알린다.
+    const safetyBlocked = job.status === "failed" && job.error_code === "safety_blocked"
+    this.update({ job: tracked, connectionLost: false, error: safetyBlocked
+      ? "아이와 함께 읽기 어려운 내용이 감지되었어요. 이름이나 소재, 오늘의 일을 바꿔 주세요." : null })
     if (job.status === "completed" && job.result && this.read("notified") !== job.job_id) {
       this.write("notified", job.job_id)
       this.onReady(tracked)

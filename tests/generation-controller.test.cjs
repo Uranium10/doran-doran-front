@@ -67,6 +67,13 @@ async function run(){
  memory.clear();a=make({legacy:async()=>{throw new Error('generation failed')}})
  await a.controller.start('profile-1',{...input,useJobs:false});await a.controller.refresh()
  assert.equal(a.controller.state.error,'generation failed');a.controller.dismiss();assert.equal(a.controller.state.error,null);a.controller.dispose()
+ // 안전 차단은 입력 변경 안내를 유지하고 재접속/폴링에서도 재전송하지 않는다.
+ memory.clear();const blocked={...job('failed'),stage:'failed',error_code:'safety_blocked'}
+ a=make({current:async()=>({available:true,job:blocked})});await a.controller.refresh();await a.controller.refresh()
+ assert.equal(a.controller.state.job.status,'failed');assert.match(a.controller.state.error,/소재/)
+ assert.equal(a.calls.post,0);assert.equal(a.notices.length,0);a.controller.dismiss();a.controller.dispose()
+ memory.clear();a=make({current:async()=>({available:true,job:blocked})});await a.controller.refresh()
+ assert.match(a.controller.state.error,/소재/);a.controller.dispose()
  assert.equal(timers.size,0)
  console.log('PASS: acceptance, navigation/reload recovery, no duplicate POST, conflict adoption, stale responses, logout/account isolation, reconnect, legacy completion')
 }
