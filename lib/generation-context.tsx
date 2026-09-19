@@ -63,6 +63,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         enqueue: (profileId, input, key) => request<GenerationJob>("/stories/generation-jobs", {
           method: "POST", headers: { "Idempotency-Key": key },
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
+            mode: input.mode ?? "personalized", theme_id: input.themeId,
             favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: false }),
         }),
         legacy: (profileId, input) => generateAssessment(profileId, "posttest", { ...input, useJobs: false }),

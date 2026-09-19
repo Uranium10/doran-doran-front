@@ -21,5 +21,5 @@ export default function Page(){
   },[currentProfile,loading,error,router])
   if(!currentProfile||isGuestProfile(currentProfile.id)||needsMeasurement(currentProfile.level))return <ProfileRecovery/>
   const submit=(input:StoryInput)=>{void generation.start(currentProfile.id,input).catch(e=>toast.error(e instanceof Error?e.message:'동화를 시작하지 못했어요.'));router.push('/dashboard', { scroll: false })}
-  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink label="내 책장으로" className="mb-6"/><StorySetup key={currentProfile.id} persistenceKey={`${sessionScope}:story-form`} defaultName={currentProfile.name} onSubmit={submit}/></main></div>
+  return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink label="내 책장으로" className="mb-6"/><StorySetup key={currentProfile.id} profileId={currentProfile.id} persistenceKey={`${sessionScope}:story-form`} defaultName={currentProfile.name} onSubmit={submit}/></main></div>
 }

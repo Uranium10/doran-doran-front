@@ -68,6 +68,11 @@ export type AssessmentPayload = {
   /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
   cover_color?: string | null
   generation?: {
+    mode?: StoryMode
+    theme_id?: string | null
+    theme_label?: string | null
+    topic_version?: string | null
+    source_title?: string | null
     /** 공통 장면 설계 버전과 성공/기존 집필 전환 상태. 오래된 동화에는 없다. */
     planning_version?: string | null
     planning_status?: "ready" | "fallback" | null
@@ -131,7 +136,15 @@ export type AssessmentSubmission = {
 }
 
 /** 동화 생성 입력값 (폼). 서버로 보낼 때 snake_case 로 변환한다. */
+export type StoryMode = "original" | "personalized"
+export type StoryTheme = { theme_id: string; label: string; category: string; description: string }
+export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: AbortSignal) =>
+  request<{ version: string; mode: StoryMode; topics: StoryTheme[] }>(
+    `/stories/themes?profile_id=${encodeURIComponent(profileId)}&mode=${mode}`, { signal })
+
 export type StoryInput = {
+  mode?: StoryMode
+  themeId?: string
   protagonistName: string
   favorite: string
   todayEvent: string
@@ -245,6 +258,7 @@ export async function generateAssessment(
   const body = JSON.stringify({
     profile_id: profileId, assessment_type: assessmentType,
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
+    mode: input.mode ?? "personalized", theme_id: input.themeId,
     page_images: input.pageImages ?? false, tts: false,
   })
   if (input.useJobs) {
