@@ -2,11 +2,11 @@
 import { useEffect, useId, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowRight, ClipboardList, X } from "lucide-react"
-import { fetchBookQuizHistory, type BookSummary, type QuizHistoryEntry } from "@/lib/bookshelf"
+import { fetchBookQuizHistory, type BookSummary, type QuizHistoryEntry, type BookOrigin } from "@/lib/bookshelf"
 import styles from "./book-quiz-history.module.css"
 
 /** 버튼을 누른 책만 조회한다. 회차 생성/채점 없이 저장된 결과로 이동한다. */
-export function BookQuizHistory({ book, profileId, onClose }: { book: BookSummary; profileId: string; onClose: () => void }) {
+export function BookQuizHistory({ book, profileId, onClose, from="library" }: { from?: BookOrigin; book: BookSummary; profileId: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const heading = useId()
   const [state, setState] = useState<{ rows?: QuizHistoryEntry[]; error?: string }>({})
@@ -35,7 +35,7 @@ export function BookQuizHistory({ book, profileId, onClose }: { book: BookSummar
       {state.error ? <div role="alert" className="mt-6"><p>{state.error}</p><button onClick={() => setRetry(v => v + 1)} className="mt-3 min-h-11 underline">다시 불러오기</button></div>
         : !state.rows ? <p role="status" className="py-8 text-sm">기록을 펼치고 있어요…</p>
         : state.rows.length === 0 ? <p className="py-8 text-sm text-muted-foreground">아직 이 동화의 문제 풀이 기록이 없어요.</p>
-        : <ul className={styles.records}>{state.rows.map(row => <li key={row.id}><Link href={`/results/${encodeURIComponent(row.id)}?from=library`}>
+        : <ul className={styles.records}>{state.rows.map(row => <li key={row.id}><Link href={`/results/${encodeURIComponent(row.id)}?from=${from}`}>
           <span><span className="block text-xs text-muted-foreground">{row.created_at ? new Date(row.created_at).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }) : "저장된 기록"}</span><strong className="mt-1 block font-heading text-lg">{row.is_practice ? "복습 · " : ""}{row.total_questions}문제 중 {row.correct_answers}문제 정답</strong></span>
           <span className="flex shrink-0 items-center gap-1 text-xs">답안 보기<ArrowRight size={16}/></span>
         </Link></li>)}</ul>}

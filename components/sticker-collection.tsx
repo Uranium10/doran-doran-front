@@ -3,9 +3,10 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Sparkles, Star, ArrowRight } from "lucide-react"
 import { fetchStickers, type Sticker, type StickerBook } from "@/lib/stickers"
+import { bookPath, isParentOrigin, type BookOrigin } from "@/lib/book-navigation"
 import styles from "./sticker-book.module.css"
 
-function StickerCard({ sticker }: { sticker: Sticker }) {
+function StickerCard({ sticker, from }: { sticker: Sticker; from: BookOrigin }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const visible = sticker.image_url && sticker.image_url !== failedUrl
   return <article className={`${styles.sticker} ${sticker.reward_kind === "mastery" ? styles.mastery : ""}`}>
@@ -13,13 +14,13 @@ function StickerCard({ sticker }: { sticker: Sticker }) {
     <div className={styles.art}>{visible ? <img src={sticker.image_url!} alt={`${sticker.speaker} 스티커`} loading="lazy" onError={() => setFailedUrl(sticker.image_url)}/> : <div className={styles.placeholder}><Sparkles size={46} strokeWidth={1}/><span>{sticker.asset_status === "failed" ? "그림 준비가 늦어지고 있어요" : sticker.asset_status === "ready" ? "그림을 다시 불러와 주세요" : "스티커를 만들고 있어요"}</span><small>획득 기록은 소중히 보관했어요</small></div>}</div>
     <blockquote className={styles.bubble}>{sticker.message}<cite>— {sticker.speaker}</cite></blockquote>
     <div className={styles.caption}><time dateTime={sticker.earned_at}>{new Date(sticker.earned_at).toLocaleDateString("ko-KR")} 획득</time>
-      {sticker.story_available ? <Link href={`/books/${encodeURIComponent(sticker.story_id)}?from=stickers`}>{sticker.title}</Link> : <span>{sticker.title}</span>}
+      {sticker.story_available ? <Link href={bookPath(sticker.story_id,from)}>{sticker.title}</Link> : <span>{sticker.title}</span>}
     </div>
   </article>
 }
 
 /** 결과지와 스티커북이 같은 보상 데이터를 읽는다. 숨은 탭은 중지하고 자동 재조회는 최대 12회다. */
-export function StickerCollection({ profileId, storyId }: { profileId: string; storyId?: string }) {
+export function StickerCollection({ profileId, storyId, from="stickers" }: { profileId: string; storyId?: string; from?: BookOrigin }) {
   const [state, setState] = useState<{ data?: StickerBook; error?: string }>({})
   const [retry, setRetry] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -54,11 +55,11 @@ export function StickerCollection({ profileId, storyId }: { profileId: string; s
     finally { setBusy(false) }
   }
   return <section className={storyId ? styles.rewards : ""} aria-label="획득한 스티커">
-    {storyId && <div className={styles.rewardHeading}><h2>이야기 속 친구의 선물</h2><Link href="/stickers">스티커북 보기 →</Link></div>}
+    {storyId && <div className={styles.rewardHeading}><h2>이야기 속 친구의 선물</h2><Link href={isParentOrigin(from)?"/stickers?from=parent":"/stickers"}>스티커북 보기 →</Link></div>}
     {state.error && <p role="alert">{state.error} <button onClick={() => setRetry(v => v + 1)} className="min-h-11 underline">다시 불러오기</button></p>}
     {!state.data && !state.error && <p role="status" className="py-8 text-center">스티커북을 펼치고 있어요…</p>}
-    {state.data?.total === 0 && <div className={styles.empty}><img className={styles.emptyPicture} src="/images/stickers/reading-friends.webp" alt="이야기책을 함께 읽는 호랑이, 토끼, 도깨비" width="190" height="190"/><h3>첫 번째 이야기 친구를 기다려요</h3><p>동화 문제를 전부 맞히면<br/>이 동화의 스티커를 한 장 받아요.</p><small>다시 도전할 수 있어요. 같은 동화에서는 한 장만 받아요.</small><Link className={styles.emptyLink} href="/library">이야기 만나러 가기 <ArrowRight size={17}/></Link></div>}
-    {!!state.data?.total && <><p className={styles.count}><Star size={17} fill="currentColor" aria-hidden="true"/>소중히 모은 선물 {state.data.total}장</p><div className={styles.grid}>{state.data.stickers.map(sticker => <StickerCard key={sticker.id} sticker={sticker}/>)}</div><button className={styles.refresh} onClick={() => setRetry(v => v + 1)}>스티커 소식 새로고침</button></>}
+    {state.data?.total === 0 && <div className={styles.empty}><img className={styles.emptyPicture} src="/images/stickers/reading-friends.webp" alt="이야기책을 함께 읽는 호랑이, 토끼, 도깨비" width="190" height="190"/><h3>첫 번째 이야기 친구를 기다려요</h3><p>동화 문제를 전부 맞히면<br/>이 동화의 스티커를 한 장 받아요.</p><small>다시 도전할 수 있어요. 같은 동화에서는 한 장만 받아요.</small><Link className={styles.emptyLink} href={isParentOrigin(from)?"/library?from=parent":"/library"}>이야기 만나러 가기 <ArrowRight size={17}/></Link></div>}
+    {!!state.data?.total && <><p className={styles.count}><Star size={17} fill="currentColor" aria-hidden="true"/>소중히 모은 선물 {state.data.total}장</p><div className={styles.grid}>{state.data.stickers.map(sticker => <StickerCard from={from} key={sticker.id} sticker={sticker}/>)}</div><button className={styles.refresh} onClick={() => setRetry(v => v + 1)}>스티커 소식 새로고침</button></>}
     {state.data?.next_offset != null && <button className={styles.more} disabled={busy} onClick={more}>{busy ? "펼치는 중…" : "스티커 더 보기"}</button>}
   </section>
 }

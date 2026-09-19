@@ -12,13 +12,13 @@ import { useProfile } from "@/lib/profile-context"
 import { useSessionView } from "@/lib/use-session-view"
 import { dashboardInitial, validDashboard } from "@/lib/view-state"
 import { fetchSavedStory, buildSubmission, submitAssessment } from "@/lib/workpad-data"
-import { bookPath, returnPath, openStoryAssessment, fetchStoryAttempt } from "@/lib/bookshelf"
+import { bookPath, bookOrigin, returnLabel, returnPath, openStoryAssessment, fetchStoryAttempt } from "@/lib/bookshelf"
 
 export function BookReaderPage({storyId,from,view}:{storyId:string;from:string;view:string}) {
   const router=useRouter()
   const practiceId=useSearchParams().get("practice")
   const {currentProfile,loading:profileLoading,error:profileError,sessionScope,updateProfile}=useProfile()
-  const origin=from==='stickers'?'stickers':from==='library'?'library':'dashboard'
+  const origin=bookOrigin(from)
   const screen=useSessionView(sessionScope?`${sessionScope}:story:${storyId}`:null,dashboardInitial,validDashboard)
   const [error,setError]=useState<string|null>(null)
   const [retry,setRetry]=useState(0)
@@ -60,10 +60,10 @@ export function BookReaderPage({storyId,from,view}:{storyId:string;from:string;v
   }
   if(!currentProfile||!screen.ready)return <ProfileRecovery/>
   return <div className="min-h-screen bg-background"><AppHeader/>
-    {error?<main className="mx-auto max-w-xl px-5 py-16"><BackLink href={returnPath(origin)} label="책장으로 돌아가기"/><p role="alert" className="my-6">{error}</p><button onClick={()=>{setError(null);setRetry(v=>v+1)}} className="rounded-full bg-primary px-6 py-3 text-primary-foreground">다시 불러오기</button></main>
+    {error?<main className="mx-auto max-w-xl px-5 py-16"><BackLink href={returnPath(origin)} label={returnLabel(origin)}/><p role="alert" className="my-6">{error}</p><button onClick={()=>{setError(null);setRetry(v=>v+1)}} className="rounded-full bg-primary px-6 py-3 text-primary-foreground">다시 불러오기</button></main>
     :!assessment||verified!==`${profileId}:${storyId}`?<p role="status" className="py-20 text-center">책을 펼치고 있어요…</p>
     :view==='quiz'?<main className="mx-auto max-w-3xl px-5 py-8"><BackLink href={bookPath(storyId,origin)} label="본문 다시 보기" className="mb-6"/>{busy&&<p role="status" className="mb-4 text-center">문제와 결과를 준비하고 있어요…</p>}<fieldset disabled={busy||!assessment.attempt_id}><Quiz persistenceKey={`${sessionScope}:quiz:${storyId}:${assessment.attempt_id}`} questions={assessment.quizzes} title="이야기를 떠올려 볼까요?" intro="천천히 읽고 마음에 드는 답을 골라 보세요." onComplete={submit}/></fieldset></main>
     :<RemoteBook key={`${currentProfile.id}:${storyId}`} profileId={currentProfile.id} storyId={storyId} vocabulary={{ profileId: currentProfile.id, storyId, initialAnalysis: assessment.generation?.vocab_analysis }} persistenceKey={`${sessionScope}:book:${storyId}`} pages={assessment.pages} title={assessment.title} coverImage={assessment.cover_image} coverColor={assessment.cover_color} childName={currentProfile.name} hasQuiz={assessment.quizzes.length>0}
-      onExit={()=>router.push(returnPath(origin))} exitLabel={origin==='stickers'?'스티커북으로 돌아가기':origin==='library'?'전체 책장으로 돌아가기':'내 책장으로 돌아가기'} onFinish={()=>router.push(assessment.quizzes.length?`${bookPath(storyId,origin)}&view=quiz`:returnPath(origin))}/>}
+      onExit={()=>router.push(returnPath(origin))} exitLabel={returnLabel(origin)} onFinish={()=>router.push(assessment.quizzes.length?`${bookPath(storyId,origin)}&view=quiz`:returnPath(origin))}/>}
   </div>
 }

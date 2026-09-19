@@ -178,7 +178,7 @@ function ParentGrowthWorkspace({
           }}
           onOffset={setOffset}
           onRetry={() => setRetry((n) => n + 1)}
-          onBooks={() => navigate("/library")}
+          onBooks={() => navigate("/library?from=parent")}
           onResult={(id) =>
             navigate(`/results/${encodeURIComponent(id)}?from=parent`)
           }

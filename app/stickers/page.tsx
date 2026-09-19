@@ -1,7 +1,7 @@
 "use client"
 import { Star } from "lucide-react"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AppHeader } from "@/components/app-header"
 import { BackLink } from "@/components/back-link"
 import { ProfileRecovery } from "@/components/profile-recovery"
@@ -10,11 +10,15 @@ import { useProfile } from "@/lib/profile-context"
 import { isGuestProfile } from "@/lib/api"
 import styles from "@/components/sticker-book.module.css"
 export default function StickersPage() {
+  return <Suspense fallback={<ProfileRecovery/>}><StickersContent/></Suspense>
+}
+function StickersContent() {
+  const parent=useSearchParams().get("from")==="parent"
   const {currentProfile,loading,error}=useProfile();const router=useRouter()
   useEffect(()=>{if(!loading&&!error&&!currentProfile)router.replace('/profiles')},[loading,error,currentProfile,router])
   if(!currentProfile)return <ProfileRecovery/>
-  return <div className="min-h-screen bg-background"><AppHeader/><main className={styles.page}><BackLink href="/dashboard" label="내 책장으로"/>
+  return <div className="min-h-screen bg-background"><AppHeader/><main className={styles.page}><BackLink href={parent?"/parent":"/dashboard"} label={parent?"부모님 책방으로 돌아가기":"내 책장으로"}/>
     <header className={styles.heading}><div><p><Star size={14} fill="currentColor" aria-hidden="true"/>이야기가 남긴 작은 선물</p><h1>{currentProfile.name}님의 스티커북</h1><small>함께 모험한 친구들의 마음을 한 장씩 모아요.</small></div><div className={styles.headingArt} aria-hidden="true"><img src="/images/stickers/reading-friends.webp" alt="" width="128" height="128"/></div></header>
-    <div className={styles.paper}>{isGuestProfile(currentProfile.id)?<p className="py-16 text-center">로그인하면 나만의 스티커를 모을 수 있어요.</p>:<StickerCollection key={currentProfile.id} profileId={currentProfile.id}/>}</div>
+    <div className={styles.paper}>{isGuestProfile(currentProfile.id)?<p className="py-16 text-center">로그인하면 나만의 스티커를 모을 수 있어요.</p>:<StickerCollection from={parent?"parent-stickers":"stickers"} key={currentProfile.id} profileId={currentProfile.id}/>}</div>
   </main></div>
 }
