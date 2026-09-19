@@ -9,7 +9,8 @@ export function Hero() {
   const tiles = [...folktales, ...folktales].slice(0, 12)
 
   return (
-    <section className="relative isolate overflow-hidden">
+    <section id="hero" className="relative isolate overflow-hidden">
+      {/* 헤더/푸터의 /#hero 링크가 가리키는 실제 최상단 영역이다. */}
       {/* Background cover mosaic */}
       <div className="absolute inset-0 -z-10 grid-container" style={{width: '200vw'}}>
         <div className="grid-lane h-full" style={{display: 'flex', width: '200vw'}}>

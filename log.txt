@@ -476,3 +476,10 @@
 - 통신규격.md: recent_results.story_title nullable/하위 호환 동작 기록.
 - 검증: Next.js 프로덕션 빌드 및 tsc --noEmit --incremental false 통과.
 - 사용자 요청으로 백엔드 → 프론트 순서 main push 배포. 추가 환경변수 없음. 기존 미커밋 변경은 제외·보존.
+
+[2026-09-19] 회의 후 긴급 랜딩 내비게이션 수정
+- hero.tsx: 기존 /#hero 링크의 대상 ID가 누락되어 상단 이동이 안 되던 문제 수정. 첫 section에 id=hero 추가, 데스크톱/모바일 헤더와 푸터가 동일 앵커 사용.
+- profile-menu.tsx: 서비스 소개 → 메인 페이지로 문구 변경. 이동 주소 / 유지.
+- 원전 모드 기본 탭/나만의 동화 탭 및 연령별 주제 3개 추천·리롤 변경은 회의 메모로만 보관. 현재 생성 방식/API/백엔드 변경 없음.
+- 검증: 별도 tsc --noEmit --incremental false 및 Next.js 프로덕션 빌드 통과.
+- 사용자 요청으로 두 UI 파일과 해당 로그만 main 커밋/push하여 Vercel 배포. 기존 next-env.d.ts/로그 미커밋 변경 보존.
