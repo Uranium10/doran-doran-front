@@ -32,6 +32,7 @@ import {
 } from "@/lib/parent-report";
 import { AppHeader } from "./app-header";
 import { ProfileRecovery } from "./profile-recovery";
+import { VocabularyPanel } from "./parent-vocabulary";
 import { ParentGrowthChart } from "./parent-growth-chart";
 import styles from "./parent-growth.module.css";
 
@@ -443,6 +444,7 @@ export function ParentGrowthView({
             별도 집계
           </p>
         </section>
+        <VocabularyPanel key={child.id} profileId={child.id} />
         <section className={styles.panel} id="parent-recent">
           <header className={styles.sectionHead}>
             <span className={`${styles.headingIcon} ${styles.warm}`}>
