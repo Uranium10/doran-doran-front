@@ -10,6 +10,7 @@ import { libraryInitial,validLibrary } from "@/lib/view-state"
 import { isGuestProfile } from "@/lib/api"
 import { fetchBookshelf,bookPath,type BookSummary,type Bookshelf,type BookOrigin } from "@/lib/bookshelf"
 import { deleteStory } from "@/lib/workpad-data"
+import { getStageInfo } from "@/lib/levels"
 import { readingLabel } from "@/lib/book-status"
 import { LibraryThumbnail } from "./library-thumbnail"
 import { BookQuizHistory } from "./book-quiz-history"
@@ -66,7 +67,7 @@ export function LibraryGallery({from="library"}:{from?:BookOrigin}){
     :!data?<div role="status" className="py-20 text-center">책들을 꺼내고 있어요…</div>
     :<><div className={list?'space-y-3':'grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4'}>{data.stories.map(book=><article key={book.story_id} className={list?styles.row:'min-w-0'} style={list?{'--book-color':normalizeCoverColor(book.cover_color)} as CSSProperties:undefined}>
       <Link href={bookPath(book.story_id,from)} className="block" aria-label={`${book.title} 읽기`}><>{list?<LibraryThumbnail book={book}/>:<BookCover book={book}/>}</></Link>
-      <div className={list?'min-w-0 flex-1':'mt-4'}><Link href={bookPath(book.story_id,from)} className="line-clamp-2 font-heading text-lg leading-snug hover:text-primary">{book.title}</Link><p className="mt-2 text-xs text-muted-foreground">{readingLabel(book)}{book.created_at?` · ${new Date(book.created_at).toLocaleDateString('ko-KR')}`:''}</p></div>
+      <div className={list?'min-w-0 flex-1':'mt-4'}><Link href={bookPath(book.story_id,from)} className="line-clamp-2 font-heading text-lg leading-snug hover:text-primary">{book.title}</Link>{from==='parent-library' && <p className="mt-2 text-xs text-muted-foreground">{book.generation_level ? `생성 단계 · ${getStageInfo(book.generation_level)?.label}` : '생성 단계 기록 없음'}</p>}<p className="mt-2 text-xs text-muted-foreground">{readingLabel(book)}{book.created_at?` · ${new Date(book.created_at).toLocaleDateString('ko-KR')}`:''}</p></div>
       <div className={styles.actions}>
         <button type="button" aria-label={`${book.title} 문제 기록 보기`} title="문제 기록 보기" onClick={()=>setHistory({profileId,book})} className={styles.record}><ClipboardList size={17}/><span>문제 기록</span></button>
         <button type="button" aria-label={`${book.title} 삭제`} title="동화 삭제" onClick={()=>setPending(book)} className={styles.delete}><Trash2 size={17}/></button>

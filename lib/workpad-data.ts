@@ -68,6 +68,8 @@ export type AssessmentPayload = {
   /** 불투명 #RRGGBB. 누락/잘못된 값은 기존 갈색 표지를 쓴다. */
   cover_color?: string | null
   generation?: {
+    /** 생성 당시 서버에서 적용한 정수 단계. 과거 동화에는 없을 수 있다. */
+    level?: number | null
     mode?: StoryMode
     theme_id?: string | null
     theme_label?: string | null

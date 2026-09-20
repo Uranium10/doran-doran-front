@@ -6,6 +6,7 @@ import type { LiteracyResult } from "./levels"
 
 export type ReadingProgress = { bookmark: BookBookmark; completed_at: string | null; quiz_completed?: boolean; updated_at: string }
 export type BookSummary = {
+  generation_level?: number | null
   reading_status?: ReadingStatus
   story_id: string; title: string; theme?: string; created_at?: string
   cover_color?: string | null; cover_image?: string | null; reading_progress?: ReadingProgress | null

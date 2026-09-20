@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { BookOpen, Sparkles, X } from "lucide-react"
 import { request } from "@/lib/api"
+import { StoryNewWords } from "./story-new-words"
 import { vocabAnalysis } from "@/lib/vocab-analysis"
 import styles from "./story-vocabulary.module.css"
 
@@ -71,6 +72,11 @@ export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, o
       <header className={styles.header}><div><span className={styles.eyebrow}>책 속 단어 살펴보기</span><h2 id={titleId}>동화 수준 확인하기</h2></div><button type="button" className={styles.close} aria-label="분석 창 닫기" onClick={onClose}><X size={22}/></button></header>
       {analysis ? <>
         <section className={styles.total}><BookOpen size={23} aria-hidden="true"/><div><p>뜻을 담은 단어가 총 <strong>{analysis.총_내용형태소_수.toLocaleString()}번</strong> 등장해요</p><small>장면 제목과 본문에서 센 수예요. 같은 단어가 다시 나오면 함께 세어요.</small></div></section>
+        <section className={styles.challenge}>
+          <div className={styles.sectionHeading}><h3>이번 동화의 새 낱말</h3></div>
+          <StoryNewWords key={`${profileId}:${storyId}`} profileId={profileId} storyId={storyId} active={open}/>
+          <p>이 책을 만들기 전 완독한 동화와 비교해요. 사전에 실린 낱말을 기본형·품사별로 한 번씩 세며, 아이가 모르는 말이라는 뜻은 아니에요.</p>
+        </section>
         <section className={styles.challenge}><div className={styles.sectionHeading}><Sparkles size={21} aria-hidden="true"/><h3>이야기 속 도전 어휘</h3><strong>{analysis.상위등급_어휘_개수}종류</strong></div>
           {/* 실제 분류는 고정된 어휘 등급 기준이다. 아이의 나이·또래 사용 빈도와 비교한 결과로 표현하지 않는다. */}
           <p>국립국어원 어휘 등급 자료를 바탕으로, 이야기 속 2·3등급 단어를 모았어요.</p>
