@@ -502,6 +502,7 @@ function StickerWorkspace({
                 type="checkbox"
                 disabled={busy || !data?.stickers.length}
                 checked={allPicked}
+                aria-label="이 페이지의 스티커 모두 선택"
                 onChange={() => {
                   if (data)
                     setSelected((old) =>
@@ -518,28 +519,35 @@ function StickerWorkspace({
                     );
                 }}
               />
-              이 페이지 모두 선택
+              모두 선택
             </label>
-            <span>{selected.length}장 선택</span>
-            <div>
-              <button
-                type="button"
-                disabled={busy || !selected.length}
-                onClick={() => void perform(selected, "restore")}
-              >
-                <Undo2 size={15} />
-                다시 붙이기
-              </button>
-              <button
-                type="button"
-                className={styles.remove}
-                disabled={busy || !selected.length}
-                onClick={() => ask({ ids: [...selected], action: "delete" })}
-              >
-                <Trash2 size={15} />
-                선택 삭제
-              </button>
-            </div>
+            {/* 선택 전에도 행 높이를 유지해 아이콘이 나타날 때 책장이 밀리지 않게 한다. */}
+            {selected.length > 0 && (
+              <>
+                <span aria-live="polite">{selected.length}장 선택</span>
+                <div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label="선택한 스티커 다시 붙이기"
+                    title="다시 붙이기"
+                    onClick={() => void perform(selected, "restore")}
+                  >
+                    <Undo2 size={19} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.remove}
+                    disabled={busy}
+                    aria-label="선택한 스티커 영구 삭제"
+                    title="영구 삭제"
+                    onClick={() => ask({ ids: [...selected], action: "delete" })}
+                  >
+                    <Trash2 size={19} aria-hidden="true" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
         {!data && !(state.key === key && state.error) && (
