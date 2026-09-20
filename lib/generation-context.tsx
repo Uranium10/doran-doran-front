@@ -78,7 +78,19 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           action: { label: "동화 읽기", onClick: () => openRef.current(job) } })
       })
       controller.current = instance
-      unsubscribe = instance.subscribe(() => setState(instance.snapshot()))
+      unsubscribe = instance.subscribe(() => {
+        const next = instance.snapshot()
+        setState(next)
+        // 다른 화면을 보고 있어도 실패를 알린다. 같은 작업의 폴링은 알림을 반복하지 않는다.
+        if (next.job?.status === "failed") {
+          const id = `story-failed-${next.job.job_id}`
+          if (!notices.has(id)) {
+            notices.add(id)
+            toast.error("동화를 완성하지 못했어요", { id, duration: 12000,
+              description: next.error ?? "생성 중 문제가 생겼어요. 대시보드에서 확인해 주세요." })
+          }
+        }
+      })
       // Auth 콜백 내부에서 getSession을 다시 기다리지 않도록 다음 이벤트 루프로 넘긴다.
       setTimeout(() => { void instance.refresh() }, 0)
     }

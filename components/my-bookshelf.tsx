@@ -47,7 +47,9 @@ export function MyBookshelf({ onCreate }: { onCreate: () => void }) {
   // 첫 방문 때 남아 있는 오래된 완료 job으로 카드를 다시 띄우지는 않는다.
   const finishing = generation.job?.status === "completed" && lastActiveJob.current === generation.job.job_id && state.jobKey !== jobKey
   const generationCard = useRef<HTMLDivElement>(null)
-  const cardVisible = Boolean(generating || finishing || data?.latest_unread)
+  // 실패도 확인 버튼을 누르기 전까지 유지한다. 미독 동화가 있어도 실패 소식을 덮지 않는다.
+  const failed = generation.job?.status === "failed" || (!generation.job && Boolean(generation.error))
+  const cardVisible = Boolean(generating || finishing || failed || data?.latest_unread)
   const { scrollRequest, consumeGenerationScroll } = generation
   useEffect(() => {
     if (!scrollRequest || scrollRequest.profileId !== profileId) return

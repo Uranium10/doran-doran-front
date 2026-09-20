@@ -14,9 +14,9 @@ export function StoryGenerationCard({ bookshelfMode = false, latestUnread, finis
   const { profiles } = useProfile()
   const name = profiles.find(p => p.id === job?.profile_id)?.name ?? "우리 아이"
   const active = job?.status === "queued" || job?.status === "running"
-  const done = bookshelfMode ? !active && !finishing && Boolean(latestUnread) : job?.status === "completed" && Boolean(job.result)
-  const failed = !bookshelfMode && (job?.status === "failed" || (!job && Boolean(error)))
-  if (bookshelfMode && !active && !finishing && !latestUnread) return null
+  const failed = job?.status === "failed" || (!job && Boolean(error))
+  const done = !failed && (bookshelfMode ? !active && !finishing && Boolean(latestUnread) : job?.status === "completed" && Boolean(job.result))
+  if (bookshelfMode && !active && !finishing && !failed && !latestUnread) return null
   const safetyBlocked = failed && job?.error_code === "safety_blocked"
   const title = done ? "따끈한 동화가 완성되었어요!" : failed ? safetyBlocked ? "다른 소재로 이야기를 만들어 볼까요?" : "이야기를 잠시 쉬어 가고 있어요" : finishing ? "따끈한 동화를 책장에 놓고 있어요" : `${name}님의 동화를 짓고 있어요`
   const message = done ? latestUnread?.title ?? "책장에 새 이야기가 도착했어요. 함께 펼쳐 볼까요?" : finishing ? "완성된 책을 펼칠 준비를 하고 있어요." : failed ? error ?? "이번 동화를 완성하지 못했어요. 다시 시작해 주세요." : generationMessage(job?.stage ?? "queued")
@@ -24,11 +24,11 @@ export function StoryGenerationCard({ bookshelfMode = false, latestUnread, finis
   return <div className={styles.card} aria-busy={active || finishing} data-generation-card data-testid={done && bookshelfMode ? "unread-story-card" : "generation-card"}>
     <PaperTheatre stopped={done || failed || finishing}/>
     <h2 className={styles.title}>{title}</h2>
-    <p role="status" aria-live="polite" className={styles.message}>{message}</p>
+    <p role={failed ? "alert" : "status"} aria-live={failed ? "assertive" : "polite"} className={styles.message}>{message}</p>
     <p className={styles.helper}>{helper}</p>
     <div className={styles.actions}>
       {done && (bookshelfMode && latestUnread ? <Link href={bookPath(latestUnread.story_id,"dashboard")} className={styles.primary}>동화 읽기</Link> : job && <><button type="button" onClick={() => openStory(job)} className={styles.primary}>동화 읽기</button><button type="button" onClick={dismiss} className={styles.secondary}>나중에 읽기</button></>)}
-      {failed && <button type="button" onClick={dismiss} className={styles.primary}>{safetyBlocked ? "확인" : "다시 만들기"}</button>}
+      {failed && <button type="button" onClick={dismiss} className={styles.primary}>확인</button>}
     </div>
   </div>
 }
