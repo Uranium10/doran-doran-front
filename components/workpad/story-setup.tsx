@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, Check, RefreshCw, Sparkles, Wand2 } from "lucide-react"
+import { BookOpen, Check, RefreshCw, Sparkles, Wand2, Sun, Heart, UsersRound, Flag, Handshake, House, Leaf, ShieldCheck, ChevronDown, PencilLine } from "lucide-react"
 import { useSessionView, objectValue } from "@/lib/use-session-view"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils"
 import { fetchStoryThemes, fetchGenerationPreferences, saveGenerationPreferences,
   type StoryTheme, type StoryMode, type GenerationPreferences, type StoryInput } from "@/lib/workpad-data"
 import { drawThemeCards } from "@/lib/story-theme-cards"
+import { themePresentation, type ThemeSymbol } from "@/lib/story-theme-presentation"
+import styles from "./story-setup.module.css"
+
+// 같은 의미의 주제는 카드 순서가 바뀌어도 같은 그림·색으로 알아볼 수 있게 한다.
+const THEME_SYMBOLS = {
+  daily: Sun, heart: Heart, friend: UsersRound, courage: Flag,
+  promise: Handshake, family: House, nature: Leaf, safety: ShieldCheck,
+} satisfies Record<ThemeSymbol, typeof Sun>
 
 const FAVORITES = ["공룡", "별", "공주", "강아지", "로봇", "딸기"]
 const MODES = [{ id: "original", label: "옛이야기", icon: BookOpen }, { id: "personalized", label: "나만의 이야기", icon: Sparkles }] as const
@@ -81,6 +89,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
     catch { setSettingsError("설정을 저장하지 못했어요. 기존 설정을 유지합니다.") }
     finally { setSaving(false) }
   }
+  const selectedTopic = cards.find(topic => topic.theme_id === themeId)
   const hasTopic = mode === "personalized" && Boolean(customTopic.trim()) || cards.some(t => t.theme_id === themeId)
   const canSubmit = draft.ready && loadedMode === mode && Boolean(preferences) && !saving && !submitting && !acceptedDraft
     && hasTopic && (mode === "original" || protagonistName.trim().length > 0)
@@ -105,10 +114,9 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
   }
 
   if (!draft.ready) return <p role="status">작성하던 내용을 준비하고 있어요…</p>
-  return <fieldset disabled={submitting || Boolean(acceptedDraft)} aria-busy={submitting || Boolean(acceptedDraft)} className="mx-auto w-full min-w-0 max-w-2xl">
+  return <fieldset disabled={submitting || Boolean(acceptedDraft)} aria-busy={submitting || Boolean(acceptedDraft)} className={cn(styles.form, "mx-auto w-full min-w-0 max-w-2xl")}>
     <div className="mb-6 text-center">
-      <p className="mb-2 text-sm tracking-widest text-primary">이야기 한 권, 마음 한 뼘</p>
-      <h2 className="font-heading text-3xl text-foreground">어떤 이야기를 만날까요?</h2>
+      <h2 className="font-heading text-3xl text-foreground">오늘은 어떤 이야기?</h2>
     </div>
     <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-md">
       <div role="tablist" aria-label="동화 만들기 방식" className="grid grid-cols-2 gap-2 bg-secondary/50 p-2">
@@ -123,63 +131,69 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
         </button>)}
       </div>
       <section role="tabpanel" id="story-mode-panel" aria-labelledby={`story-tab-${mode}`} className="space-y-7 p-5 sm:p-8">
-        <p className="rounded-2xl bg-secondary/35 px-4 py-3 text-center text-sm leading-relaxed text-muted-foreground">
-          {mode === "original" ? <>오래 사랑받은 옛이야기를 읽기 단계에 맞춰 풀어드려요.<br />원전의 줄거리를 따라, 쉬운 말로 만나요.</>
-            : <>{defaultName}님이 이야기의 주인공이 되어볼까요?<br />좋아하는 것과 오늘의 경험을 담아 새롭게 지어요.</>}
+        <p className={styles.modeHint}>
+          {mode === "original" ? "마음에 드는 주제를 고르면 옛이야기가 찾아와요." : "내가 주인공인 동화를 함께 만들어요."}
         </p>
-        {mode === "personalized" && <div className="space-y-5">
-          <div className="space-y-2"><Label htmlFor="protagonist-name">이야기의 주인공 이름</Label>
-            <Input id="protagonist-name" value={protagonistName} maxLength={30} onChange={e => update({ protagonistName: e.target.value })} placeholder="주인공 이름" /></div>
-          <div className="space-y-2"><Label htmlFor="favorite">무엇을 좋아하나요? <span className="text-muted-foreground">(선택)</span></Label>
-            <Input id="favorite" maxLength={200} value={favorite} onChange={e => update({ favorite: e.target.value })} placeholder="예: 공룡, 별, 강아지" />
-            <div className="flex flex-wrap gap-2">{FAVORITES.map(value => <button type="button" key={value} onClick={() => update({ favorite: value })}
-              className={cn("rounded-full border px-3 py-1.5 text-sm", favorite === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{value}</button>)}</div>
+        {mode === "personalized" && <section aria-labelledby="story-hero-heading" className={styles.heroSection}>
+          <h3 id="story-hero-heading" className={styles.sectionTitle}><span className={styles.step}>1</span>누가 나올까요?</h3>
+          <div className={styles.heroFields}>
+            <div className="space-y-2"><Label htmlFor="protagonist-name">주인공 이름</Label>
+              <Input id="protagonist-name" value={protagonistName} maxLength={30} onChange={e => update({ protagonistName: e.target.value })} placeholder="주인공 이름" className={styles.textInput} /></div>
+            <div className="space-y-2"><Label htmlFor="favorite">좋아하는 것 <span className={styles.optional}>선택</span></Label>
+              <Input id="favorite" maxLength={200} value={favorite} onChange={e => update({ favorite: e.target.value })} placeholder="공룡, 강아지, 좋아하는 캐릭터…" className={styles.textInput} />
+            </div>
           </div>
-        </div>}
+          <div className={styles.favorites} aria-label="좋아하는 것 빠르게 고르기">{FAVORITES.map(value => <button type="button" key={value} aria-pressed={favorite === value} onClick={() => update({ favorite: favorite === value ? "" : value })}
+            className={cn(styles.favorite, favorite === value && styles.favoriteSelected)}>{value}</button>)}</div>
+        </section>}
         <fieldset className="min-w-0 space-y-4">
-          <legend className="w-full font-heading text-xl text-foreground">{mode === "original" ? "오늘은 이런 동화를 준비했어요" : "어떤 주제로 만들까요?"}</legend>
+          <legend className={cn(styles.sectionTitle, "w-full")}><span className={styles.step}>{mode === "original" ? "1" : "2"}</span>{mode === "original" ? "어떤 이야기가 끌리나요?" : "어떤 이야기를 만들까요?"}</legend>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">{mode === "original" ? "마음에 드는 이야기를 골라 주세요" : "마음에 드는 주제를 고르거나 직접 적어 주세요"}</p>
+            <p className="text-sm text-muted-foreground">{mode === "original" ? "오늘 준비한 세 가지예요. 하나 골라요!" : "하나 고르거나, 아래에 직접 써도 좋아요."}</p>
             <button type="button" onClick={reroll} disabled={loadedMode !== mode || catalog.length <= 3}
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-primary hover:bg-primary/10 disabled:opacity-40"
               title={catalog.length <= 3 ? "지금 만날 수 있는 주제를 모두 보여드리고 있어요" : undefined}>
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />다른 주제 보기
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />다시 뽑기
             </button>
           </div>
           {themeError ? <div role="alert" className="rounded-2xl bg-secondary/50 p-5 text-sm">{themeError}
             <button type="button" onClick={() => setReload(n => n + 1)} className="ml-2 text-primary underline">다시 불러오기</button></div>
             : loadedMode !== mode ? <div role="status" className="grid min-h-44 place-items-center rounded-2xl bg-secondary/40 text-sm text-muted-foreground">이야기 카드를 준비하고 있어요…</div>
             : cards.length === 0 ? <p role="status">아직 준비된 주제가 없어요. 나만의 이야기 탭에서 만나보세요.</p>
-            : <div data-testid="topic-cards" className={cn("grid gap-3 transition-opacity motion-reduce:transition-none sm:grid-cols-3", customActive && "opacity-45 saturate-50")}>{cards.map((topic, index) => <label key={topic.theme_id}
-                className="relative cursor-pointer">
-                <input type="radio" name="story-theme" value={topic.theme_id} checked={themeId === topic.theme_id}
-                  onChange={() => { setCustomSelected(false); update({ themeId: topic.theme_id, customTopic: "" }) }} className="peer sr-only" />
-                <span className={cn("flex h-full min-h-28 flex-col rounded-2xl border-2 p-4 transition-colors sm:min-h-48 peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2",
-                  themeId === topic.theme_id ? "border-primary bg-primary/5" : "border-transparent",
-                  themeId !== topic.theme_id && ["bg-[#f4edda]", "bg-[#e7eeea]", "bg-[#f5e8df]"][index])}>
-                  <span className="mb-3 flex items-center justify-between gap-2 text-xs text-foreground/65">
-                    <span>{topic.category}</span><span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full border", themeId === topic.theme_id ? "border-primary bg-primary text-white" : "border-foreground/20")}>
-                      {themeId === topic.theme_id && <Check className="h-3 w-3" aria-hidden="true" />}</span>
+            : <div data-testid="topic-cards" className={cn(styles.cards, customActive && styles.cardsInactive)}>{cards.map(topic => {
+                const presentation = themePresentation(topic)
+                const Icon = THEME_SYMBOLS[presentation.icon]
+                return <label key={topic.theme_id} className={styles.cardLabel}>
+                  <input type="radio" name="story-theme" value={topic.theme_id} checked={themeId === topic.theme_id}
+                    onChange={() => { setCustomSelected(false); update({ themeId: topic.theme_id, customTopic: "" }) }} className="peer sr-only" />
+                  <span className={cn(styles.card, styles[presentation.icon], themeId === topic.theme_id && styles.cardSelected)}>
+                    <span className={styles.selectionMark} aria-hidden="true">{themeId === topic.theme_id && <Check size={14} />}</span>
+                    <span className={styles.symbol}><Icon aria-hidden="true" strokeWidth={1.8} /></span>
+                    <span className={styles.cardTitle}>{presentation.label}</span>
                   </span>
-                  <span className="break-keep font-heading text-lg leading-snug text-foreground">{topic.label}</span>
-                  <span className="mt-3 break-keep text-xs leading-relaxed text-foreground/70">{topic.description}</span>
-                </span>
-              </label>)}</div>}
+                </label>
+              })}</div>}
+          {/* 설명은 선택 후 한 곳에만 표시한다. 카드마다 긴 문장이 반복되지 않는다. */}
+          {selectedTopic && !customActive && <p className={styles.topicDetail} role="status"><Check size={16} aria-hidden="true" />{selectedTopic.description}</p>}
           {mode === "personalized" && <div className="space-y-2 pt-1">
-            <Label htmlFor="custom-topic" className="sr-only">주제 직접 입력</Label>
-            <Input id="custom-topic" maxLength={200} value={customTopic} placeholder="직접 입력하기…" aria-describedby="custom-topic-help"
-              className={cn("transition-colors", customActive && "border-primary bg-primary/5 ring-1 ring-primary/30")}
+            <Label htmlFor="custom-topic" className={styles.customLabel}><PencilLine size={15} aria-hidden="true" />또는 내 생각을 써 볼까요?</Label>
+            <Input id="custom-topic" maxLength={200} value={customTopic} placeholder="예: 웃긴 일이 가득한 모험을 하고 싶어요" aria-describedby="custom-topic-help"
+              className={cn(styles.textInput, "transition-colors", customActive && "border-primary bg-primary/5 ring-1 ring-primary/30")}
               onFocus={() => { setCustomSelected(true); update({ themeId: "" }) }}
               onChange={e => { setCustomSelected(true); update({ customTopic: e.target.value, themeId: "" }) }} />
             <p id="custom-topic-help" className="sr-only" aria-live="polite">{customActive ? "직접 입력한 주제로 만들어요. 추천 카드를 선택하면 카드 주제로 바뀌어요." : "추천 카드와 직접 입력 중 하나를 선택해 주세요."}</p>
           </div>}
         </fieldset>
-        {mode === "personalized" && <div className="space-y-2"><Label htmlFor="today-event">오늘 일어난 일 <span className="text-muted-foreground">(선택)</span></Label>
-            <Input id="today-event" value={eventText} maxLength={800} onChange={e => update({ eventText: e.target.value })} placeholder="예: 친구와 함께 놀이터에서 놀았어요" /></div>}
-        <div className="space-y-2 rounded-2xl bg-secondary/50 p-4">
-          <label className="flex items-center gap-3"><input type="checkbox" checked={preferences?.page_images ?? false}
-            disabled={!preferences?.available || saving} onChange={e => void toggleImages(e.target.checked)} /><span>매 장면에 삽화 넣기</span></label>
-          <p className="text-xs leading-relaxed text-muted-foreground">그림이 있으면 만드는 시간이 더 걸려요. 이 계정에 설정을 저장해요.</p>
+        {mode === "personalized" && <details className={styles.eventDetails} open={eventText.trim() ? true : undefined}>
+          <summary><span>오늘 있었던 일도 넣을까요? <span className={styles.optional}>선택</span></span><ChevronDown size={18} aria-hidden="true" /></summary>
+          <div className="pt-3"><Label htmlFor="today-event" className="sr-only">오늘 있었던 일</Label>
+            <textarea id="today-event" value={eventText} rows={2} maxLength={800} onChange={e => update({ eventText: e.target.value })}
+              className={styles.eventInput} placeholder="예: 친구와 놀이터에서 놀았어요" /></div>
+        </details>}
+        <div className={styles.imageOption}>
+          <label><input type="checkbox" checked={preferences?.page_images ?? false}
+            disabled={!preferences?.available || saving} onChange={e => void toggleImages(e.target.checked)} />
+            <span><span className={styles.imageLabel}>장면마다 그림도 넣을래요</span><span className={styles.imageHelp}>그림을 그리는 시간이 조금 더 걸려요.</span></span></label>
           {preferences && !preferences.available && <p className="text-sm text-muted-foreground">삽화 옵션을 준비하고 있어요.</p>}
           {!preferences && !settingsError && <p role="status" className="text-sm">설정을 불러오는 중이에요.</p>}
           {saving && <p role="status" className="text-sm">설정을 저장하는 중이에요.</p>}

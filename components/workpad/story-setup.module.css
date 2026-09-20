@@ -1,0 +1,49 @@
+/* 작은 화면에서도 세 장을 한눈에 고르고, 글쓰기 영역은 선으로 나눠 구분한다. */
+.form { border: 0; padding: 0; }
+.modeHint { color: #776956; font-size: 14px; line-height: 1.7; text-align: center; text-wrap: pretty; }
+.sectionTitle { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 21px; font-weight: 400; }
+.step { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 50%; background: #ece5d6; color: #776447; font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
+.heroSection { padding-bottom: 24px; border-bottom: 1px solid #e9dfcf; }
+.heroFields { display: grid; gap: 16px; margin-top: 18px; }
+.textInput { min-height: 48px; border-radius: 12px; padding: 10px 13px; background: #fffefa; font-size: 16px; }
+.optional { margin-left: 5px; color: #8b7d69; font-size: 12px; font-weight: 400; }
+.favorites { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.favorite { min-height: 36px; padding: 6px 12px; border: 1px solid #e6dfd2; border-radius: 20px; font-size: 13px; color: #6d6150; }
+.favorite:hover, .favoriteSelected { border-color: #bc6b3d; background: #fbecda; color: #8a4027; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; transition: opacity 160ms; }
+.cardsInactive { opacity: .46; filter: saturate(.45); }
+.cardLabel { min-width: 0; cursor: pointer; }
+.card { --tint: #f1e9dc; --ink: #8b6742; position: relative; display: flex; align-items: center; flex-direction: column; height: 100%; min-height: 152px; padding: 24px 8px 14px; border: 2px solid transparent; border-radius: 18px; background: var(--tint); color: var(--ink); transition: border-color 140ms, box-shadow 140ms; }
+.cardLabel:hover .card { border-color: var(--ink); }
+.cardLabel input:focus-visible + .card { outline: 3px solid #b95831; outline-offset: 3px; }
+.cardSelected { border-color: var(--ink); box-shadow: 0 3px 0 color-mix(in srgb, var(--ink) 30%, transparent); }
+.selectionMark { position: absolute; right: 7px; top: 7px; display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; }
+.cardSelected .selectionMark { color: #fff; background: var(--ink); }
+.symbol { display: grid; place-items: center; width: 54px; height: 54px; margin-bottom: 12px; background: #ffffff75; border-radius: 46% 54% 50% 44%; transform: rotate(-5deg); }
+.symbol svg { width: 32px; height: 32px; transform: rotate(5deg); }
+.cardTitle { max-width: 9em; color: #413b31; font-family: var(--font-heading); font-size: 17px; line-height: 1.45; text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
+.daily { --tint: #faf0ce; --ink: #927020; }
+.heart { --tint: #f8e4e3; --ink: #a45e66; }
+.friend { --tint: #e4eff3; --ink: #45748a; }
+.courage { --tint: #f8e7d5; --ink: #a46535; }
+.promise { --tint: #e9e7f4; --ink: #746398; }
+.family { --tint: #f4e5dd; --ink: #976149; }
+.nature { --tint: #e7eedc; --ink: #637e43; }
+.safety { --tint: #e1eee8; --ink: #477b69; }
+.topicDetail { display: flex; align-items: start; gap: 7px; font-size: 13px; line-height: 1.6; color: #70634f; }
+.topicDetail svg { flex-shrink: 0; margin-top: 3px; color: #63806a; }
+.customLabel { display: flex; align-items: center; gap: 7px; color: #796a55; font-size: 13px; }
+.eventDetails { padding-top: 18px; border-top: 1px solid #e9dfcf; }
+.eventDetails summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; font-size: 14px; }
+.eventDetails summary::-webkit-details-marker { display: none; }
+.eventDetails[open] summary > svg { transform: rotate(180deg); }
+.eventInput { width: 100%; resize: vertical; min-height: 80px; padding: 12px; border: 1px solid #e0d7c9; border-radius: 12px; background: #fffefa; font-size: 16px; }
+.eventInput:focus-visible { outline: 2px solid #bc6b3d; outline-offset: 2px; }
+.imageOption { padding-top: 20px; border-top: 1px solid #e9dfcf; }
+.imageOption label { display: flex; align-items: center; gap: 12px; cursor: pointer; min-height: 48px; }
+.imageOption input { width: 21px; height: 21px; accent-color: #b95d3b; flex-shrink: 0; }
+.imageLabel { display: block; font-size: 15px; color: #514330; }
+.imageHelp { display: block; margin-top: 3px; font-size: 12px; color: #857764; }
+@media (min-width: 540px) { .heroFields { grid-template-columns: 1fr 1.5fr; } .card { min-height: 160px; padding-inline: 15px; } .symbol { width: 60px; height: 60px; } .cardTitle { font-size: 19px; } }
+@media (max-width: 360px) { .cards { gap: 6px; } .card { padding-inline: 5px; } .cardTitle { font-size: 15px; } .sectionTitle { font-size: 19px; } }
+@media (prefers-reduced-motion: reduce) { .cards, .card { transition: none; } }

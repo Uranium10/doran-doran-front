@@ -580,3 +580,16 @@
 - 사용자 승인으로 실패 카드 유지·전역 실패 알림·안전 차단 안내 문구 및 회귀 테스트를 main에 반영한다.
 - 원격 기준 일치, 기존 관련 테스트/TypeScript 검사 통과, Next production build 통과. API/환경변수/DB 변경 없음.
 - 백엔드 31a9c3a push 완료 후 프론트 push. next-env.d.ts 자동 생성 변경은 로컬 보존하고 제외. Vercel 배포 완료는 별도 확인.
+
+[2026-09-21] 배포 완료 확인: frontend ba12347441fea69367712e124d54f998b1c3bd0c. push 뒤 자동 배포 기록이 나타나지 않아 Vercel Create Deployment에서 main 최신 커밋을 확인하고 Deploy to Production 실행. Cvgygx6Bj4NLN4mA4m7axzSYx5e3 Ready/Latest/Production, Current Domains doran-doran-front.vercel.app 연결 확인. GitHub Vercel status success(Deployment has completed), 운영 루트 HTTP200. 자동 트리거 미접수 원인은 미확정. 추가 환경변수 없음. 확인 기록은 재배포 방지를 위해 로컬 보관.
+
+[2026-09-21] 아이가 고르기 쉬운 동화 작성란 정리
+- components/workpad/story-setup.tsx, story-setup.module.css: 3개 아이콘 카드, 선택 후 설명, 등장인물/주제 구분, 오늘 경험 펼침 영역, 48px 입력란, 삽화 안내 간소화.
+- lib/story-theme-presentation.ts: 52개 주제 표시 이름을 짧게 정리하고 8종 고정 아이콘·색 연결. 서버 theme_id와 생성용 교육 지침은 유지. 새 서버 주제는 API 표시 이름으로 폴백.
+- 검증: TypeScript --noEmit, 카드 추첨 테스트 2개, 52개 ID/8종 아이콘 매핑, Next 운영 빌드 통과. 모의 API 브라우저 검증(데스크톱/390px/320px)에서 선택/직접 입력 전환, 복원, 원전 모드 요청값 제거, 접수 후 카드 고정 확인. 실제 아동 사용성 평가는 미실시.
+- API/백엔드/DB/TTS 변경 및 유료 생성 없음. 미리보기 경로 제거, 고도화/story-form-child-20260921에 이전 코드/검증용 페이지/설명 보관.
+- 미적용: 이번 UI 변경의 commit/push/운영 배포는 하지 않음. 기존 log.txt 배포 확인 기록 및 자동 생성 next-env.d.ts 변경 보존.
+
+[2026-09-21] 동화 작성란 운영 반영 요청
+- 사용자 배포 요청으로 검증 완료한 아이콘 카드·주제명·입력란 개선을 main에 커밋 후 push한다. 원격 main과 기준 커밋 일치 확인. 이전 타입/카드 추첨/브라우저/운영 빌드 검증 이후 소스 변경 없음.
+- 프론트만 변경. API·백엔드·환경변수·DB 변경 없음. next-env.d.ts 자동 생성 변경 제외. Vercel 실제 완료는 후속 확인한다.
