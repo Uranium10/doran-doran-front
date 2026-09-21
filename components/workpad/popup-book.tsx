@@ -41,7 +41,7 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
   return <div className={styles.words}>
     <div className={styles.runningHead}><span title={page.heading}>{page.heading}</span><span aria-hidden="true">✦</span></div>
     <div ref={element => { localArea.current = element; if (areaRef) areaRef.current = element }} className={styles.textArea} data-scrollable={scrollable || undefined}><p className={styles.prose}>{page.text.trim()}</p></div>
-    <div className={styles.pageNote}>{page.sceneIndex + 1}장{page.partCount > 1 ? ` · ${page.part} / ${page.partCount}` : ""}</div>
+    <div className={styles.pageNote}>{page.readingNumber ?? page.page_number}</div>
   </div>
 }
 

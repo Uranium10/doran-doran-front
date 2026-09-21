@@ -16,7 +16,7 @@ export function audioTimeline(pages: ReadingPage[], spreads: BookSpread[], layou
       if (!Number.isFinite(end) || end <= start || end > layout.duration + .01) throw new Error('음성 시간표를 확인해 주세요.')
       const spread = spreads.findIndex(s => [s.left, s.right].some(leaf => leaf.kind === 'text' && leaf.page.sceneIndex === chapter && leaf.page.startOffset === page.startOffset))
       if (spread < 0) throw new Error('읽을 페이지를 찾지 못했어요.')
-      const segment = { chapter, start, end, offset, spread, label: `${chapter + 1}장 · ${index + 1}쪽`, url: layout.audio_url }
+      const segment = { chapter, start, end, offset, spread, label: String(pages.indexOf(page) + 1), url: layout.audio_url }
       start = end
       return segment
     })

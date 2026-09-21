@@ -41,3 +41,18 @@ assert.ok(narrow[newIndex].startOffset <= anchor.startOffset && narrow[newIndex]
 assert.equal(findReadingPosition([], anchor), 0)
 assert.equal(paginateStory([], () => true).length, 0)
 console.log('PASS: exact text preservation, sentence boundaries, long words, emoji, image reuse, reading-position resize')
+
+const voiceText='첫 문장입니다. 다음 문장도 읽어요. 마지막이에요.'
+const bounds=[9,21,voiceText.length]
+const narrated={page_number:1,heading:'',image:'',text:voiceText,audio_index_status:'ready',audio_duration:9,
+  audio_cues:bounds.map((end_offset,i)=>({end_offset,end_seconds:(i+1)*3}))}
+for(const size of [10,22,100]) {
+ const result=paginateStory([narrated],t=>t.length<=size)
+ assert.equal(result.map(p=>p.text).join(''),voiceText)
+ assert.ok(result.every(p=>bounds.includes(p.endOffset)))
+ assert.deepEqual(Array.from(result,p=>p.readingNumber),result.map((_,i)=>i+1))
+}
+// 음성 없는 기존 책/손상된 시간표는 원문 누락 없이 기존 페이징으로 처리한다.
+const invalid={...narrated,audio_cues:[{end_offset:999,end_seconds:9}]}
+assert.equal(paginateStory([invalid],t=>t.length<=10).map(p=>p.text).join(''),voiceText)
+console.log('PASS: saved audio boundaries reused across page sizes without text loss')

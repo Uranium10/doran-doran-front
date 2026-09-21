@@ -29,6 +29,8 @@ export type StoryPage = {
   heading: string
   text: string
   image_status?: "ready" | "failed" | "not_requested"
+  audio_cues?: { end_offset: number; end_seconds: number }[] | null
+  audio_index_status?: "ready" | "failed" | null
   audio_duration?: number | null
   audio_path?: string | null
   audio_url?: string | null

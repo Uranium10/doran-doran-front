@@ -39,6 +39,7 @@ export function NarrationPlayer(props: Props) {
   const [resting, setResting] = useState(false)
   const [error, setError] = useState('')
   const [readyCount, setReadyCount] = useState(0)
+  const preIndexed = props.pages.every(p => p.audio_index_status === 'ready' && p.audio_cues?.length)
   const total = segments.length ? segments[segments.length - 1].offset + segments[segments.length - 1].end : props.pages.reduce((sum, p) => sum + (p.audio_duration ?? 0), 0)
 
   function clearTimer() { if (timer.current) clearTimeout(timer.current); timer.current = null }
@@ -54,8 +55,8 @@ export function NarrationPlayer(props: Props) {
     const audio = audioRef.current
     let active = true
     let settling: ReturnType<typeof setTimeout> | undefined
-    // 글꼴 로딩 직후 임시 페이지 경계로 유료 시간표를 만들지 않는다.
-    void document.fonts.ready.then(() => { if (active) settling = setTimeout(() => setSettled(true), 400) })
+    // 글꼴이 정착한 뒤 페이지를 연결한다. 새 동화는 모델 분석 없이 저장된 시각을 읽는다.
+    void document.fonts.ready.then(() => { if (active) settling = setTimeout(() => setSettled(true), preIndexed ? 0 : 400) })
     return () => {
       active = false; clearTimeout(settling)
       intent.current = false; epoch.current++; clearTimer(); controller.current?.abort()
@@ -75,20 +76,40 @@ export function NarrationPlayer(props: Props) {
     preparingRef.current = true; setPreparing(true); setReadyCount(0)
     const layouts: AudioLayout[] = []
     try {
-      for (let i = 0; i < props.pages.length; i++) {
+      const load = async (i: number) => {
         const ranges = props.readingPages.filter(p => p.sceneIndex === i).map(p => ({ start: p.startOffset, end: p.endOffset }))
-        layouts.push(await request<AudioLayout>(`/stories/${encodeURIComponent(props.identity.storyId)}/narration-layout`, {
+        const layout = await request<AudioLayout>(`/stories/${encodeURIComponent(props.identity.storyId)}/narration-layout`, {
           method: 'POST', signal: abort.signal,
           body: JSON.stringify({ profile_id: props.identity.profileId, chapter: props.pages[i].page_number, ranges }),
-        }, { timeoutMs: 90_000 }))
+        }, { timeoutMs: preIndexed ? 20_000 : 90_000 })
         if (abort.signal.aborted) throw new Error('준비가 중단됐어요.')
-        setReadyCount(i + 1)
+        setReadyCount(n => n + 1)
+        return layout
       }
+      // 생성 시 인덱싱한 책은 서명 URL과 경계 연결만 병렬로 읽는다. 기존 책의
+      // 유료 분석은 사용자가 재생을 누를 때 기존 순차 경로로만 실행한다.
+      if (preIndexed) layouts.push(...await Promise.all(props.pages.map((_, i) => load(i))))
+      else for (let i = 0; i < props.pages.length; i++) layouts.push(await load(i))
       const next = audioTimeline(props.readingPages, props.spreads, layouts)
       segmentsRef.current = next; setSegments(next); preparedAt.current = Date.now()
       return next
-    } finally { preparingRef.current = false; if (!abort.signal.aborted) setPreparing(false) }
+    } finally {
+      if (controller.current === abort) { preparingRef.current = false; setPreparing(false) }
+    }
   }
+
+  useEffect(() => {
+    if (!settled || !preIndexed) return
+    let active = true
+    void prepare().then(list => {
+      const audio = audioRef.current
+      // 첫 재생 전에 파일 헤더도 읽어 둔다. 음성을 자동으로 재생하지 않는다.
+      if (active && audio && list[0] && !intent.current && !audio.getAttribute('src')) {
+        audio.src = list[0].url; audio.load()
+      }
+    }).catch(e => { if (active && !controller.current?.signal.aborted) setError(e instanceof Error ? e.message : '음성을 불러오지 못했어요.') })
+    return () => { active = false }
+  }, [settled, preIndexed])
 
   function finishSegment() {
     if (!intent.current || busy.current) return
@@ -152,7 +173,7 @@ export function NarrationPlayer(props: Props) {
     if (preparingRef.current || !settled) return
     setError('')
     try {
-      const list = await prepare()
+      const list = segmentsRef.current.length && Date.now() - preparedAt.current < 7_000_000 ? segmentsRef.current : await prepare()
       const visible = latest.current.spreads[latest.current.currentSpread]
       const picture = [visible.left, visible.right].find(leaf => leaf.kind === 'image')
       const matching = list.findIndex(s => s.spread === latest.current.currentSpread || (picture?.kind === 'image' && s.chapter === picture.page.sceneIndex && s.start === 0))
@@ -196,7 +217,7 @@ export function NarrationPlayer(props: Props) {
   }, [props.currentSpread])
 
   return <section className={styles.remote} aria-label="읽어 주는 동화 리모컨">
-    <audio ref={audioRef} preload="metadata" onLoadedMetadata={() => {
+    <audio ref={audioRef} preload="auto" onLoadedMetadata={() => {
       const audio = audioRef.current
       if (audio && pendingSeek.current !== null) positionAudio(audio, pendingSeek.current)
       scheduleBoundary()
@@ -209,11 +230,11 @@ export function NarrationPlayer(props: Props) {
       {preparing ? <LoaderCircle className={styles.spinner} size={22} /> : playing ? <Pause size={22} /> : <Play size={22} />}
     </button>
     <div className={styles.controls}>
-      <div className={styles.caption}><span><Headphones size={14} />{preparing ? `쪽에 목소리를 맞추고 있어요 ${readyCount}/${props.pages.length}` : resting ? '잠깐 숨을 고르고 있어요' : playing ? '목소리를 따라 책장이 넘어가요' : '읽어 주는 동화'}</span><time>{clock(position)} / {clock(total)}</time></div>
+      <div className={styles.caption}><span><Headphones size={14} />{preparing ? `목소리를 불러오고 있어요 ${readyCount}/${props.pages.length}` : resting ? '잠깐 숨을 고르고 있어요' : playing ? '목소리를 따라 책장이 넘어가요' : '읽어 주는 동화'}</span><time>{clock(position)} / {clock(total)}</time></div>
       <input type="range" min="0" max={total || 1} step="0.1" value={position} disabled={!segments.length || preparing} aria-label="동화 전체 재생 위치" aria-valuetext={`${clock(position)} / ${clock(total)}`} onChange={e => seek(Number(e.target.value))} />
-      <nav className={styles.checkpoints} aria-label="페이지별 음성 이동">{segments.map((s, i) => <button type="button" key={i} onClick={() => seek(s.offset + s.start)} aria-current={i === segmentAt(segments, position) ? 'step' : undefined} title={`${s.label} · ${clock(s.offset + s.start)}`} aria-label={`${s.label}부터 듣기`}>{s.label}</button>)}</nav>
+      <nav className={styles.checkpoints} aria-label="페이지별 음성 이동">{segments.map((s, i) => <button type="button" key={i} onClick={() => seek(s.offset + s.start)} aria-current={i === segmentAt(segments, position) ? 'step' : undefined} title={`${s.label}쪽 · ${clock(s.offset + s.start)}`} aria-label={`${s.label}쪽부터 듣기`}>{s.label}</button>)}</nav>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      {!segments.length && !preparing && !error && <p className={styles.hint}>처음 재생할 때 쪽별 시간을 준비해요.</p>}
+      {!preIndexed && !segments.length && !preparing && !error && <p className={styles.hint}>처음 재생할 때 쪽별 시간을 준비해요.</p>}
     </div>
   </section>
 }
