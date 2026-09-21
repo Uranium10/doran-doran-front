@@ -174,7 +174,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
                 </label>
               })}</div>}
           {/* 설명은 선택 후 한 곳에만 표시한다. 카드마다 긴 문장이 반복되지 않는다. */}
-          {selectedTopic && !customActive && <p className={styles.topicDetail} role="status"><Check size={16} aria-hidden="true" />{selectedTopic.description}</p>}
+          {selectedTopic && !customActive && <p className={styles.topicDetail} role="status"><Check size={16} aria-hidden="true" />{themePresentation(selectedTopic).description}</p>}
           {mode === "personalized" && <div className="space-y-2 pt-1">
             <Label htmlFor="custom-topic" className={styles.customLabel}><PencilLine size={15} aria-hidden="true" />또는 내 생각을 써 볼까요?</Label>
             <Input id="custom-topic" maxLength={200} value={customTopic} placeholder="예: 웃긴 일이 가득한 모험을 하고 싶어요" aria-describedby="custom-topic-help"

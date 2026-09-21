@@ -74,6 +74,13 @@ async function run(){
  assert.equal(a.calls.post,0);assert.equal(a.notices.length,0);a.controller.dismiss();a.controller.dispose()
  memory.clear();a=make({current:async()=>({available:true,job:blocked})});await a.controller.refresh()
  assert.match(a.controller.state.error,/소재/);a.controller.dispose()
+ // 원전 부적합과 검사 장애를 구분하고 어느 경우에도 자동 재생성하지 않는다.
+ for (const code of ['source_topic_unmatched', 'source_check_unavailable']) {
+   memory.clear();const failed={...job('failed'),stage:'failed',error_code:code}
+   a=make({current:async()=>({available:true,job:failed})});await a.controller.refresh();await a.controller.refresh()
+   assert.match(a.controller.state.error, code==='source_topic_unmatched' ? /다른 주제/ : /잠시 뒤/)
+   assert.equal(a.calls.post,0);assert.equal(a.notices.length,0);a.controller.dispose()
+ }
  assert.equal(timers.size,0)
  console.log('PASS: acceptance, navigation/reload recovery, no duplicate POST, conflict adoption, stale responses, logout/account isolation, reconnect, legacy completion')
 }

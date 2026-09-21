@@ -52,7 +52,10 @@ export class GenerationController {
     // 안전 차단은 다시 같은 입력을 보내도록 권하지 않고, 입력 수정이 필요함을 알린다.
     const safetyBlocked = job.status === "failed" && job.error_code === "safety_blocked"
     this.update({ job: tracked, connectionLost: false, error: safetyBlocked
-      ? "AI 제공자의 안전 필터가 생성을 중단했어요. 입력한 소재나 표현을 바꿔 다시 시도해 주세요." : null })
+      ? "AI 제공자의 안전 필터가 생성을 중단했어요. 입력한 소재나 표현을 바꿔 다시 시도해 주세요." : job.status === "failed" && job.error_code === "source_topic_unmatched"
+      ? "이 주제에 어울리는 옛이야기를 찾지 못했어요. 다른 주제를 골라 주세요."
+      : job.status === "failed" && job.error_code === "source_check_unavailable"
+      ? "옛이야기와 주제를 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요." : null })
     if (job.status === "completed" && job.result && this.read("notified") !== job.job_id) {
       this.write("notified", job.job_id)
       this.onReady(tracked)
