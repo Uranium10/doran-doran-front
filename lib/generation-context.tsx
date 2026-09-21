@@ -64,7 +64,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           method: "POST", headers: { "Idempotency-Key": key },
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
             mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
-            favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: false }),
+            favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: input.tts ?? false }),
         }),
         legacy: (profileId, input) => generateAssessment(profileId, "posttest", { ...input, useJobs: false }),
       }, {

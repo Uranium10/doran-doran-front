@@ -185,3 +185,8 @@
   .closedBack .ending .vocabLink { padding:8px 4px; }
   .closedBack .ending .readAgain { padding:8px 14px; }
 }
+
+/* 음성 리모컨이 본문/기존 모바일 리모컨을 가리지 않도록 공간을 예약한다. */
+.reader[data-narrated] { position:relative; padding-bottom:130px; }
+.audioFailure { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:11px; color:#8b6349; }
+@media(max-width:767px) { .reader[data-narrated] { padding-bottom:calc(122px + env(safe-area-inset-bottom)); } }

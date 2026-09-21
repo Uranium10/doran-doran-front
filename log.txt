@@ -623,3 +623,13 @@
 - site-footer.tsx: 저작권 문구 아래 서비스 개시일 2026년 7월 1일, time dateTime=2026-07-01 표시.
 - 검증: tsc --noEmit 통과, next build 성공, git diff --check 통과. 로컬 프로덕션 브라우저에서 #faq→상단 및 #hero 상태 하단→재클릭 scrollY=0 확인. 좁은 화면 푸터 표시 확인. 데스크톱은 공통 코드 연결·빌드 검증(브라우저 폭 변경이 적용되지 않아 데스크톱 실클릭 검증은 하지 못함).
 - API 형식 변경 없음. 관련 파일만 커밋/push하여 Vercel 자동 배포 예정.
+
+[2026-09-21] 선택 음성 생성 체크박스 및 책 재생 리모컨(로컬 구현, 미배포)
+- story-setup/생성 context: tts 체크박스(기본 꺼짐), 비동기 작업 요청으로 전달. 프로필 작성 초안으로 보존하며 계정 영구 설정은 미추가.
+- popup-book/remote-book/narration-player/narration-timeline: 음성책 표지 안내, 하단 전체 시간 탐색, 장/쪽 체크포인트, 재생·일시정지, 자동 넘김·완독. 재생 중 수동 넘김/글자 조작 잠금, 일시정지 후 수동 이동한 쪽부터 재생. 쪽 0.7초/장 1.2초 쉼.
+- 회전·글자 크기 변경 시 재분할 시간표 준비. 탭 숨김/책 이탈 시 오디오 중지·요청 정리. 모바일 metadata 준비 전 탐색 보류. 부분 음성 실패는 글/그림 유지 및 안내.
+- 통신규격.md에 인증 narration-layout 및 상태/캐시/스토리지/배포 순서 기록.
+- 검증: tsc --noEmit --incremental false PASS; Next production build PASS; 시간표·책 레이아웃·페이지 분할 node 테스트 PASS; 저장 시험 WAV와 모의 시간표로 실제 컴포넌트 데스크톱/390x844 모바일 재생·잠금·탐색·자동 완독 확인. 임시 UI 경로/로컬 서버 정리.
+- 신규 유료 생성 호출 없음. 운영 전체 TTS 및 실기기 Safari는 미실측. push/Vercel 배포 안 함.
+
+[2026-09-21] 사용자 push 요청: 검증한 선택 TTS 및 페이지 동기화 구현을 main 배포 커밋으로 준비. 백엔드 우선 push 후 프론트 push. 비공개 story-audio 버킷 준비 완료, 기존 Gemini 키 사용. 실제 자동 배포 완료는 별도 확인.

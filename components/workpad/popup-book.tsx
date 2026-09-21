@@ -11,6 +11,8 @@ import { useBookImages } from "./use-book-images"
 import { bookCoverStyle } from "@/lib/book-appearance"
 import { bookGestureDirection, trackBookGesture, type BookGesture } from "@/lib/book-gesture"
 import styles from "./popup-book.module.css"
+import { NarrationPlayer } from "./narration-player"
+import { narrationKey } from "@/lib/narration-timeline"
 import { StoryVocabulary } from "./story-vocabulary"
 
 function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
@@ -46,6 +48,7 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
 type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
 type PopupBookProps = {
+  narrationIdentity?: { storyId: string; profileId: string }
   vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown }
   initialBookmark?: BookBookmark
   onBookmarkChange?: (bookmark: BookBookmark) => void
@@ -68,7 +71,7 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
   const pageInputRef = useRef<HTMLInputElement>(null)
@@ -79,6 +82,9 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
   const anchor = useRef<BookSpread | undefined>(undefined)
   const source = useRef(pages)
   const toolsId = useId()
+  const [audioLocked, setAudioLocked] = useState(false)
+  const narrated = !!narrationIdentity && pages.length > 0 && pages.every(p => p.audio_status === "ready" && !!p.audio_path && !!p.audio_duration)
+  const audioFailed = pages.some(p => p.audio_status === "failed")
   const [toolsOpen, setToolsOpen] = useState(false)
   const [vocabOpen, setVocabOpen] = useState(false)
   const [vocabReady, setVocabReady] = useState(false)
@@ -122,7 +128,8 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
     return () => { if (timer.current) clearTimeout(timer.current) }
   }, [spreads, pages, bookmark.ready])
 
-  const go = (target: number) => {
+  const go = (target: number, fromAudio = false) => {
+    if (audioLocked && !fromAudio) return
     const previous = destination.current
     if (target < 0 || target >= spreads.length || target === previous) return
     // 연속 입력은 진행 중인 장의 도착 지점에서 이어간다. 입력을 버리거나 긴 대기열로 쌓지 않는다.
@@ -156,6 +163,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
     }
   }
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (audioLocked) return
     // 두 손가락 확대는 책 넘김이 아니다. 두 번째 손가락이 닿으면 첫 입력도 취소한다.
     if (!event.isPrimary) { gesture.current = null; return }
     if (event.button !== 0 || (event.target as HTMLElement).closest("button,a,input,textarea,select,[data-book-ending]")) return
@@ -186,7 +194,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
   const leafContent = (leaf: BookLeaf) => {
     if (leaf.kind === "text") return <Words page={leaf.page} />
     if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} unavailable={failedImages.includes(leaf.page.image ?? "")} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
-    if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>표지를 눌러 펼쳐 보세요 <ChevronRight size={14} /></span></div>
+    if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>{narrated ? "아래 재생 버튼으로 들어 보세요" : "표지를 눌러 펼쳐 보세요"} <ChevronRight size={14} /></span></div>
     if (leaf.kind === "back") return <div className={`${styles.cover} ${styles.backCover}`}><Sparkles size={32} strokeWidth={1} aria-hidden="true" /><p>이야기는 끝나도<br />상상은 계속돼요.</p><span>도란도란</span></div>
     if (leaf.kind === "ending") return <div className={styles.ending} data-book-ending><span className={styles.eyebrow}>THE END</span><h2>한 권의 모험을<br />마쳤어요!</h2><p>{hasQuiz ? "마음에 남은 이야기를\n문제로 다시 만나 볼까요?" : "이야기를 마음에 담고\n다시 책장 밖으로 나가 볼까요?"}</p><button type="button" disabled={!!activeTurn} onClick={hasQuiz ? onFinish : onExit}>{hasQuiz ? "문제 풀러 가기" : exitLabel}<ChevronRight size={18} /></button>{hasQuiz && <button type="button" disabled={!!activeTurn} className={styles.vocabButton} onClick={onExit}>{exitLabel}</button>}{vocabulary && <button type="button" disabled={!!activeTurn} className={styles.vocabLink} onClick={() => setVocabOpen(true)}>{vocabReady ? "동화 수준 확인하기" : "동화 수준 데이터를 준비중입니다…"}</button>}<button type="button" disabled={!!activeTurn} className={styles.readAgain} onClick={() => go(0)}>처음부터 다시 읽기</button></div>
     if (leaf.kind === "outside") return null
@@ -199,37 +207,37 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
       return <section key={side} className={`${styles.paper} ${styles[side]} ${leaf.kind === "ending" ? styles.endPaper : ""} ${leaf.kind === "outside" ? styles.outside : ""}`}
         data-side={action ? side === "left" ? "previous" : "next" : undefined}
         role={action ? "button" : undefined} tabIndex={action ? 0 : undefined}
-        aria-disabled={action ? (side === "left" ? atCover : atEnd) : undefined}
+        aria-disabled={action ? audioLocked || (side === "left" ? atCover : atEnd) : undefined}
         aria-label={leaf.kind === "ending" ? "완독 안내" : action ? side === "left" ? "왼쪽 페이지 · 이전 장" : atCover ? "책 표지 펼치기" : "오른쪽 페이지 · 다음 장" : undefined}>{leafContent(leaf)}</section>
     })}
   </div>
   if (!pages.length) return <div><p role="status">표시할 동화가 없어요.</p><button onClick={onExit}>돌아가기</button></div>
 
   const resting = activeTurn ? restingBookSpread(activeTurn.from, activeTurn.to, activeTurn.forward) : current
-  return <div ref={rootRef} className={styles.reader} style={{ ...bookCoverStyle(coverColor), "--reading-size": `${fontSize}px`, visibility: bookmark.ready ? "visible" : "hidden" } as CSSProperties}>
+  return <div ref={rootRef} className={styles.reader} data-narrated={narrated || undefined} style={{ ...bookCoverStyle(coverColor), "--reading-size": `${fontSize}px`, visibility: bookmark.ready ? "visible" : "hidden" } as CSSProperties}>
     {/* 모달은 회전 복제면 밖에 한 번만 렌더한다. 마지막 페이지 진입 시 분석만 조회한다. */}
     {vocabulary && <StoryVocabulary key={`${vocabulary.profileId}:${vocabulary.storyId}`} {...vocabulary} active={atEnd || vocabOpen} onReady={setVocabReady} open={vocabOpen} onClose={() => setVocabOpen(false)} />}
     <aside className={styles.remote} aria-label="책 리모컨">
       <button type="button" className={styles.exit} onClick={onExit} aria-label={exitLabel} title={exitLabel}><ArrowLeft size={20} /><span>이전으로</span></button>
       <div className={`${styles.remoteGroup} ${styles.pageControls}`}>
-        <button type="button" aria-label="이전 장" disabled={atCover} onClick={() => step(-1)}><ChevronLeft size={23} /><span>이전 장</span></button>
+        <button type="button" aria-label="이전 장" disabled={atCover || audioLocked} onClick={() => step(-1)}><ChevronLeft size={23} /><span>이전 장</span></button>
         <form className={styles.position} onSubmit={event => { event.preventDefault(); jumpToInput() }}>
           <span className={styles.positionLabel} role="status" aria-live="polite">{atCover ? "앞표지" : atEnd ? "뒷표지" : "페이지"}</span>
           <div className={styles.pageEntry}><input ref={pageInputRef} aria-label="이동할 페이지 번호" title={`1~${contentCount} 입력 후 Enter 또는 이동`} type="text" inputMode="numeric" enterKeyHint="go" value={pageInput}
-            disabled={contentCount < 1} onChange={event => setPageInput(event.target.value)} onFocus={event => event.currentTarget.select()}
+            disabled={contentCount < 1 || audioLocked} onChange={event => setPageInput(event.target.value)} onFocus={event => event.currentTarget.select()}
             onKeyDown={event => { if (event.key === "Escape") { setPageInput(String(Math.max(1, Math.min(page, contentCount)))); event.currentTarget.blur() } }} /><span>/ {contentCount}</span></div>
-          <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={contentCount < 1}><span className={styles.jumpLabel}>이동</span><Check className={styles.jumpIcon} size={16} aria-hidden="true" /></button>
+          <button className={styles.jumpButton} type="submit" aria-label="입력한 페이지로 이동" disabled={contentCount < 1 || audioLocked}><span className={styles.jumpLabel}>이동</span><Check className={styles.jumpIcon} size={16} aria-hidden="true" /></button>
         </form>
-        <button type="button" className={styles.next} aria-label={atCover ? "책 펼치기" : "다음 장"} disabled={atEnd} onClick={() => step(1)}><ChevronRight size={23} /><span>{atCover ? "펼치기" : "다음 장"}</span></button>
+        <button type="button" className={styles.next} aria-label={atCover ? "책 펼치기" : "다음 장"} disabled={atEnd || audioLocked} onClick={() => step(1)}><ChevronRight size={23} /><span>{atCover ? "펼치기" : "다음 장"}</span></button>
       </div>
       {/* 모바일은 자주 쓰는 넘김/번호만 남기고 보조 도구를 한 번에 펼친다. */}
       <button type="button" className={styles.toolsToggle} aria-label="읽기 설정" title="읽기 설정" aria-expanded={toolsOpen} aria-controls={toolsId} onClick={() => setToolsOpen(open => !open)}><SlidersHorizontal size={20} /></button>
       <div id={toolsId} className={styles.readerTools} data-open={toolsOpen} role="group" aria-label="읽기 설정 도구">
       <div className={styles.remoteGroup}>
-        <button type="button" aria-label="글자 크게" disabled={fontSize >= 28 || !!activeTurn} onClick={() => setFontSize(v => v + 2)}>가+<span>크게</span></button>
-        <button type="button" aria-label="글자 작게" disabled={fontSize <= 18 || !!activeTurn} onClick={() => setFontSize(v => v - 2)}>가−<span>작게</span></button>
+        <button type="button" aria-label="글자 크게" disabled={fontSize >= 28 || !!activeTurn || audioLocked} onClick={() => setFontSize(v => v + 2)}>가+<span>크게</span></button>
+        <button type="button" aria-label="글자 작게" disabled={fontSize <= 18 || !!activeTurn || audioLocked} onClick={() => setFontSize(v => v - 2)}>가−<span>작게</span></button>
       </div>
-      <button type="button" aria-label="처음부터 다시 보기" disabled={atCover} onClick={() => go(0)}><RotateCcw size={18} /><span>처음</span></button>
+      <button type="button" aria-label="처음부터 다시 보기" disabled={atCover || audioLocked} onClick={() => go(0)}><RotateCcw size={18} /><span>처음</span></button>
       <button type="button" aria-label={fullscreen ? "전체 화면 닫기" : "전체 화면으로 읽기"} onClick={toggleFullscreen}>{fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}<span>전체 화면</span></button>
       </div>
     </aside>
@@ -252,7 +260,7 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
           }}>
           {spreadView(resting, true)}
           {/* 안내는 책 바깥에 두고 표지를 넘기기 시작하면 숨긴다. 종이 복제면에는 넣지 않는다. */}
-          {atCover && !activeTurn && <div className={styles.coverGuide}><BookOpen size={28} strokeWidth={1} aria-hidden="true" /><p>책을 누르거나 옆으로 밀어<br className={styles.guideBreak} /> 넘겨 보세요</p><ChevronRight size={20} aria-hidden="true" /></div>}
+          {atCover && !activeTurn && <div className={styles.coverGuide}><BookOpen size={28} strokeWidth={1} aria-hidden="true" /><p>{narrated ? <>읽어 주는 동화예요.<br />화면 아래쪽의 재생 버튼을 눌러 보세요.</> : <>책을 누르거나 옆으로 밀어<br className={styles.guideBreak} /> 넘겨 보세요</>}</p><ChevronRight size={20} aria-hidden="true" /></div>}
           {/* 표지에서도 실제 종이와 같은 본문 상자로 페이지 분량을 미리 측정한다. */}
           <div className={styles.measurePage} aria-hidden="true"><Words page={readingPages[0]} areaRef={textAreaRef} /></div>
           {activeTurn && <>
@@ -264,6 +272,8 @@ function PreparedBook({ vocabulary, pages, childName, title, coverImage, coverCo
       </div>
       {fullscreenError && <p role="status">전체 화면을 열 수 없어요. 현재 화면에서도 읽을 수 있어요.</p>}
     </div>
+    {narrated && narrationIdentity && <NarrationPlayer key={`${narrationIdentity.storyId}:${narrationKey(readingPages)}:${singlePage}`} identity={narrationIdentity} pages={pages} readingPages={readingPages} spreads={spreads} currentSpread={page} onSpread={target => go(target, true)} onLock={setAudioLocked} />}
+    {audioFailed && <p className={styles.audioFailure} role="status">목소리를 모두 준비하지 못했어요. 글과 그림으로 읽어 주세요.</p>}
     <p ref={measureRef} aria-hidden="true" className={`${styles.prose} ${styles.measure}`} />
   </div>
 }

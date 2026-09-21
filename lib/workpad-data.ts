@@ -29,6 +29,8 @@ export type StoryPage = {
   heading: string
   text: string
   image_status?: "ready" | "failed" | "not_requested"
+  audio_duration?: number | null
+  audio_path?: string | null
   audio_url?: string | null
   audio_status?: "not_requested" | "not_implemented" | "ready" | "failed"
 }
@@ -107,7 +109,7 @@ export type AssessmentPayload = {
     page_images: boolean
     quiz_status: "ready" | "failed" | "not_required"
     cover_status: "ready" | "failed"
-    tts_status: "not_requested" | "not_implemented"
+    tts_status: "not_requested" | "not_implemented" | "ready" | "failed" | "partial"
   } | null
 }
 
@@ -151,6 +153,7 @@ export type StoryInput = {
   protagonistName: string
   favorite: string
   todayEvent: string
+  tts?: boolean
   pageImages?: boolean
   useJobs?: boolean
 }
@@ -262,7 +265,7 @@ export async function generateAssessment(
     profile_id: profileId, assessment_type: assessmentType,
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
     mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
-    page_images: input.pageImages ?? false, tts: false,
+    page_images: input.pageImages ?? false, tts: input.tts ?? false,
   })
   if (input.useJobs) {
     const existing = pendingGeneration(profileId)

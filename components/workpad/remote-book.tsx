@@ -65,5 +65,5 @@ export function RemoteBook(props: ComponentProps<typeof PopupBook> & { storyId: 
     timer.current=setTimeout(()=>{pending.current=null;void persist(bookmark).catch(()=>{})},650)
   }
   if(loaded?.key!==key)return <div className="py-20 text-center" role="status">읽던 책갈피를 찾고 있어요…</div>
-  return <PopupBook {...props} initialBookmark={loaded.bookmark} onBookmarkChange={change}/>
+  return <PopupBook {...props} narrationIdentity={{ storyId: props.storyId, profileId: props.profileId }} initialBookmark={loaded.bookmark} onBookmarkChange={change}/>
 }
