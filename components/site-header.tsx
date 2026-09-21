@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { useProfile } from "@/lib/profile-context"
 import { AuthButton } from "@/components/auth-button"
 import { ProfileMenu } from "@/components/profile-menu"
+import { LandingTopLink } from "@/components/landing-top-link"
 
 const navItems = [
   { label: "대쉬보드", href: "/#hero"},
@@ -54,7 +55,17 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
-          {navItems.map((item) => (
+          {navItems.map((item) => item.href === "/#hero" ? (
+            <LandingTopLink
+              key={item.label}
+              className={cn(
+                "text-sm font-medium transition-colors hover:text-primary",
+                scrolled ? "text-foreground/80" : "text-white/90",
+              )}
+            >
+              {item.label}
+            </LandingTopLink>
+          ) : (
             <Link
               key={item.label}
               href={item.href}
@@ -88,7 +99,15 @@ export function SiteHeader() {
       {open && (
         <div className="border-t border-border bg-background md:hidden">
           <nav className="flex flex-col gap-1 px-4 py-4">
-            {navItems.map((item) => (
+            {navItems.map((item) => item.href === "/#hero" ? (
+              <LandingTopLink
+                key={item.label}
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-3 text-base font-medium text-foreground/90 hover:bg-secondary"
+              >
+                {item.label}
+              </LandingTopLink>
+            ) : (
               <Link
                 key={item.label}
                 href={item.href}

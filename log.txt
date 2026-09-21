@@ -615,3 +615,11 @@
 - tests/generation-controller.test.cjs: 두 오류 코드의 폴링 후 안내 유지·추가 POST 없음 확인.
 - 통신규격.md: age-topics-v3, 옛이야기 연령별 9/11/13/12개, 검색/검사 방식 및 새 오류 코드 기록.
 - 검증: 생성 추적기 회귀 테스트, TypeScript 검사 통과. 백엔드 관련 74 tests 통과. 아직 push/배포하지 않음.
+
+[2026-09-21] 랜딩 대쉬보드 반복 클릭 및 서비스 개시일
+- 원인 재현: 운영 랜딩에서 /#hero 이동 후 아래로 스크롤하고 같은 링크를 누르면 Next Link가 상단 이동을 생략함.
+- components/landing-top-link.tsx: 같은 랜딩 경로에서는 기본 라우팅 대신 history state를 유지한 해시 갱신 + window.scrollTo(0)를 실행. 모션 축소 설정과 새 탭/수정키 동작 유지.
+- components/site-header.tsx/site-footer.tsx: 데스크톱·모바일·푸터의 대쉬보드 링크에 공통 처리 연결. 모바일 메뉴 닫기 유지.
+- site-footer.tsx: 저작권 문구 아래 서비스 개시일 2026년 7월 1일, time dateTime=2026-07-01 표시.
+- 검증: tsc --noEmit 통과, next build 성공, git diff --check 통과. 로컬 프로덕션 브라우저에서 #faq→상단 및 #hero 상태 하단→재클릭 scrollY=0 확인. 좁은 화면 푸터 표시 확인. 데스크톱은 공통 코드 연결·빌드 검증(브라우저 폭 변경이 적용되지 않아 데스크톱 실클릭 검증은 하지 못함).
+- API 형식 변경 없음. 관련 파일만 커밋/push하여 Vercel 자동 배포 예정.

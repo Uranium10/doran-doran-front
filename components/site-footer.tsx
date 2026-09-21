@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Sparkles } from "lucide-react"
 import { StartButton } from "@/components/start-button"
+import { LandingTopLink } from "@/components/landing-top-link"
 
 export function SiteFooter() {
   return (
@@ -27,15 +28,18 @@ export function SiteFooter() {
             <span className="font-heading text-xl text-primary">도란도란</span>
           </Link>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            <Link href="/#hero" className="hover:text-primary">대쉬보드</Link>
+            <LandingTopLink className="hover:text-primary">대쉬보드</LandingTopLink>
             <Link href="/#library" className="hover:text-primary">라이브러리</Link>
             <Link href="/#pricing" className="hover:text-primary">가격</Link>
             <Link href="/#criteria" className="hover:text-primary">평가 기준</Link>
             <Link href="/#faq" className="hover:text-primary">FAQ</Link>
           </nav>
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} 도란도란
-          </p>
+          <div className="shrink-0 text-center text-sm text-muted-foreground sm:text-right">
+            <p>&copy; {new Date().getFullYear()} 도란도란</p>
+            <p className="mt-1 text-xs">
+              서비스 개시일 <time dateTime="2026-07-01">2026년 7월 1일</time>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
