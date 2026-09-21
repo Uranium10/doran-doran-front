@@ -670,3 +670,17 @@
 [2026-09-21] Render 설치 호환성 문서 수정
 - 통신규격.md의 MP3 인코더를 lameenc1.8.4로 갱신. Python3.14/Linux 설치 파일이 없는1.8.1의 Render 빌드 실패 수정에 따른 문서 정정. UI/API 동작 변화 없음.
 - Python3.14.3/Linux binary-only 의존성 해석 및 Windows3.14.5 백엔드321개 검증 통과.
+[2026-09-21] DB 접수 실패가 과거 완료 동화로 가려지는 문제 수정
+- lib/generation-controller.ts: 요청ID404 뒤 current가 다른 완료/실패 작업이면 새 요청 결과로 채택하지 않음. 다른 탭의 활성작업만 복구. submission_missing은 프론트 내부 상태이며 오류 안내 유지, 같은ID 지연 접수 조회 가능. 확인 버튼에서 pending 해제.
+- lib/generation-context.tsx: 접수 POST 대기 상한30→60초. 백엔드 읽기1회 복구 여유를 주며 생성 완료를 기다리는 제한은 아님. 자동 POST 재전송 없음.
+- tests/generation-controller.test.cjs의 이전 완료/실패/빈 기록 회귀 및 지연 접수 복구·알림 중복 방지 검증 통과. generation-failure-ui.test.cjs와 tsc --noEmit --incremental false 통과. 백엔드327개 통과. API형식 변경 없음, 통신규격 설명 추가.
+- push/배포 전. 기존 next-env.d.ts 변경 보존.
+
+[2026-09-21] 동화 생성 실패 극장 / 명시적 재시도 (로컬 적용, 미배포)
+- 생성 실패 시 기존 종이극장 영역을 유지하고 '이런, 문제가 생겼어요!', '다시 시도', '나중에 할래요'를 표시.
+- Codex 내장 이미지 생성기로 실패 안내용 도깨비 종이인형을 제작. public/images/theatre/dokkaebi-retry.webp: 360x540, 알파 유지, 35,022 bytes. 원본/프롬프트는 고도화/output/imagegen/failure-theatre에 보관.
+- 재시도 입력은 계정별 컨트롤러 메모리에만 보관. 먼저 기존 작업을 조회해 실행/완료됐으면 복구. 접수 불명은 기존 Idempotency-Key 재사용, 서버 실패 확정만 새 키 사용. 통신 오류에는 POST하지 않으며 중복 클릭도 차단.
+- 안전 차단/주제 부적합은 '내용 바꾸기'로 작성 화면 연결. 새로고침 등으로 입력 메모리가 없으면 작성 화면에서 다시 시작.
+- 고정 무대 높이, 장식 이미지 접근성 제외, 비활성 버튼, 모바일 한 줄 버튼 유지.
+- 검증: generation-controller.test.cjs, generation-failure-ui.test.cjs 및 TypeScript 검사. 실제 컴포넌트 SSR 미리보기에서 640/375/320px 배치 확인(로그인 운영 화면 E2E 또는 유료 생성은 수행하지 않음).
+[2026-09-21] 사용자 배포 요청: 실패 종이극장/중복 방지 재시도 UI를 main에 push. Next.js 프로덕션 빌드, 별도 TypeScript 검사, 추적기/실패 UI 회귀 테스트 통과. 320/375/640px 미리보기 확인. 가볍게 읽기 옵션은 제안 단계로 이번 배포에는 포함하지 않음.

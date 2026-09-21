@@ -10,6 +10,7 @@ let state = {}
 const noop = () => {}
 const Empty = () => null
 const modules = {
+ 'next/navigation': {useRouter:()=>({push:noop})},
  'next/link': {default: ({children, ...props}) => React.createElement('a', props, children)},
  '@/lib/generation-context': {useGeneration: () => ({dismiss: noop, openStory: noop, consumeGenerationScroll: noop, ...state})},
  '@/lib/profile-context': {useProfile: () => ({currentProfile:{id:'p',name:'아이'}, profiles:[{id:'p',name:'아이'}]})},
@@ -37,13 +38,18 @@ state={job:{job_id:'job',profile_id:'p',status:'failed',error_code:'safety_block
 let html=renderToStaticMarkup(React.createElement(MyBookshelf,{onCreate:noop}))
 assert.match(html,/role="alert"/)
 assert.match(html,/안전 필터/)
-assert.match(html,/>확인</)
+assert.match(html,/>내용 바꾸기</)
 // 이전 미독 책이 있어도 방금 일어난 실패를 성공 카드로 덮으면 안 된다.
 html=render({latestUnread:{story_id:'old',title:'이전 동화'}})
 assert.match(html,/안전 필터/)
 assert.doesNotMatch(html,/따끈한 동화가 완성/)
-state={job:{status:'failed',error_code:'generation_failed'}}
+state={job:{status:'failed',error_code:'generation_failed'},canRetry:true}
 assert.match(render(),/완성하지 못했어요/)
+assert.match(render(),/이런, 문제가 생겼어요!/)
+assert.match(render(),/>다시 시도</)
+assert.match(render(),/>나중에 할래요</)
+state={...state,starting:true};assert.match(render(),/disabled/)
+assert.match(render(),/확인 중/)
 state={job:null,error:'접수 실패'}
 assert.match(renderToStaticMarkup(React.createElement(MyBookshelf,{onCreate:noop})),/접수 실패/)
 // 확인한 뒤에는 오류가 사라지고 기존 미독 책 안내로 돌아간다.

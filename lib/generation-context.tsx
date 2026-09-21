@@ -16,6 +16,8 @@ type Value = GenerationState & {
   scrollRequest: GenerationScrollRequest | null
   consumeGenerationScroll: (id: string) => void
   start: (profileId: string, input: StoryInput) => Promise<boolean>
+  canRetry: boolean
+  retry: () => Promise<void>
   dismiss: () => void
   openStory: (job: TrackedJob) => void
   requestedStory: ReadyStory | null
@@ -65,7 +67,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
             mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
             favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: input.tts ?? false }),
-        }),
+        }, { timeoutMs: 60_000 }),
         legacy: (profileId, input) => generateAssessment(profileId, "posttest", { ...input, useJobs: false }),
       }, {
         getItem: key => window.localStorage.getItem(key),
@@ -130,10 +132,11 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       throw error
     }
   }, [])
+  const retry = useCallback(async () => { await controller.current?.retry() }, [])
   const dismiss = useCallback(() => controller.current?.dismiss(), [])
   const consumeStory = useCallback(() => setRequestedStory(null), [])
   const consumeGenerationScroll = useCallback((id: string) => setScrollRequest(previous => previous?.id === id ? null : previous), [])
-  return <Context.Provider value={{ ...state, start, dismiss, openStory, requestedStory, consumeStory, scrollRequest, consumeGenerationScroll }}>{children}</Context.Provider>
+  return <Context.Provider value={{ ...state, start, canRetry: controller.current?.canRetry() ?? false, retry, dismiss, openStory, requestedStory, consumeStory, scrollRequest, consumeGenerationScroll }}>{children}</Context.Provider>
 }
 export function useGeneration() {
   const context = useContext(Context)

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import styles from "./paper-theatre.module.css"
 
-/** 다섯 장의 공용 WebP만 사용한다. 진행률은 꾸며내지 않고 실제 작업 문구가 별도로 안내한다. */
-export function PaperTheatre({ stopped = false }: { stopped?: boolean }) {
+/** 공용 WebP 인형을 사용한다. 진행률은 꾸며내지 않고 실제 작업 문구가 별도로 안내한다. */
+export function PaperTheatre({ stopped = false, failed = false }: { stopped?: boolean; failed?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(true)
   const [hidden, setHidden] = useState(false)
@@ -18,10 +18,12 @@ export function PaperTheatre({ stopped = false }: { stopped?: boolean }) {
   }, [])
   const idle = stopped || paused || hidden || !visible
   return <div className={styles.wrap} ref={ref}>
-    <div className={styles.stage} data-paused={idle} aria-hidden="true">
+    <div className={styles.stage} data-paused={idle} data-failed={failed} aria-hidden="true">
       <div className={styles.arch}/><div className={styles.hill}/>
       {/* 고정 영역 안에서 transform만 움직여 레이아웃/스크롤바를 흔들지 않는다. */}
       {(["sun","moon","dokkaebi","tiger","waves"] as const).map(name => <div key={name} className={`${styles.puppet} ${styles[name]}`}><img src={`/images/theatre/${name}.webp`} alt="" width={name === "waves" ? 880 : 360} height={name === "waves" ? 440 : 420} decoding="async" draggable={false}/></div>)}
+      {/* 실패 인형도 미리 로드하고 같은 무대 안에서 표시만 전환해 높이와 배경을 유지한다. */}
+      <div className={styles.failurePuppet}><img src="/images/theatre/dokkaebi-retry.webp" alt="" width={360} height={540} decoding="async" draggable={false}/></div>
       <span className={styles.curtainLeft}/><span className={styles.curtainRight}/><div className={styles.foot}>도란도란 작은 극장</div>
     </div>
     {!stopped && <button type="button" className={styles.pause} onClick={() => setPaused(v => !v)} aria-pressed={paused}>{paused ? "인형 움직이기" : "움직임 쉬기"}</button>}
