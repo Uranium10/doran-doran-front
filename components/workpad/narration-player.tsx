@@ -111,30 +111,47 @@ export function NarrationPlayer(props: Props) {
     return () => { active = false }
   }, [settled, preIndexed])
 
-  function finishSegment() {
-    if (!intent.current || busy.current) return
+  function finishChapter() {
+    const audio = audioRef.current
+    if (!intent.current || busy.current || !audio?.ended) return
     const list = segmentsRef.current, current = list[segment.current]
     if (!current) return
-    clearTimer(); busy.current = true; audioRef.current?.pause()
-    setPosition(current.offset + current.end)
-    if (segment.current === list.length - 1) {
+    clearTimer()
+    // 페이지 시간표가 조금 어긋나거나 이벤트가 늦게 와도 장의 실제 끝까지 듣는다.
+    // 다음 파일로 바꾸는 시점은 추정한 쪽 경계가 아니라 audio의 ended 이벤트다.
+    let last = segment.current
+    while (list[last + 1]?.chapter === current.chapter) last++
+    segment.current = last
+    setPosition(list[last].offset + list[last].end)
+    if (last === list.length - 1) {
       stop(); moveBook(latest.current.spreads.length - 1); return
     }
     busy.current = true; setResting(true)
-    const next = segment.current + 1, sameChapter = list[next].chapter === current.chapter
-    if (!sameChapter) showChapterArt(next)
-    // 쪽 사이 0.7초, 장 사이 1.2초를 쉰다. 쉼 시간은 음성 진행률에 더하지 않는다.
-    timer.current = setTimeout(() => { busy.current = false; void start(next, list[next].start) }, sameChapter ? 700 : 1200)
+    const next = last + 1
+    showChapterArt(next)
+    // 장 사이에만 짧게 쉰다. 같은 장의 페이지 전환은 재생을 중단하지 않는다.
+    timer.current = setTimeout(() => { busy.current = false; void start(next, list[next].start) }, 1200)
   }
 
   function scheduleBoundary() {
-    const audio = audioRef.current, current = segmentsRef.current[segment.current]
+    const audio = audioRef.current, list = segmentsRef.current
+    const current = list[segment.current]
     if (!audio || !current || !intent.current || busy.current || audio.paused || pendingSeek.current !== null) return
     clearTimer()
-    // timeupdate만 쓰면 최대 수백 ms 늦어질 수 있어 종료 타이머와 함께 확인한다.
-    const remain = current.end - audio.currentTime
-    if (remain <= .025) { finishSegment(); return }
-    timer.current = setTimeout(scheduleBoundary, Math.min(250, remain * 1000))
+    let index = segment.current
+    // 음성이 기준 시계다. 쪽이 바뀌어도 pause/play/seek를 하지 않아 말이
+    // 잘리거나 반복되지 않는다. 늦게 받은 이벤트는 현재 시각의 쪽으로 따라잡는다.
+    while (list[index + 1]?.chapter === current.chapter && audio.currentTime >= list[index].end) index++
+    if (index !== segment.current) {
+      segment.current = index
+      if (list[index].spread !== current.spread) moveBook(list[index].spread)
+    }
+    const active = list[index]
+    setPosition(active.offset + Math.min(active.end, audio.currentTime))
+    // 마지막 쪽에서는 타이머로 음성을 끊지 않고 ended를 기다린다.
+    if (list[index + 1]?.chapter === active.chapter) {
+      timer.current = setTimeout(scheduleBoundary, Math.max(16, Math.min(250, (active.end - audio.currentTime) * 1000)))
+    }
   }
 
   function showChapterArt(index: number) {
@@ -225,7 +242,7 @@ export function NarrationPlayer(props: Props) {
       const current = segmentsRef.current[segment.current], audio = audioRef.current
       if (current && audio && !busy.current && pendingSeek.current === null) setPosition(current.offset + Math.min(current.end, audio.currentTime))
       scheduleBoundary()
-    }} onPause={() => { if (intent.current && !busy.current && audioRef.current?.paused && !audioRef.current.ended) stop() }} onPlaying={scheduleBoundary} onEnded={finishSegment} onError={() => { if (intent.current) fail('음성을 불러오지 못했어요. 잠시 후 다시 눌러 주세요.') }} />
+    }} onPause={() => { if (intent.current && !busy.current && audioRef.current?.paused && !audioRef.current.ended) stop() }} onPlaying={scheduleBoundary} onEnded={finishChapter} onError={() => { if (intent.current) fail('음성을 불러오지 못했어요. 잠시 후 다시 눌러 주세요.') }} />
     <button className={styles.play} type="button" onClick={() => void toggle()} disabled={preparing || !settled} aria-label={playing ? '동화 읽기 일시정지' : '동화 읽기 재생'}>
       {preparing ? <LoaderCircle className={styles.spinner} size={22} /> : playing ? <Pause size={22} /> : <Play size={22} />}
     </button>
