@@ -11,6 +11,7 @@ import { fetchStoryThemes, fetchGenerationPreferences, saveGenerationPreferences
   type StoryTheme, type StoryMode, type GenerationPreferences, type StoryInput } from "@/lib/workpad-data"
 import { drawThemeCards } from "@/lib/story-theme-cards"
 import { themePresentation, type ThemeSymbol } from "@/lib/story-theme-presentation"
+import { ReadingModePicker } from "./reading-mode-picker"
 import styles from "./story-setup.module.css"
 
 // 같은 의미의 주제는 카드 순서가 바뀌어도 같은 그림·색으로 알아볼 수 있게 한다.
@@ -21,9 +22,10 @@ const THEME_SYMBOLS = {
 
 const FAVORITES = ["공룡", "별", "공주", "강아지", "로봇", "딸기"]
 const MODES = [{ id: "original", label: "옛이야기", icon: BookOpen }, { id: "personalized", label: "나만의 이야기", icon: Sparkles }] as const
-type Draft = { tts?: boolean; mode: StoryMode; themeId: string; favorite: string; protagonistName: string; eventText: string; customTopic?: string; previousThemeIds?: string[] }
+type Draft = { readingMode?: "level_aligned" | "relaxed"; tts?: boolean; mode: StoryMode; themeId: string; favorite: string; protagonistName: string; eventText: string; customTopic?: string; previousThemeIds?: string[] }
 function isDraft(value: unknown): value is Draft {
   return objectValue(value)
+    && (value.readingMode === undefined || value.readingMode === "level_aligned" || value.readingMode === "relaxed")
     && (value.tts === undefined || typeof value.tts === "boolean")
     && (value.customTopic === undefined || typeof value.customTopic === "string")
     && (value.previousThemeIds === undefined || (Array.isArray(value.previousThemeIds) && value.previousThemeIds.every(id => typeof id === "string"))) && (value.mode === "original" || value.mode === "personalized")
@@ -38,7 +40,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
     { mode: "original", themeId: "", favorite: "", protagonistName: defaultName, eventText: "" }, isDraft)
   // 접수 성공 후 저장소에는 다음 입력을 준비하되, 이동 중 화면은 마지막 선택으로 고정한다.
   const [acceptedDraft, setAcceptedDraft] = useState<Draft | null>(null)
-  const { mode, themeId, favorite, protagonistName, eventText, customTopic = "", tts = false } = acceptedDraft ?? draft.value
+  const { mode, themeId, favorite, protagonistName, eventText, customTopic = "", tts = false, readingMode = "level_aligned" } = acceptedDraft ?? draft.value
   const update = (value: Partial<Draft>) => draft.setValue(old => ({ ...old, ...value }))
   // 입력란을 선택하면 빈 값이어도 직접 입력 모드다. 카드는 흐리게 보이지만 다시 선택할 수 있다.
   const [customSelected, setCustomSelected] = useState(false)
@@ -98,7 +100,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
     if (!canSubmit) return
     setSubmitting(true); setSubmitError("")
     try {
-      const accepted = await onSubmit({ mode, themeId: themeId || undefined,
+      const accepted = await onSubmit({ readingMode: mode === "personalized" ? readingMode : "level_aligned", mode, themeId: themeId || undefined,
         customTopic: mode === "personalized" ? customTopic.trim() : undefined,
         protagonistName: mode === "original" ? "" : protagonistName.trim(),
         favorite: mode === "original" ? "" : favorite.trim(), todayEvent: mode === "original" ? "" : eventText.trim(),
@@ -135,6 +137,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
         <p className={styles.modeHint}>
           {mode === "original" ? "마음에 드는 주제를 고르면 옛이야기가 찾아와요." : "내가 주인공인 동화를 함께 만들어요."}
         </p>
+        {mode === "personalized" && <ReadingModePicker value={readingMode} onChange={value => update({ readingMode: value })} />}
         {mode === "personalized" && <section aria-labelledby="story-hero-heading" className={styles.heroSection}>
           <h3 id="story-hero-heading" className={styles.sectionTitle}><span className={styles.step}>1</span>누가 나올까요?</h3>
           <div className={styles.heroFields}>

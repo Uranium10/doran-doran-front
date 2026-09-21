@@ -36,7 +36,7 @@ export const fetchQuizResult = (profileId: string, resultId: string) => request<
 export { bookOrigin, bookPath, returnPath, returnLabel, type BookOrigin } from "./book-navigation"
 
 /** 기존 읽기 전용 API. 목록을 펼친 책만 조회하며 답안 상세는 결과 화면에서 연다. */
-export type QuizHistoryEntry = { is_practice?: boolean; id: string; created_at?: string; total_questions: number; correct_answers: number }
+export type QuizHistoryEntry = { reading_mode?: "level_aligned" | "relaxed"; is_practice?: boolean; id: string; created_at?: string; total_questions: number; correct_answers: number }
 export const fetchBookQuizHistory = (profileId: string, storyId: string, signal?: AbortSignal) => request<{ quiz_results: QuizHistoryEntry[] }>(
   `/quiz-results?profile_id=${encodeURIComponent(profileId)}&story_id=${encodeURIComponent(storyId)}`, { signal })
 

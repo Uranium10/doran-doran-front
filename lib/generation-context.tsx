@@ -65,6 +65,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         enqueue: (profileId, input, key) => request<GenerationJob>("/stories/generation-jobs", {
           method: "POST", headers: { "Idempotency-Key": key },
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
+            reading_mode: input.mode === "original" ? "level_aligned" : input.readingMode ?? "level_aligned",
             mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
             favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: input.tts ?? false }),
         }, { timeoutMs: 60_000 }),

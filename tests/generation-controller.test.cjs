@@ -12,7 +12,7 @@ vm.runInNewContext(outputText,context)
 const {GenerationController}=context.exports
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}}
 const job=(status='running',id='job-1')=>({job_id:id,profile_id:'profile-1',story_id:'story-1',status,stage:status==='completed'?'completed':'write_candidate',result:status==='completed'?{story_id:'story-1',pages:[]}:null,error_code:null,poll_after_ms:2000})
-const input={protagonistName:'별이',favorite:'토끼',todayEvent:'',useJobs:true}
+const input={protagonistName:'별이',favorite:'토끼',todayEvent:'',useJobs:true,readingMode:'relaxed'}
 const memory=new Map();const storage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)}
 function make(api={},owner='owner-1',uuid=()=> 'job-1'){
  const notices=[];const calls={post:0,get:0};
@@ -106,7 +106,7 @@ async function run(){
  await a.controller.start('profile-1',input);await a.controller.refresh()
  assert.equal(a.controller.canRetry(),true);await a.controller.retry()
  assert.equal(sent.length,2);assert.equal(sent[0].key,sent[1].key)
- assert.equal(sent[1].i.favorite,input.favorite);assert.equal(a.controller.state.job.status,'queued');a.controller.dispose()
+ assert.equal(sent[1].i.favorite,input.favorite);assert.equal(sent[1].i.readingMode,"relaxed");assert.equal(a.controller.state.job.status,'queued');a.controller.dispose()
  // 실패 확정 후에는 새 작업 키를 사용한다. 두 번 누르는 동안 사전 조회/POST는 한 번뿐이다.
  memory.clear();const lookup=deferred();let queries=0;let submits=0;let ids=0;const keys=[]
  a=make({enqueue:async(p,i,key)=>{submits++;keys.push(key);return job('queued',key)},

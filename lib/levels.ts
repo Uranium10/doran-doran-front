@@ -121,6 +121,8 @@ export type LiteracyProgress = {
 export type LiteracyResult = LiteracyProgress & {
   story_id?: string | null
   is_practice?: boolean
+  reading_mode?: "level_aligned" | "relaxed"
+  progression_applied?: boolean
   result_id?: string
   assessment_type?: string
   details?: { question_id: string; prompt?: string | null; passage?: string | null; skill?: string | null;

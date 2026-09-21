@@ -75,6 +75,8 @@ export type AssessmentPayload = {
     /** 생성 당시 서버에서 적용한 정수 단계. 과거 동화에는 없을 수 있다. */
     level?: number | null
     mode?: StoryMode
+    reading_mode?: ReadingMode
+    reading_guidance_version?: string | null
     theme_id?: string | null
     theme_label?: string | null
     topic_version?: string | null
@@ -142,6 +144,7 @@ export type AssessmentSubmission = {
 }
 
 /** 동화 생성 입력값 (폼). 서버로 보낼 때 snake_case 로 변환한다. */
+export type ReadingMode = "level_aligned" | "relaxed"
 export type StoryMode = "original" | "personalized"
 export type StoryTheme = { theme_id: string; label: string; category: string; description: string }
 export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: AbortSignal) =>
@@ -149,6 +152,7 @@ export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: Ab
     `/stories/themes?profile_id=${encodeURIComponent(profileId)}&mode=${mode}`, { signal })
 
 export type StoryInput = {
+  readingMode?: ReadingMode
   mode?: StoryMode
   themeId?: string
   customTopic?: string
@@ -266,6 +270,7 @@ export async function generateAssessment(
   const body = JSON.stringify({
     profile_id: profileId, assessment_type: assessmentType,
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
+    reading_mode: input.mode === "original" ? "level_aligned" : input.readingMode ?? "level_aligned",
     mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
     page_images: input.pageImages ?? false, tts: input.tts ?? false,
   })

@@ -82,7 +82,7 @@ export function LiteracyResultView({
         )}
 
         {/* 서버가 저장한 변화량으로 이전 진척도부터 승급 과정을 재생한다. */}
-        <div className={showScore ? "mt-8" : ""}><ResultProgress result={result}/></div>
+        <div className={showScore ? "mt-8" : ""}>{result.reading_mode === "relaxed" ? <p className="rounded-2xl bg-secondary/50 px-5 py-4 text-center text-sm leading-relaxed text-muted-foreground">편하게 읽은 이야기예요. 단계 진척도는 바뀌지 않아요.<br/>문제를 모두 맞히면 스티커를 받아요!</p> : <ResultProgress result={result}/>}</div>
       </div>
 
       </div>

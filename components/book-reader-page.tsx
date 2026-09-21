@@ -52,7 +52,8 @@ export function BookReaderPage({storyId,from,view}:{storyId:string;from:string;v
     try{
       const result=await submitAssessment(buildSubmission(currentProfile.id,assessment,quiz.answers))
       if(!screen.isCurrent())return
-      updateProfile(currentProfile.id,{level:result.level})
+      // DB가 진척도 반영을 생략한 독서는 로컬 프로필 값도 덮어쓰지 않는다.
+      if(result.progression_applied !== false) updateProfile(currentProfile.id,{level:result.level})
       screen.setValue(old=>({...old,result}))
       router.replace(`/results/${result.result_id}?from=${origin}`)
     }catch(e){if(screen.isCurrent())toast.error(e instanceof Error?e.message:'결과를 저장하지 못했어요. 다시 제출해 주세요.')}
