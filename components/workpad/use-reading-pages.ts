@@ -5,15 +5,17 @@ import type { StoryPage } from "@/lib/workpad-data"
 import { findReadingPosition, paginateStory } from "@/lib/story-pagination"
 
 /** 실제 오른쪽 페이지의 남은 공간을 측정한다. 원문·장면별 이미지 URL은 바꾸지 않는다. */
-export function useReadingPages(scenes: StoryPage[], fontSize: number) {
+export function useReadingPages(scenes: StoryPage[], fontSize: number, picturebook = false) {
   const textAreaRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLParagraphElement>(null)
-  const initialPages = useMemo(() => paginateStory(scenes, text => text.length <= 180), [scenes])
+  const initialPages = useMemo(() => paginateStory(scenes, text => picturebook || text.length <= 180), [scenes, picturebook])
   const [reading, setReading] = useState(() => ({
     source: scenes, pages: initialPages, index: 0,
   }))
 
   useLayoutEffect(() => {
+    // 짧은 소리책은 장면 원문을 그대로 묶는다. 기존 이진 탐색/문단 높이 측정은 실행하지 않는다.
+    if(picturebook) return
     let active = true
     let frame = 0
     const measure = () => {
@@ -50,12 +52,12 @@ export function useReadingPages(scenes: StoryPage[], fontSize: number) {
       document.fonts?.removeEventListener("loadingdone", schedule)
       window.removeEventListener("resize", schedule)
     }
-  }, [scenes, fontSize])
+  }, [scenes, fontSize, picturebook])
 
   const setPage = (next: number) => setReading(old => ({
     ...old, index: Math.max(0, Math.min(old.pages.length - 1, next)),
   }))
   // 빈 목록으로 마운트된 뒤 동화가 도착해도 우선 종이를 렌더해야 실제 높이를 잴 수 있다.
-  const visible = reading.source === scenes ? reading : { pages: initialPages, index: 0 }
+  const visible = !picturebook && reading.source === scenes ? reading : { pages: initialPages, index: 0 }
   return { textAreaRef, measureRef, pages: visible.pages, page: visible.index, setPage }
 }

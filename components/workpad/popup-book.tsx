@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSP
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Maximize, Minimize, RotateCcw, Sparkles, SlidersHorizontal, Check } from "lucide-react"
 import type { StoryPage } from "@/lib/workpad-data"
 import type { ReadingPage } from "@/lib/story-pagination"
-import { buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage, bookBookmark, bookmarkPosition, validBookmark, type BookBookmark, type BookLeaf, type BookSpread } from "@/lib/book-layout"
+import { isSoundPicturebook, buildBookSpreads, findBookPosition, restingBookSpread, resolveBookPage, bookBookmark, bookmarkPosition, validBookmark, type BookBookmark, type BookLeaf, type BookSpread } from "@/lib/book-layout"
 import { useReadingPages } from "./use-reading-pages"
 import { useSessionView } from "@/lib/use-session-view"
 import { useBookImages } from "./use-book-images"
@@ -45,9 +45,32 @@ function Words({ page, areaRef }: { page: ReadingPage; areaRef?: RefObject<HTMLD
   </div>
 }
 
+/** 내용은 원문 그대로, 삽화는 각 장면에 한 번만 표시한다. 작은 화면/확대 시 숨기지 않고 스크롤한다. */
+function SoundPicturePage({leaf,failedImages}:{leaf:Extract<BookLeaf,{kind:"picturebook"}>;failedImages:string[]}) {
+  const area=useRef<HTMLDivElement>(null)
+  const [scrollable,setScrollable]=useState(false)
+  useLayoutEffect(()=>{
+    const node=area.current;if(!node)return
+    const measure=()=>setScrollable(node.scrollHeight>node.clientHeight+2)
+    const observer=new ResizeObserver(measure);observer.observe(node)
+    for(const child of node.children)observer.observe(child)
+    measure();return()=>observer.disconnect()
+  },[leaf])
+  return <div className={styles.soundPage}>
+    <div ref={area} className={styles.soundScenes} data-scrollable={scrollable || undefined} data-count={leaf.pages.length}>
+      {leaf.pages.map(page=><section key={`${page.sceneIndex}:${page.startOffset}`} className={styles.soundScene} data-illustrated={!!page.image || undefined} aria-label={`${page.sceneIndex+1}장 · ${page.heading}`}>
+        {page.image && <div className={styles.soundArt}><Picture src={page.image} alt={page.heading} unavailable={failedImages.includes(page.image)}/></div>}
+        <div className={styles.soundWords}><span className={styles.soundChapter} aria-hidden="true">{page.sceneIndex+1}</span><p>{page.text.trim()}</p></div>
+      </section>)}
+    </div>
+    <div className={styles.pageNote}>{leaf.number}</div>
+  </div>
+}
+
 type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; spreads: BookSpread[] }
 
 type PopupBookProps = {
+  readingLevel?: number | null
   narrationIdentity?: { storyId: string; profileId: string }
   vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown }
   initialBookmark?: BookBookmark
@@ -71,9 +94,12 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ readingLevel, narrationIdentity, vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [paperSize,setPaperSize] = useState({width:360,height:560})
+  const picturebook = useMemo(()=>isSoundPicturebook(readingLevel,pages),[readingLevel,pages])
   const pageInputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const destination = useRef(0)
@@ -95,8 +121,19 @@ function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, 
   const [turn, setTurn] = useState<Turn | null>(null)
   const [index, setIndex] = useState(0)
   const [pageInput, setPageInput] = useState("1")
-  const { textAreaRef, measureRef, pages: readingPages } = useReadingPages(pages, fontSize)
-  const spreads = useMemo(() => buildBookSpreads(readingPages, singlePage), [readingPages, singlePage])
+  const { textAreaRef, measureRef, pages: readingPages } = useReadingPages(pages, fontSize, picturebook)
+  const spreads = useMemo(() => buildBookSpreads(readingPages, singlePage, {enabled:picturebook,...paperSize,fontSize}), [readingPages, singlePage, picturebook, paperSize, fontSize])
+  useLayoutEffect(()=>{
+    if(!picturebook || !stageRef.current) return
+    const stage=stageRef.current
+    const measure=()=>{
+      const width=Math.floor(stage.clientWidth/(singlePage?1:2)),height=stage.clientHeight
+      if(!width || !height) return
+      setPaperSize(old=>old.width===width && old.height===height ? old : {width,height})
+    }
+    measure();const observer=new ResizeObserver(measure);observer.observe(stage)
+    return()=>observer.disconnect()
+  },[picturebook,singlePage])
   const page = Math.min(index, spreads.length - 1)
   const current = spreads[page]
   const activeTurn = turn?.spreads === spreads ? turn : null
@@ -192,6 +229,7 @@ function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, 
     } catch { setFullscreenError(true) }
   }
   const leafContent = (leaf: BookLeaf) => {
+    if (leaf.kind === "picturebook") return <SoundPicturePage leaf={leaf} failedImages={failedImages} />
     if (leaf.kind === "text") return <Words page={leaf.page} />
     if (leaf.kind === "image") return <div className={styles.illustration}><span className={styles.eyebrow}>{leaf.page.sceneIndex + 1}장</span><figure className={styles.illustrationBody}><div className={styles.art}><Picture src={leaf.page.image} unavailable={failedImages.includes(leaf.page.image ?? "")} alt={leaf.page.heading} /></div><figcaption>{leaf.page.heading}</figcaption></figure></div>
     if (leaf.kind === "cover") return <div className={styles.cover}><span className={styles.coverSeries}>도란도란 작은 책방</span><h2>{bookTitle}</h2><div className={styles.coverArt}><Picture src={cover} unavailable={failedImages.includes(cover ?? "")} alt={`${bookTitle} 표지`} /></div><span className={styles.coverBottom}>나를 위해 펼쳐지는 이야기</span><span className={styles.openHint}>{narrated ? "아래 재생 버튼으로 들어 보세요" : "표지를 눌러 펼쳐 보세요"} <ChevronRight size={14} /></span></div>
@@ -244,7 +282,7 @@ function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, 
     <div className={styles.bookArea}>
       <header className={styles.bookHeader}><span title={bookTitle}>{bookTitle}</span></header>
       <div className={styles.desk}>
-        <div className={styles.stage} data-ending={atEnd || undefined} aria-label="동화책" aria-busy={!!activeTurn}
+        <div ref={stageRef} className={styles.stage} data-picturebook={picturebook || undefined} data-ending={atEnd || undefined} aria-label="동화책" aria-busy={!!activeTurn}
           onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel}
           onClick={event => {
             // 보조기기의 가상 클릭은 pointer 이벤트가 없으므로 별도로 받는다.
@@ -262,7 +300,7 @@ function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, 
           {/* 안내는 책 바깥에 두고 표지를 넘기기 시작하면 숨긴다. 종이 복제면에는 넣지 않는다. */}
           {atCover && !activeTurn && <div className={styles.coverGuide}><BookOpen size={28} strokeWidth={1} aria-hidden="true" /><p>{narrated ? <>읽어 주는 동화예요.<br />화면 아래쪽의 재생 버튼을 눌러 보세요.</> : <>책을 누르거나 옆으로 밀어<br className={styles.guideBreak} /> 넘겨 보세요</>}</p><ChevronRight size={20} aria-hidden="true" /></div>}
           {/* 표지에서도 실제 종이와 같은 본문 상자로 페이지 분량을 미리 측정한다. */}
-          <div className={styles.measurePage} aria-hidden="true"><Words page={readingPages[0]} areaRef={textAreaRef} /></div>
+          {!picturebook && <div className={styles.measurePage} aria-hidden="true"><Words page={readingPages[0]} areaRef={textAreaRef} /></div>}
           {activeTurn && <>
             <div key={`desktop-${activeTurn.id}`} aria-hidden="true" inert className={`${styles.leaf} ${activeTurn.forward ? styles.forward : styles.backward}`}><div className={styles.front}>{leafContent(activeTurn.forward ? activeTurn.from.right : activeTurn.from.left)}</div><div className={styles.back}>{leafContent(activeTurn.forward ? activeTurn.to.left : activeTurn.to.right)}</div></div>
             <div aria-hidden="true" inert className={styles.mobileUnderlay}>{spreadView(activeTurn.to)}</div>
@@ -272,7 +310,7 @@ function PreparedBook({ narrationIdentity, vocabulary, pages, childName, title, 
       </div>
       {fullscreenError && <p role="status">전체 화면을 열 수 없어요. 현재 화면에서도 읽을 수 있어요.</p>}
     </div>
-    {narrated && narrationIdentity && <NarrationPlayer key={`${narrationIdentity.storyId}:${narrationKey(readingPages)}:${singlePage}`} identity={narrationIdentity} pages={pages} readingPages={readingPages} spreads={spreads} currentSpread={page} onSpread={target => go(target, true)} onLock={setAudioLocked} />}
+    {narrated && narrationIdentity && <NarrationPlayer key={`${narrationIdentity.storyId}:${narrationKey(readingPages)}:${singlePage}:${picturebook ? spreads.map(s=>[s.left,s.right].map(l=>l.kind==="picturebook"?l.pages.map(p=>p.sceneIndex).join(","):l.kind).join("/")).join("|") : "standard"}`} identity={narrationIdentity} pages={pages} readingPages={readingPages} spreads={spreads} currentSpread={page} onSpread={target => go(target, true)} onLock={setAudioLocked} />}
     {audioFailed && <p className={styles.audioFailure} role="status">목소리를 모두 준비하지 못했어요. 글과 그림으로 읽어 주세요.</p>}
     <p ref={measureRef} aria-hidden="true" className={`${styles.prose} ${styles.measure}`} />
   </div>

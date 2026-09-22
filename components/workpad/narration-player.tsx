@@ -249,7 +249,7 @@ export function NarrationPlayer(props: Props) {
     <div className={styles.controls}>
       <div className={styles.caption}><span><Headphones size={14} />{preparing ? `목소리를 불러오고 있어요 ${readyCount}/${props.pages.length}` : resting ? '잠깐 숨을 고르고 있어요' : playing ? '목소리를 따라 책장이 넘어가요' : '읽어 주는 동화'}</span><time>{clock(position)} / {clock(total)}</time></div>
       <input type="range" min="0" max={total || 1} step="0.1" value={position} disabled={!segments.length || preparing} aria-label="동화 전체 재생 위치" aria-valuetext={`${clock(position)} / ${clock(total)}`} onChange={e => seek(Number(e.target.value))} />
-      <nav className={styles.checkpoints} aria-label="페이지별 음성 이동">{segments.map((s, i) => <button type="button" key={i} onClick={() => seek(s.offset + s.start)} aria-current={i === segmentAt(segments, position) ? 'step' : undefined} title={`${s.label}쪽 · ${clock(s.offset + s.start)}`} aria-label={`${s.label}쪽부터 듣기`}>{s.label}</button>)}</nav>
+      <nav className={styles.checkpoints} aria-label="페이지별 음성 이동">{segments.map((s, i) => (i > 0 && segments[i-1].label === s.label) ? null : <button type="button" key={i} onClick={() => seek(s.offset + s.start)} aria-current={s.label === segments[segmentAt(segments, position)]?.label ? 'step' : undefined} title={`${s.label}쪽 · ${clock(s.offset + s.start)}`} aria-label={`${s.label}쪽부터 듣기`}>{s.label}</button>)}</nav>
       {error && <p className={styles.error} role="alert">{error}</p>}
       {!preIndexed && !segments.length && !preparing && !error && <p className={styles.hint}>처음 재생할 때 쪽별 시간을 준비해요.</p>}
     </div>

@@ -14,9 +14,12 @@ export function audioTimeline(pages: ReadingPage[], spreads: BookSpread[], layou
     const segments = chapterPages.map((page, index) => {
       const end = layout.ends[index]
       if (!Number.isFinite(end) || end <= start || end > layout.duration + .01) throw new Error('음성 시간표를 확인해 주세요.')
-      const spread = spreads.findIndex(s => [s.left, s.right].some(leaf => leaf.kind === 'text' && leaf.page.sceneIndex === chapter && leaf.page.startOffset === page.startOffset))
+      const spread = spreads.findIndex(s => [s.left, s.right].some(leaf => (leaf.kind === 'picturebook' ? leaf.pages : leaf.kind === 'text' ? [leaf.page] : []).some(p => p.sceneIndex === chapter && p.startOffset === page.startOffset)))
       if (spread < 0) throw new Error('읽을 페이지를 찾지 못했어요.')
-      const segment = { chapter, start, end, offset, spread, label: String(pages.indexOf(page) + 1), url: layout.audio_url }
+      const leaf=[spreads[spread].left,spreads[spread].right].find(l=>l.kind==='picturebook' && l.pages.some(p=>p.sceneIndex===chapter && p.startOffset===page.startOffset))
+      // 원본 장면 시간은 그대로 두고 같은 종이에 묶인 장면의 표시 번호만 통일한다.
+      const label=String(leaf?.kind==='picturebook' ? leaf.number : pages.indexOf(page)+1)
+      const segment = { chapter, start, end, offset, spread, label, url: layout.audio_url }
       start = end
       return segment
     })

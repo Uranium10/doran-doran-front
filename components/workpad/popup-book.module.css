@@ -190,3 +190,23 @@
 .reader[data-narrated] { position:relative; padding-bottom:130px; }
 .audioFailure { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:11px; color:#8b6349; }
 @media(max-width:767px) { .reader[data-narrated] { padding-bottom:calc(122px + env(safe-area-inset-bottom)); } }
+
+/* 소리·리듬 단계 전용. 종이 두 장 대신 짧은 장면 두 개를 같은 종이에 모은다. */
+.soundPage { height:100%; display:flex; flex-direction:column; gap:12px; padding:26px 28px 18px; }
+.soundScenes { flex:1; min-height:0; display:flex; flex-direction:column; gap:28px; overflow-y:auto; scrollbar-width:thin; touch-action:pinch-zoom; }
+.soundScenes[data-scrollable=true] { touch-action:pan-y pinch-zoom; }
+.soundScene { flex:1 0 auto; min-height:min-content; display:flex; align-items:center; justify-content:center; gap:18px; }
+.soundScene:nth-child(even) { flex-direction:row-reverse; color:#56715d; }
+.soundScene[data-illustrated] .soundWords { flex:1; min-width:0; }
+.soundWords { position:relative; padding-top:24px; text-align:center; }
+.soundWords p { margin:0; font-family:var(--font-story),Batang,serif; font-size:calc(var(--reading-size) + 4px); line-height:1.65; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
+.soundChapter { position:absolute; top:0; left:50%; transform:translateX(-50%); color:#a58963; font-size:11px; }
+.soundArt { flex:0 0 42%; height:124px; min-width:0; }
+.soundArt img { width:100%; height:100%; object-fit:contain; }
+.soundScenes[data-count="1"] .soundScene { flex-direction:column; justify-content:center; gap:24px; }
+.soundScenes[data-count="1"] .soundArt { flex:0 0 auto; width:100%; height:clamp(100px,25vh,220px); }
+.soundScenes[data-count="1"] .soundWords { flex:0 0 auto; }
+
+/* 확대/작은 창에서 실제 본문이 넘칠 때 세로 스크롤을 조상도 허용한다. */
+.stage[data-picturebook] { touch-action:pan-y pinch-zoom; }
+@media(max-height:650px) { .soundScenes[data-count='1'] .soundScene { flex-direction:column; gap:12px; } .soundScenes[data-count='1'] .soundArt { flex:0 0 auto; width:100%; height:64px; } .soundScenes[data-count='1'] .soundWords { flex:0 0 auto; width:100%; } }
