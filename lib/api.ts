@@ -1,3 +1,4 @@
+import { requestErrorMessage } from "./api-error-message"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Profile } from "@/lib/profile-context"
 
@@ -86,7 +87,7 @@ export async function request<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    const detail = typeof body?.detail === "string" ? body.detail : "요청을 처리하지 못했습니다."
+    const detail = requestErrorMessage(body, res.status)
     throw new ApiError(res.status, detail)
   }
 

@@ -1,0 +1,6 @@
+const assert=require('node:assert/strict'),{test}=require('node:test'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
+const scope={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../lib/api-error-message.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,scope);
+const {requestErrorMessage:message}=scope.exports;
+test('422 모델 검증의 알려진 안내를 보이고 입력 원문은 노출하지 않는다',()=>{assert.equal(message({detail:[{loc:['body'],type:'value_error',msg:'Value error, 확인한 그림과 삽화 옵션이 필요해요. 그림 모드에는 별도 주제를 넣지 않아요.',input:{private:'secret'}}]},422),'확인한 그림과 삽화 옵션이 필요해요. 그림 모드에는 별도 주제를 넣지 않아요.')});
+test('필드 검증 오류는 고칠 항목만 안내한다',()=>{assert.equal(message({detail:[{loc:['body','reading_mode'],type:'literal_error',msg:'private details',input:'private input'}]},422),'읽기 방식 항목을 다시 확인해 주세요.')});
+test('손상된 검증 정보·알 수 없는 내부 오류는 화면에 그대로 노출하지 않는다',()=>{const m=message({detail:[null,{loc:['body'],type:'value_error',msg:'Value error, private info',input:'secret',ctx:{secret:true}}]},422);assert.ok(m.includes('읽기 방식'));assert.ok(!m.includes('private'));assert.ok(!m.includes('secret'));assert.equal(message(null,503),'요청을 처리하지 못했습니다.');assert.equal(message({detail:'잠시 후 다시 시도해 주세요.'},429),'잠시 후 다시 시도해 주세요.')});
