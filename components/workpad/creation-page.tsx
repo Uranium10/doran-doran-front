@@ -1,5 +1,5 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
@@ -24,7 +24,7 @@ export function CreationChoices(){return <><header className={styles.intro}><p>�
     <div><h2>{item.title}</h2><p>{item.description}</p></div><ArrowUpRight aria-hidden size={22}/>
   </Link>)}</div></>}
 export function CreationPage({mode}:{mode?:string}) {
-  const router=useRouter(); const {currentProfile,loading,error,sessionScope}=useProfile(); const generation=useGeneration()
+  const [studio,setStudio]=useState(mode==='drawing'); const router=useRouter(); const {currentProfile,loading,error,sessionScope}=useProfile(); const generation=useGeneration()
   useEffect(()=>{
     if(loading||error)return
     if(!currentProfile)router.replace('/profiles')
@@ -39,10 +39,10 @@ export function CreationPage({mode}:{mode?:string}) {
   }
   const accepted=()=>router.push('/dashboard',{scroll:false})
   const valid=MODES.some(item=>item.id===mode)
-  return <div className="min-h-screen bg-background"><AppHeader/><main className={styles.page}>
-    <Link href={valid?'/stories/new':'/dashboard'} className={styles.back}><ArrowLeft size={18}/>{valid?'다른 이야기 고르기':'내 책장으로'}</Link>
+  return <div className="min-h-screen bg-background">{!studio&&<AppHeader/>}<main className={studio?undefined:styles.page}>
+    {!studio&&mode!=='drawing'&&<Link href={valid?'/stories/new':'/dashboard'} className={styles.back}><ArrowLeft size={18}/>{valid?'다른 이야기 고르기':'내 책장으로'}</Link>}
     {!valid ? <CreationChoices/> : mode==='drawing' ?
-      <DrawingStorySetup key={`${sessionScope}:${currentProfile.id}`} profileId={currentProfile.id} draftKey={`${sessionScope}:${currentProfile.id}:drawing`} onSubmit={submit} onAccepted={accepted}/> :
+      <DrawingStorySetup key={`${sessionScope}:${currentProfile.id}`} profileId={currentProfile.id} draftKey={`${sessionScope}:${currentProfile.id}:drawing`} onSubmit={submit} onAccepted={accepted} onStudioChange={setStudio} onExit={()=>router.push('/stories/new')}/> :
       <StorySetup key={`${currentProfile.id}:${mode}`} fixedMode={mode as 'original'|'personalized'} profileId={currentProfile.id} persistenceKey={`${sessionScope}:story-form:${currentProfile.id}:${mode}`} defaultName={currentProfile.name} onSubmit={submit} onAccepted={accepted}/>}
   </main></div>
 }

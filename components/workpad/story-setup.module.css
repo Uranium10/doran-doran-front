@@ -10,7 +10,7 @@
 .faceFrame { position: relative; display: block; padding: 4px; border: 2px solid transparent; border-radius: 50%; transition: border-color 160ms, transform 160ms; }
 /* 임시 시트 한 장(156KB)을 재사용한다. 최종 마스코트가 나오면 이 이미지/좌표만 교체한다. */
 .mascotFace { display: block; width: 88px; height: 88px; border-radius: 50%; background-image: url('/images/illustrator-mascots.jpg'); background-size: 853px 1280px; background-repeat: no-repeat; }
-.blueFace { background-position: -368px -264px; }
+.blueFace { background-image: url('/images/blue-mascot-v2.webp'); background-size: contain; background-position: center; }
 .pinkFace { background-position: -367px -876px; }
 .illustratorChoice input:checked + .faceFrame { border-color: #aa633e; background: #f8edda; transform: translateY(-2px); }
 .illustratorChoice input:focus-visible + .faceFrame { outline: 3px solid #aa633e; outline-offset: 4px; }
