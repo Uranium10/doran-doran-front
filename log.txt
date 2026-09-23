@@ -719,3 +719,12 @@
 - 검증: 백엔드 회귀 345개 및 프로세스 장애 복구 4개 PASS. 운영 SQL/배포 전.
 
 [2026-09-22 배포] 운영 체크포인트 SQL 적용 완료 및 GET / checkpoint_version 진단 필드를 통신규격에 반영. 프론트 실행 코드 변경 없음.
+
+
+[2026-09-23] 그림 옵션 마스코트 선택 / 생성 버튼 하단 고정
+- story-setup.tsx, story-setup.module.css: 그림 체크 시 얼굴 두 개/라디오 선택/고정 높이 설명, 모바일 safe-area를 반영한 단일 sticky 생성 버튼. CSS overflow 조정으로 화면 하단 추적 및 폼 끝 원위치 정착.
+- public/images/illustrator-mascots.jpg: 사용자 제공 임시 시트(159787 bytes)를 CSS로 얼굴만 표시. 새 이미지 생성/추가 유료 호출 없음.
+- workpad-data.ts, generation-context.tsx: image_provider 선택을 동기/큐 요청 모두에 전달. 통신규격.md 갱신.
+- 검증: TypeScript 통과. 실제 StorySetup에 모의 API를 연결한 Edge 390x844 / 1280x900 화면에서 체크박스 노출/숨김, 기본 GPT, Gemini 전환, 제출값, 가로 넘침 없음, 버튼 상단 스크롤/끝 위치 확인.
+- DB 마이그레이션 없음. 아직 push/운영 배포하지 않음. 백엔드 배포 후 프론트 배포 필요.
+- 최종 검증: generation-controller 회귀 검사 통과, Next.js production build --webpack 통과. 임시 검증 라우트 제거 완료.

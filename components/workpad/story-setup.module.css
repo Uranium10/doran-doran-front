@@ -1,5 +1,26 @@
 /* 작은 화면에서도 세 장을 한눈에 고르고, 글쓰기 영역은 선으로 나눠 구분한다. */
 .form { border: 0; padding: 0; }
+/* overflow:hidden인 조상을 두면 viewport 기준 sticky가 동작하지 않는다. */
+.submitDock { position: sticky; bottom: 0; z-index: 20; padding: 14px 20px max(16px, env(safe-area-inset-bottom)); border-radius: 0 0 24px 24px; background: linear-gradient(to bottom, #fffaf000, #fffaf0 18px); }
+.submitDock button { min-height: 52px; box-shadow: 0 4px 12px #85462320; }
+.illustrators { min-width: 0; border: 0; margin: 0; padding: 0; text-align: center; }
+.illustrators legend { width: 100%; margin-bottom: 14px; font-family: var(--font-heading); font-size: 19px; color: #594734; }
+.illustratorChoices { display: flex; justify-content: center; gap: 30px; }
+.illustratorChoice { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+.faceFrame { position: relative; display: block; padding: 4px; border: 2px solid transparent; border-radius: 50%; transition: border-color 160ms, transform 160ms; }
+/* 임시 시트 한 장(156KB)을 재사용한다. 최종 마스코트가 나오면 이 이미지/좌표만 교체한다. */
+.mascotFace { display: block; width: 88px; height: 88px; border-radius: 50%; background-image: url('/images/illustrator-mascots.jpg'); background-size: 853px 1280px; background-repeat: no-repeat; }
+.blueFace { background-position: -368px -264px; }
+.pinkFace { background-position: -367px -876px; }
+.illustratorChoice input:checked + .faceFrame { border-color: #aa633e; background: #f8edda; transform: translateY(-2px); }
+.illustratorChoice input:focus-visible + .faceFrame { outline: 3px solid #aa633e; outline-offset: 4px; }
+.illustratorChoice input:not(:checked) + .faceFrame { opacity: .72; }
+.illustratorChoice:hover .faceFrame { opacity: 1; }
+.faceCheck { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 22px; height: 22px; color: white; border: 2px solid #fffaf0; border-radius: 50%; background: #9a593b; }
+.illustratorName { font-family: var(--font-heading); font-size: 15px; color: #65513d; }
+.illustratorDescription { min-height: 2.9em; margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: #84725f; text-wrap: pretty; }
+@media (min-width: 640px) { .submitDock { padding-inline: 32px; } }
+@media (prefers-reduced-motion: reduce) { .faceFrame { transition: none; } }
 .modeHint { color: #776956; font-size: 14px; line-height: 1.7; text-align: center; text-wrap: pretty; }
 .sectionTitle { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 21px; font-weight: 400; }
 .step { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 50%; background: #ece5d6; color: #776447; font-family: var(--font-sans); font-size: 13px; font-weight: 700; }

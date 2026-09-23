@@ -67,7 +67,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ profile_id: profileId, assessment_type: "posttest", protagonist_name: input.protagonistName,
             reading_mode: input.mode === "original" ? "level_aligned" : input.readingMode ?? "level_aligned",
             mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
-            favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: input.tts ?? false }),
+            favorite: input.favorite, today_event: input.todayEvent, page_images: input.pageImages ?? false, tts: input.tts ?? false, image_provider: input.imageProvider }),
         }, { timeoutMs: 60_000 }),
         legacy: (profileId, input) => generateAssessment(profileId, "posttest", { ...input, useJobs: false }),
       }, {

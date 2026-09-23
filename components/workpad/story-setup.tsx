@@ -22,9 +22,10 @@ const THEME_SYMBOLS = {
 
 const FAVORITES = ["공룡", "별", "공주", "강아지", "로봇", "딸기"]
 const MODES = [{ id: "original", label: "옛이야기", icon: BookOpen }, { id: "personalized", label: "나만의 이야기", icon: Sparkles }] as const
-type Draft = { readingMode?: "level_aligned" | "relaxed"; tts?: boolean; mode: StoryMode; themeId: string; favorite: string; protagonistName: string; eventText: string; customTopic?: string; previousThemeIds?: string[] }
+type Draft = { imageProvider?: "openai" | "gemini"; readingMode?: "level_aligned" | "relaxed"; tts?: boolean; mode: StoryMode; themeId: string; favorite: string; protagonistName: string; eventText: string; customTopic?: string; previousThemeIds?: string[] }
 function isDraft(value: unknown): value is Draft {
   return objectValue(value)
+    && (value.imageProvider === undefined || value.imageProvider === "openai" || value.imageProvider === "gemini")
     && (value.readingMode === undefined || value.readingMode === "level_aligned" || value.readingMode === "relaxed")
     && (value.tts === undefined || typeof value.tts === "boolean")
     && (value.customTopic === undefined || typeof value.customTopic === "string")
@@ -40,7 +41,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
     { mode: "original", themeId: "", favorite: "", protagonistName: defaultName, eventText: "" }, isDraft)
   // 접수 성공 후 저장소에는 다음 입력을 준비하되, 이동 중 화면은 마지막 선택으로 고정한다.
   const [acceptedDraft, setAcceptedDraft] = useState<Draft | null>(null)
-  const { mode, themeId, favorite, protagonistName, eventText, customTopic = "", tts = false, readingMode = "level_aligned" } = acceptedDraft ?? draft.value
+  const { mode, themeId, favorite, protagonistName, eventText, customTopic = "", tts = false, imageProvider = "openai", readingMode = "level_aligned" } = acceptedDraft ?? draft.value
   const update = (value: Partial<Draft>) => draft.setValue(old => ({ ...old, ...value }))
   // 입력란을 선택하면 빈 값이어도 직접 입력 모드다. 카드는 흐리게 보이지만 다시 선택할 수 있다.
   const [customSelected, setCustomSelected] = useState(false)
@@ -104,7 +105,7 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
         customTopic: mode === "personalized" ? customTopic.trim() : undefined,
         protagonistName: mode === "original" ? "" : protagonistName.trim(),
         favorite: mode === "original" ? "" : favorite.trim(), todayEvent: mode === "original" ? "" : eventText.trim(),
-        tts, pageImages: preferences?.page_images ?? false, useJobs: preferences?.jobs_enabled ?? false })
+        tts, imageProvider: preferences?.page_images ? imageProvider : undefined, pageImages: preferences?.page_images ?? false, useJobs: preferences?.jobs_enabled ?? false })
       // 실패 시 입력을 보존한다. 새 카드 추첨은 다음 마운트의 조회에서만 실행한다.
       if (accepted && draft.isCurrent()) {
         setAcceptedDraft({ ...draft.value })
@@ -121,8 +122,8 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
     <div className="mb-6 text-center">
       <h2 className="font-heading text-3xl text-foreground">오늘은 어떤 이야기?</h2>
     </div>
-    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-md">
-      <div role="tablist" aria-label="동화 만들기 방식" className="grid grid-cols-2 gap-2 bg-secondary/50 p-2">
+    <div className="rounded-3xl border border-border bg-card shadow-md">
+      <div role="tablist" aria-label="동화 만들기 방식" className="grid grid-cols-2 gap-2 rounded-t-3xl bg-secondary/50 p-2">
         {MODES.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" role="tab"
           id={`story-tab-${id}`} aria-controls="story-mode-panel" aria-selected={mode === id} tabIndex={mode === id ? 0 : -1}
           onClick={() => changeMode(id)} onKeyDown={event => {
@@ -204,12 +205,34 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
           {settingsError && <div role="alert" className="text-sm text-destructive">{settingsError}
             {!preferences && <button type="button" className="ml-2 underline" onClick={() => void loadPreferences()}>다시 불러오기</button>}</div>}
         </div>
+        {preferences?.page_images && <fieldset className={styles.illustrators} aria-describedby="illustrator-description">
+          <legend>누가 그릴까요?</legend>
+          <div className={styles.illustratorChoices}>
+            {([
+              { id: "openai", label: "파랑 도깨비", face: styles.blueFace },
+              { id: "gemini", label: "분홍 도깨비", face: styles.pinkFace },
+            ] as const).map(option => <label key={option.id} className={styles.illustratorChoice}>
+              <input type="radio" name="illustrator" value={option.id} checked={imageProvider === option.id}
+                onChange={() => update({ imageProvider: option.id })} className="sr-only" />
+              <span className={styles.faceFrame}><span className={cn(styles.mascotFace, option.face)} aria-hidden="true" />
+                {imageProvider === option.id && <span className={styles.faceCheck}><Check size={13} aria-hidden="true" /></span>}
+              </span>
+              <span className={styles.illustratorName}>{option.label}</span>
+            </label>)}
+          </div>
+          <p id="illustrator-description" className={styles.illustratorDescription} aria-live="polite">
+            {imageProvider === "openai" ? "차근차근, 작은 부분까지 정성껏 그려요." : "쓱싹쓱싹, 조금 더 빠르게 그려요."}
+          </p>
+        </fieldset>}
         <div className={styles.imageOption}><label><input type="checkbox" checked={tts} disabled={submitting || !preferences?.jobs_enabled} onChange={e => update({ tts: e.target.checked })} /><span><span className={styles.imageLabel}>목소리로도 읽어 줄래요</span><span className={styles.imageHelp}>동화 속 목소리를 준비하는 시간이 조금 더 걸려요.</span></span></label></div>
         {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
-        <Button onClick={handleSubmit} disabled={!canSubmit} size="lg" className="h-13 w-full rounded-full text-base">
+      </section>
+      {/* 같은 버튼을 아래에 고정하다가 폼의 끝에 닿으면 원래 자리에 머문다. */}
+      <div className={styles.submitDock}>
+        <Button type="button" onClick={handleSubmit} disabled={!canSubmit} size="lg" className="h-13 w-full rounded-full text-base">
           <Wand2 className="mr-1 h-5 w-5" aria-hidden="true" />{acceptedDraft ? "책장으로 이동하고 있어요…" : submitting ? "이야기를 준비하고 있어요…" : mode === "original" ? "옛이야기 만나기" : "나만의 이야기 만들기"}
         </Button>
-      </section>
+      </div>
     </div>
   </fieldset>
 }

@@ -152,6 +152,7 @@ export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: Ab
     `/stories/themes?profile_id=${encodeURIComponent(profileId)}&mode=${mode}`, { signal })
 
 export type StoryInput = {
+  imageProvider?: "openai" | "gemini"
   readingMode?: ReadingMode
   mode?: StoryMode
   themeId?: string
@@ -272,7 +273,7 @@ export async function generateAssessment(
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
     reading_mode: input.mode === "original" ? "level_aligned" : input.readingMode ?? "level_aligned",
     mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
-    page_images: input.pageImages ?? false, tts: input.tts ?? false,
+    page_images: input.pageImages ?? false, tts: input.tts ?? false, image_provider: input.imageProvider,
   })
   if (input.useJobs) {
     const existing = pendingGeneration(profileId)
