@@ -33,12 +33,12 @@ function isDraft(value: unknown): value is Draft {
     && ["themeId", "favorite", "protagonistName", "eventText"].every(key => typeof value[key] === "string")
 }
 
-export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, onAccepted }: {
-  profileId: string; defaultName: string; persistenceKey?: string | null; onSubmit: (input: StoryInput) => Promise<boolean>; onAccepted?: () => void
+export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, onAccepted, fixedMode }: {
+  profileId: string; defaultName: string; persistenceKey?: string | null; onSubmit: (input: StoryInput) => Promise<boolean>; onAccepted?: () => void; fixedMode?: StoryMode
 }) {
   // 예전 moodId 폼을 새 주제 선택으로 오인하지 않도록 보관 키도 버전을 나눈다.
   const draft = useSessionView<Draft>(persistenceKey ? `${persistenceKey}:topics-v1` : null,
-    { mode: "original", themeId: "", favorite: "", protagonistName: defaultName, eventText: "" }, isDraft)
+    { mode: fixedMode ?? "original", themeId: "", favorite: "", protagonistName: defaultName, eventText: "" }, isDraft)
   // 접수 성공 후 저장소에는 다음 입력을 준비하되, 이동 중 화면은 마지막 선택으로 고정한다.
   const [acceptedDraft, setAcceptedDraft] = useState<Draft | null>(null)
   const { mode, themeId, favorite, protagonistName, eventText, customTopic = "", tts = false, imageProvider = "openai", readingMode = "level_aligned" } = acceptedDraft ?? draft.value
@@ -120,10 +120,10 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
   if (!draft.ready) return <p role="status">작성하던 내용을 준비하고 있어요…</p>
   return <fieldset disabled={submitting || Boolean(acceptedDraft)} aria-busy={submitting || Boolean(acceptedDraft)} className={cn(styles.form, "mx-auto w-full min-w-0 max-w-2xl")}>
     <div className="mb-6 text-center">
-      <h2 className="font-heading text-3xl text-foreground">오늘은 어떤 이야기?</h2>
+      <h2 className="font-heading text-3xl text-foreground">{fixedMode === 'original' ? '옛이야기' : fixedMode === 'personalized' ? '나만의 이야기' : '오늘은 어떤 이야기?'}</h2>
     </div>
     <div className="rounded-3xl border border-border bg-card shadow-md">
-      <div role="tablist" aria-label="동화 만들기 방식" className="grid grid-cols-2 gap-2 rounded-t-3xl bg-secondary/50 p-2">
+      {!fixedMode && <div role="tablist" aria-label="동화 만들기 방식" className="grid grid-cols-2 gap-2 rounded-t-3xl bg-secondary/50 p-2">
         {MODES.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" role="tab"
           id={`story-tab-${id}`} aria-controls="story-mode-panel" aria-selected={mode === id} tabIndex={mode === id ? 0 : -1}
           onClick={() => changeMode(id)} onKeyDown={event => {
@@ -133,8 +133,8 @@ export function StorySetup({ profileId, defaultName, persistenceKey, onSubmit, o
             mode === id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>
           <Icon className="h-5 w-5" aria-hidden="true" />{label}
         </button>)}
-      </div>
-      <section role="tabpanel" id="story-mode-panel" aria-labelledby={`story-tab-${mode}`} className="space-y-7 p-5 sm:p-8">
+      </div>}
+      <section role={fixedMode ? undefined : 'tabpanel'} id="story-mode-panel" aria-label={fixedMode ? '이야기 만들기' : undefined} aria-labelledby={fixedMode ? undefined : `story-tab-${mode}`} className="space-y-7 p-5 sm:p-8">
         <p className={styles.modeHint}>
           {mode === "original" ? "마음에 드는 주제를 고르면 옛이야기가 찾아와요." : "내가 주인공인 동화를 함께 만들어요."}
         </p>

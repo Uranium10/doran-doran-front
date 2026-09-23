@@ -74,7 +74,8 @@ export type AssessmentPayload = {
   generation?: {
     /** 생성 당시 서버에서 적용한 정수 단계. 과거 동화에는 없을 수 있다. */
     level?: number | null
-    mode?: StoryMode
+    mode?: StoryMode | "drawing"
+    drawing_input_id?: string | null
     reading_mode?: ReadingMode
     reading_guidance_version?: string | null
     theme_id?: string | null
@@ -152,9 +153,10 @@ export const fetchStoryThemes = (profileId: string, mode: StoryMode, signal?: Ab
     `/stories/themes?profile_id=${encodeURIComponent(profileId)}&mode=${mode}`, { signal })
 
 export type StoryInput = {
+  drawingInputId?: string
   imageProvider?: "openai" | "gemini"
   readingMode?: ReadingMode
-  mode?: StoryMode
+  mode?: StoryMode | "drawing"
   themeId?: string
   customTopic?: string
   protagonistName: string
@@ -273,7 +275,7 @@ export async function generateAssessment(
     protagonist_name: input.protagonistName, favorite: input.favorite, today_event: input.todayEvent,
     reading_mode: input.mode === "original" ? "level_aligned" : input.readingMode ?? "level_aligned",
     mode: input.mode ?? "personalized", theme_id: input.themeId, custom_topic: input.customTopic,
-    page_images: input.pageImages ?? false, tts: input.tts ?? false, image_provider: input.imageProvider,
+    page_images: input.pageImages ?? false, tts: input.tts ?? false, image_provider: input.imageProvider, drawing_input_id: input.drawingInputId,
   })
   if (input.useJobs) {
     const existing = pendingGeneration(profileId)

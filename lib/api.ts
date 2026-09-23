@@ -95,6 +95,31 @@ export async function request<T>(
   return (text ? JSON.parse(text) : undefined) as T
 }
 
+/** 인증이 필요한 PDF를 Blob으로 받은 뒤 기기에 저장한다. 서버 URL을 새 탭에 노출하지 않는다. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 120_000)
+  let response: Response
+  try {
+    const headers = await buildHeaders()
+    delete headers["Content-Type"]
+    response = await fetch(`${API_BASE_URL}${path}`, {headers, signal: controller.signal})
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw new Error("PDF를 만드는 시간이 너무 오래 걸리고 있어요. 다시 시도해 주세요.")
+    throw error
+  } finally { clearTimeout(timer) }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new ApiError(response.status, typeof body?.detail === "string" ? body.detail : "PDF를 저장하지 못했어요.")
+  }
+  const blob = await response.blob()
+  if (blob.type !== "application/pdf" || blob.size < 100) throw new Error("완성된 PDF를 받지 못했어요.")
+  const safe = fallbackName.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "도란도란 자료.pdf"
+  const href = URL.createObjectURL(blob), anchor = document.createElement("a")
+  try { anchor.href=href;anchor.download=safe.endsWith(".pdf")?safe:`${safe}.pdf`;document.body.appendChild(anchor);anchor.click() }
+  finally { anchor.remove();setTimeout(()=>URL.revokeObjectURL(href),1000) }
+}
+
 // ---------------------------------------------------------------------------
 // 1. 구글 계정 로그인 동기화 (front -> back)
 // ---------------------------------------------------------------------------

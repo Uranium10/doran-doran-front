@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict'),{test}=require('node:test'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
+const scope={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../lib/sketchbook.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,scope);
+const {insidePolygon,moveSelection,resizeSelection}=scope.exports;
+const strokes=[{id:'a',width:7,color:'#000',erase:false,points:[{x:.2,y:.2},{x:.4,y:.4}]},{id:'b',width:7,color:'#000',erase:false,points:[{x:.7,y:.7}]}];
+test('올가미는 둘러싼 점만 선택한다',()=>{const polygon=[{x:.1,y:.1},{x:.5,y:.1},{x:.5,y:.5},{x:.1,y:.5}];assert.equal(insidePolygon(strokes[0].points[0],polygon),true);assert.equal(insidePolygon(strokes[1].points[0],polygon),false)});
+test('이동은 종이 밖으로 나가지 않으면서 선택한 그림 모양과 다른 선을 보존한다',()=>{const before=JSON.stringify(strokes),next=moveSelection(strokes,['a'],1,-1);assert.equal(JSON.stringify(strokes),before);assert.equal(next[1],strokes[1]);assert.equal(next[0].points[1].x,1);assert.equal(next[0].points[0].y,0);assert.ok(Math.abs(next[0].points[1].x-next[0].points[0].x-.2)<1e-9)});
+test('크기 조절은 중심을 보존하고 경계에서 멈추며 원본을 수정하지 않는다',()=>{const before=JSON.stringify(strokes),next=resizeSelection(strokes,['a'],100);for(const p of next[0].points)assert.ok(p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1);assert.ok(Math.abs((next[0].points[0].x+next[0].points[1].x)/2-.3)<1e-9);assert.equal(next[1],strokes[1]);assert.equal(JSON.stringify(strokes),before)});

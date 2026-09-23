@@ -10,6 +10,7 @@ import { LiteracyResultView } from "./workpad/literacy-result"
 import { useProfile } from "@/lib/profile-context"
 import { fetchQuizResult,bookOrigin,returnLabel,returnPath,startStoryPractice,bookPath } from "@/lib/bookshelf"
 import type { LiteracyResult } from "@/lib/levels"
+import { PdfDownloadButton } from "./pdf-download-button"
 
 export function ResultPage({resultId,from}:{resultId:string;from:string}) {
   const {currentProfile,loading,error:profileError}=useProfile();const router=useRouter()
@@ -38,7 +39,7 @@ export function ResultPage({resultId,from}:{resultId:string;from:string}) {
     }catch{setPracticeError('다시 풀기를 준비하지 못했어요. 잠시 후 다시 눌러 주세요.');setPracticing(false)}
   }
   return <div className="min-h-screen bg-background"><AppHeader/><main className="mx-auto max-w-4xl px-5 py-8"><BackLink href={returnPath(from)} label={returnLabel(from)} className="mb-6"/>
-    {state.error?<p role="alert">{state.error} <button onClick={()=>setRetry(v=>v+1)} className="underline">다시 시도</button></p>:result?<LiteracyResultView rewards={result.story_id?<StickerCollection from={bookOrigin(from)} key={`${currentProfile.id}:${result.story_id}`} profileId={currentProfile.id} storyId={result.story_id}/>:undefined} secondaryLabel={result.story_id?(practicing?'문제를 준비하고 있어요…':'다시 풀고 스티커 도전하기'):undefined} onSecondary={result.story_id?practice:undefined} result={result} childName={currentProfile.name} showScore={result.assessment_type!=='checklist'} primaryLabel={returnLabel(from)} onPrimary={()=>router.push(returnPath(from))}/>:<p role="status" className="py-16 text-center">답안지를 펼치고 있어요…</p>}
+    {state.error?<p role="alert">{state.error} <button onClick={()=>setRetry(v=>v+1)} className="underline">다시 시도</button></p>:result?<><div className="mb-5 flex justify-end"><PdfDownloadButton path={`/exports/quiz-results/${encodeURIComponent(resultId)}.pdf?profile_id=${encodeURIComponent(currentProfile.id)}`} filename={`${currentProfile.name}-문제와 답.pdf`} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground hover:text-foreground disabled:opacity-60"/></div><LiteracyResultView rewards={result.story_id?<StickerCollection from={bookOrigin(from)} key={`${currentProfile.id}:${result.story_id}`} profileId={currentProfile.id} storyId={result.story_id}/>:undefined} secondaryLabel={result.story_id?(practicing?'문제를 준비하고 있어요…':'다시 풀고 스티커 도전하기'):undefined} onSecondary={result.story_id?practice:undefined} result={result} childName={currentProfile.name} showScore={result.assessment_type!=='checklist'} primaryLabel={returnLabel(from)} onPrimary={()=>router.push(returnPath(from))}/></>:<p role="status" className="py-16 text-center">답안지를 펼치고 있어요…</p>}
     {practiceError&&<p role="alert" className="mt-4 text-center text-sm">{practiceError}</p>}
   </main></div>
 }

@@ -14,6 +14,7 @@ import styles from "./popup-book.module.css"
 import { NarrationPlayer } from "./narration-player"
 import { narrationKey } from "@/lib/narration-timeline"
 import { StoryVocabulary } from "./story-vocabulary"
+import { PdfDownloadButton } from "@/components/pdf-download-button"
 
 function Picture({ src, alt, unavailable = false }: { src?: string | null; alt: string; unavailable?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null)
@@ -75,6 +76,7 @@ type PopupBookProps = {
   vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown }
   initialBookmark?: BookBookmark
   onBookmarkChange?: (bookmark: BookBookmark) => void
+  pdfExport?: { path: string; filename: string }
   coverColor?: string | null
   persistenceKey?: string | null
   pages: StoryPage[]; childName: string | null; title?: string | null; coverImage?: string | null
@@ -94,7 +96,7 @@ export function PopupBook(props: PopupBookProps) {
   return <PreparedBook key={`${images.key}:${props.persistenceKey ?? ""}`} {...props} failedImages={images.failedUrls} />
 }
 
-function PreparedBook({ readingLevel, narrationIdentity, vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange }: PopupBookProps & { failedImages: string[] }) {
+function PreparedBook({ readingLevel, narrationIdentity, vocabulary, pages, childName, title, coverImage, coverColor, onFinish, onExit, hasQuiz = false, exitLabel = "이전으로", isLib = false, failedImages, persistenceKey, initialBookmark, onBookmarkChange, pdfExport }: PopupBookProps & { failedImages: string[] }) {
   const bookmark = useSessionView<BookBookmark>(persistenceKey ?? null, { kind: "cover" }, validBookmark)
   const rootRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -276,6 +278,7 @@ function PreparedBook({ readingLevel, narrationIdentity, vocabulary, pages, chil
         <button type="button" aria-label="글자 작게" disabled={fontSize <= 18 || !!activeTurn || audioLocked} onClick={() => setFontSize(v => v - 2)}>가−<span>작게</span></button>
       </div>
       <button type="button" aria-label="처음부터 다시 보기" disabled={atCover || audioLocked} onClick={() => go(0)}><RotateCcw size={18} /><span>처음</span></button>
+      {pdfExport && <PdfDownloadButton path={pdfExport.path} filename={pdfExport.filename} label="PDF 저장"/>}
       <button type="button" aria-label={fullscreen ? "전체 화면 닫기" : "전체 화면으로 읽기"} onClick={toggleFullscreen}>{fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}<span>전체 화면</span></button>
       </div>
     </aside>

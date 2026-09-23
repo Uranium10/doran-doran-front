@@ -9,6 +9,7 @@ import { useProfile } from "@/lib/profile-context"
 import { useSessionView, objectValue } from "@/lib/use-session-view"
 import { dictionaryPath, dictionaryLastOffset, WORD_POS, wordKey, type DictionaryWord, type DictionaryPage } from "@/lib/word-dictionary"
 import { AppHeader } from "./app-header"
+import { PdfDownloadButton } from "./pdf-download-button"
 import { ProfileRecovery } from "./profile-recovery"
 import styles from "./parent-vocabulary.module.css"
 
@@ -83,7 +84,7 @@ export function DictionaryWorkspace({accountId, profileId, name}: {accountId: st
   useEffect(() => { if (parentView.ready && parentView.value.childId !== profileId) parentView.setValue({childId:profileId}) }, [parentView.ready,parentView.value.childId,parentView.setValue,profileId])
   useEffect(() => { if(data && offset>dictionaryLastOffset(data.total)) setOffset(dictionaryLastOffset(data.total)) },[data,offset])
   return <main className={styles.main}>
-    <div className={styles.topline}><Link href="/parent"><ArrowLeft size={16}/> 성장 기록으로</Link><label>기록을 살펴볼 아이 <select value={profileId} onChange={e=>router.replace(dictionaryPath(e.target.value))}>{profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>
+    <div className={styles.topline}><Link href="/parent"><ArrowLeft size={16}/> 성장 기록으로</Link><div className={styles.topActions}><label>기록을 살펴볼 아이 <select value={profileId} onChange={e=>router.replace(dictionaryPath(e.target.value))}>{profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><PdfDownloadButton path={`/exports/vocabulary.pdf?profile_id=${encodeURIComponent(profileId)}&pos=${encodeURIComponent(pos)}&q=${encodeURIComponent(query.trim())}`} filename={`${name}-낱말 도감.pdf`} label={pos||query.trim()?"이 낱말 PDF":"낱말 도감 PDF"} className={styles.pdf}/></div></div>
     <header className={styles.hero}><span className={styles.eyebrow}>이야기 한 권, 낱말 한 줌</span><h1>{name}의 낱말 도감</h1><p>읽은 동화에서 만난 말을, 그때의 문장과 함께 꺼내 보세요.</p>
       <div className={styles.heroStats}><span>모인 낱말 <strong>{summary?.total_words.toLocaleString() ?? "—"}</strong>종류</span><span>이번 주 처음 만난 말 <strong>{summary?.new_this_week ?? "—"}</strong>종류</span></div>
     </header>

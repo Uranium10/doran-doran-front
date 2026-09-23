@@ -728,3 +728,30 @@
 - 검증: TypeScript 통과. 실제 StorySetup에 모의 API를 연결한 Edge 390x844 / 1280x900 화면에서 체크박스 노출/숨김, 기본 GPT, Gemini 전환, 제출값, 가로 넘침 없음, 버튼 상단 스크롤/끝 위치 확인.
 - DB 마이그레이션 없음. 아직 push/운영 배포하지 않음. 백엔드 배포 후 프론트 배포 필요.
 - 최종 검증: generation-controller 회귀 검사 통과, Next.js production build --webpack 통과. 임시 검증 라우트 제거 완료.
+
+[2026-09-23] 세 가지 동화 입구 및 그림으로 만드는 동화
+- /stories/new 선택 카드3개, /stories/new/[mode] 개별 입력·뒤로가기. 기존 StorySetup fixedMode 및 모드별 초안 분리.
+- 새 DrawingStorySetup/Sketchbook/DrawingVoice: 사진·스케치 초안 분리,7색/지우개/30회취소/전체삭제확인/올가미 이동·확대·삭제,1분녹음·재생·삭제, 그림 분석·주인공 표시·수정·생성. 마스코트 그림 공급자와TTS 선택, 하단 sticky 버튼. 비공개 원본 관리.
+- lib/drawing-story.ts: 인증 API, 이미지 축소, 음성16kHz모노 정규화,IndexedDB 초안. lib/sketchbook.ts: 선택/경계/출력 로직. workpad-data/generation-context에 drawing_input_id 연결. 통신규격.md 갱신.
+- 선택 카드3종 imagegen 생성·Sharp WebP512px 최적화(합144114bytes). 원본·프롬프트는 고도화 폴더 drawing-story-work/assets 및 이미지_생성기록.md 보관.
+- 검증: 기존 포함57프론트테스트,TypeScript,Next production build --webpack PASS. 실제 브라우저1280/390px에서 스케치/사진/주인공/생성payload/넘침없음 확인. 터치드로잉·화면왕복초안복원·실제MediaRecorder(가짜장치)·음성삭제 PASS. 임시검증라우트 제거.
+- 운영DB 미적용: 관리토큰401. SQL→백엔드→프론트 순서로 배포해야 함. 실제 유료 동화생성 미실행, push하지 않음.
+
+[2026-09-23] 그림 입력 운영 DB 적용 및 관리 인증 복구
+- 사용자 관리 토큰 교체 후 읽기 전용 조회 정상화. 활성 생성 작업 0건 확인 후 sql/20260923_drawing_inputs.sql 운영 적용 완료.
+- 신규 테이블 RLS/비공개 접근, drawing-inputs 비공개 버킷, 서비스 전용 RPC 검증 PASS. 기존 주요 생성 함수 정의와 테이블 RLS/권한 불변 확인.
+- 기존 users/profiles/saved_stories의 RLS 비활성 및 anon/authenticated CRUD 권한 확인. 기존 RLS 보류 지시에 따라 미변경; 별도 보안 조치 필요.
+- 앱 코드는 아직 push/배포하지 않음. 운영 Storage 쓰기 및 실제 유료 생성 검증은 미실행.
+
+[2026-09-23] 기존 테이블 소유권 RLS 운영 적용
+- 사용자 명시 요청으로 RLS 보류 해제. sql/20260923_user_ownership_security.sql: users/profiles/saved_stories 본인 소유권 정책, 익명 및 불필요한 권한 제거. 서버 전용 큐/옵션 RLS 활성화, 단어사전 invoker 뷰 읽기 권한 최소화, 소유권 조회 인덱스, 향후 postgres public 테이블 기본 권한 제한.
+- 검증: 운영 메타데이터만 복제한 로컬 PGlite에서 A/B/anon/service_role 정상·거부 시나리오와 기존 RPC 호환성 PASS, 반복 적용 PASS. 운영 익명 REST 6개 대상 401 차단, READ ONLY 실제 계정별 격리·조회 RPC PASS. 기존 함수 정의 변경 0. test_auth_security 27개 PASS.
+- 기존 API 형식/프론트 코드 변경 없음. 운영 DB 적용 완료(앱 재배포 불필요). SQL/문서 Git push 미실행, 별도 그림 기능 앱 배포도 아직 미실행.
+- SECURITY_20260923.md 및 고도화/security-work에 범위·검증·공개 Storage 등 남은 점검 기록. 관리 키나 사용자 데이터는 기록하지 않음.
+
+[2026-09-23] 동화·결과·낱말 PDF 내려받기
+- 공용 PdfDownloadButton/downloadFile 추가: Supabase JWT로 PDF Blob을 받아 파일로 저장하며 진행/오류 토스트 제공.
+- 책 뷰어는 기존 읽기 설정 안, 결과지는 결과 상단, 부모님 낱말 도감은 프로필 선택 옆에 작은 버튼만 배치하여 화면 위계를 늘리지 않음. 낱말 PDF는 현재 품사·검색 조건을 반영.
+- 통신규격.md에 PDF 3종 endpoint, 오류와 소유권 조건 기록.
+- TypeScript --noEmit 및 Next.js production build PASS. 실제 서버 PDF 3종 렌더 QA PASS. ESLint 패키지가 설치되어 있지 않아 npm lint는 실행 불가(기존 package 구성).
+- DB 마이그레이션/새 환경변수 없음. 아직 push하지 않음.
