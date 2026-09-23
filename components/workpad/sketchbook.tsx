@@ -5,7 +5,7 @@ import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
 import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,copyLayer,adoptLayer,paintStroke,strokeLayer,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
 import {pushPixels} from '@/lib/sketchbook-warp'
 import {STICKERS,type StickerKind} from '@/lib/sketchbook-stickers'
-import {IDENTITY,TouchView,type View} from '@/lib/sketchbook-controls'
+import {IDENTITY,TouchView,paperPoint,type View} from '@/lib/sketchbook-controls'
 import {BrushDial,ColorPanel} from './sketchbook-controls'
 import styles from './sketchbook.module.css'
 const COLORS=['#303d43','#b84839','#edaa35','#527a53','#467ba1','#8961a1','#d87a96','#ffffff']
@@ -19,6 +19,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
   const W=paperWidth,H=paperHeight
   const canvas=useRef<HTMLCanvasElement>(null),overlay=useRef<HTMLCanvasElement>(null),raf=useRef(0)
   const viewport=useRef<HTMLDivElement>(null),paper=useRef<HTMLDivElement>(null),touches=useRef(new TouchView()),viewRef=useRef<View>({...IDENTITY})
+  const paperSize=useRef({width:W,height:H})
   const warpCursor=useRef<HTMLDivElement>(null)
   const [view,setView]=useState<View>({...IDENTITY}),[fit,setFit]=useState(1),[preview,setPreview]=useState<'size'|'opacity'|null>(null)
   const active=useRef<{id:number;pointerType:string;start:Point;points:Point[];stroke?:Stroke;moving:boolean;tap?:'fill'|'pick';handle?:SelectionHandle}|null>(null)
@@ -38,7 +39,8 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
   const blocked=disabled||filling
   const latest=useRef(value);latest.current=value
   const commit=(next:Stroke[])=>{setHistory(h=>[...h.slice(-29),latest.current]);setFuture([]);latest.current=next;onChange(next)}
-  const changeView=(next:View)=>{viewRef.current=next;setView(next)}
+  const viewTransform=(v:View)=>`translate(${v.x}px,${v.y}px) rotate(${v.rotation}deg) scale(${v.scale})`
+  const changeView=(next:View)=>{viewRef.current=next;if(paper.current)paper.current.style.transform=viewTransform(next);setView(next)}
   const painted=useRef<{strokes:Stroke[];width:number;height:number}|null>(null)
   useEffect(()=>{
     const c=canvas.current;if(!c)return;const previous=painted.current
@@ -48,14 +50,15 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
     else paintSketch(c,value)
     painted.current={strokes:value,width:W,height:H}
   },[value,W,H])
-  useEffect(()=>{const el=paper.current;if(!el)return;const observer=new ResizeObserver(entries=>setFit(entries[0].contentRect.width/W));observer.observe(el);return()=>observer.disconnect()},[W,H])
+  useEffect(()=>{const el=paper.current;if(!el)return;const observer=new ResizeObserver(entries=>{const {width,height}=entries[0].contentRect;paperSize.current={width,height};setFit(width/W)});observer.observe(el);return()=>observer.disconnect()},[W,H])
   useEffect(()=>()=>{cancelAnimationFrame(raf.current);fillWorker.current?.terminate();onBusyChange?.(false)},[onBusyChange])
   useEffect(()=>()=>{if(toastTimer.current)clearTimeout(toastTimer.current);if(layerTimer.current)clearTimeout(layerTimer.current)},[])
   useEffect(()=>{try{const stored=JSON.parse(localStorage.getItem('doran-sketch-colors')||'[]');if(Array.isArray(stored))setCustom([...new Set(stored.filter((c:unknown)=>typeof c==='string'&&/^#[0-9a-f]{6}$/i.test(c)))].slice(0,16))}catch{}},[])
   const saveColors=(colors:string[])=>{setCustom(colors);try{localStorage.setItem('doran-sketch-colors',JSON.stringify(colors))}catch{setNotice('색은 이 창에서만 보관돼요.')}}
-  const point=(e:{clientX:number;clientY:number},unbounded=false):Point=>{const b=paper.current!.getBoundingClientRect(),x=(e.clientX-b.left)/b.width,y=(e.clientY-b.top)/b.height;return{x:unbounded?x:clamp(x),y:unbounded?y:clamp(y)}}
-  const inPaper=(e:Input)=>{const b=paper.current!.getBoundingClientRect();return e.clientX>=b.left&&e.clientX<=b.right&&e.clientY>=b.top&&e.clientY<=b.bottom}
-  const viewPoint=(e:Input)=>{const b=e.currentTarget.getBoundingClientRect();return{x:e.clientX-b.left-b.width/2,y:e.clientY-b.top-b.height/2}}
+  // 비대칭 도구 여백을 포함한 실제 종이 중심을 사용한다. 회전해도 사각형 중심은 동일하다.
+  const viewPoint=(e:{clientX:number;clientY:number})=>{const b=paper.current!.getBoundingClientRect(),v=viewRef.current;return{x:e.clientX-(b.left+b.width/2)+v.x,y:e.clientY-(b.top+b.height/2)+v.y}}
+  const point=(e:{clientX:number;clientY:number},unbounded=false):Point=>{const {width,height}=paperSize.current,{x,y}=paperPoint(viewPoint(e),viewRef.current,width,height);return{x:unbounded?x:clamp(x),y:unbounded?y:clamp(y)}}
+  const inPaper=(e:Input)=>{const p=point(e,true);return p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1}
   const clearOverlay=()=>{cancelAnimationFrame(raf.current);raf.current=0;overlay.current?.getContext('2d')?.clearRect(0,0,W,H)}
   const cancelStroke=()=>{active.current=null;warpWork.current=null;transformedRef.current=null;setTransformed(null);clearOverlay();if(canvas.current)paintSketch(canvas.current,latest.current)}
   const drawWarp=(stroke:Stroke)=>{
@@ -126,9 +129,9 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
       if(touches.current.locked)return
     }
     const a=active.current;if(!a||a.id!==e.pointerId||a.tap)return;e.preventDefault()
-    const box=paper.current!.getBoundingClientRect(),samples=e.nativeEvent.getCoalescedEvents?.()??[]
+    const samples=e.nativeEvent.getCoalescedEvents?.()??[]
     for(const event of samples.length?samples:[e.nativeEvent]){
-      const p=a.handle?point(event,true):{x:clamp((event.clientX-box.left)/box.width),y:clamp((event.clientY-box.top)/box.height)},last=a.points.at(-1)!
+      const p=point(event,Boolean(a.handle)),last=a.points.at(-1)!
       if(Math.hypot((p.x-last.x)*W,(p.y-last.y)*H)<(a.stroke?.brush==='warp'?Math.max(2,a.stroke.width/8):1))continue
       if(a.points.length<(a.stroke?.brush==='warp'?2048:12000)){a.points.push(p);if(a.stroke)a.stroke.points=a.points}
     }queuePaint()
@@ -189,7 +192,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
       <div className={styles.history}>
         <button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.length} onClick={undo}><Undo2 size={22}/></button>
         <button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!future.length} onClick={redo}><Redo2 size={22}/></button>
-        <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title="화면에 맞추기" onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><RotateCcw size={14}/>{Math.round(view.scale*100)}%</button>
+        <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title={`화면에 맞추기 · 현재 ${Math.round(view.rotation)}도`} onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><RotateCcw size={14}/>{Math.round(view.scale*100)}%</button>
         <div className={styles.extrasButtons}>
           <button type="button" aria-label="기본 스티커 붙이기" title="스티커 붙이기" disabled={blocked} aria-expanded={extras==='stickers'} onClick={()=>{setExtras(extras==='stickers'?null:'stickers');setPicker(false);announce('스티커 붙이기')}}><Sticker size={22}/></button>
           <button type="button" aria-label="종이 배경 변경" title="배경 변경" disabled={blocked||!onBackgroundChange} aria-expanded={extras==='paper'} onClick={()=>{setExtras(extras==='paper'?null:'paper');setPicker(false);announce('종이 배경')}}><Wallpaper size={22}/></button>
@@ -202,7 +205,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
         {extras==='stickers'?<div className={styles.stickerGrid}>{(Object.keys(STICKERS) as StickerKind[]).map(kind=><button type="button" key={kind} aria-label={`${STICKERS[kind].label} 붙이기`} onClick={()=>addSticker(kind)}><svg viewBox="0 0 104 104" aria-hidden><g transform="translate(2 2)" stroke="#715a42" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round">{STICKERS[kind].parts.map(([path,fill],i)=><path key={i} d={path} fill={fill}/>)}</g></svg><span>{STICKERS[kind].label}</span></button>)}</div>:<><div className={styles.paperColors}>{['#fffaf0','#ffffff','#f6e0df','#e2edf3','#e7efdb','#ece4f4','#f9ebc5','#343c43'].map(c=><button type="button" key={c} aria-label={`종이색 ${c}`} aria-pressed={background===c} style={{background:c}} onClick={()=>onBackgroundChange?.(c)}/>)}</div><label className={styles.paperCustom}>직접 고르기<input type="color" aria-label="원하는 종이색" value={background} onChange={e=>onBackgroundChange?.(e.target.value)}/></label></>}
       </section>}
       <div ref={viewport} className={styles.canvasSlot} onPointerDown={down} onPointerMove={move} onPointerLeave={()=>{if(!active.current){setEye(null);if(warpCursor.current)warpCursor.current.style.opacity='0'}}} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)}>
-        <div ref={paper} className={styles.canvasWrap} style={{background,width:`min(100cqw,calc(100cqh * ${W} / ${H}))`,aspectRatio:`${W}/${H}`,transform:`translate(${view.x}px,${view.y}px) scale(${view.scale})`}}>
+        <div ref={paper} className={styles.canvasWrap} style={{background,width:`min(100cqw,calc(100cqh * ${W} / ${H}))`,aspectRatio:`${W}/${H}`,transform:viewTransform(view)}}>
           <canvas width={W} height={H} ref={canvas} aria-hidden/>
           <canvas width={W} height={H} ref={overlay} className={styles.ink} aria-label="여기에 자유롭게 그려 주세요" tabIndex={0}/>
           {b&&<div className={styles.selection} style={{left:`${b.left*100}%`,top:`${b.top*100}%`,width:`${(b.right-b.left)*100}%`,height:`${(b.bottom-b.top)*100}%`,'--handle-scale':1/view.scale} as CSSProperties}>
@@ -215,7 +218,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
         {tool==='warp'&&<div ref={warpCursor} className={styles.warpCursor} aria-hidden/>}
       </div>
       {toast&&<div className={styles.toolToast} role="status" key={toast}>{toast}</div>}
-      <div className={styles.status} role="status">{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selected.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'고를 색과 지금 색을 함께 확인해요':tool==='fill'&&activeLayer==='color'?'밑그림 선을 경계로 색칠해요':'두 손가락으로 확대하고 옮겨요')}{tool==='lasso'&&selected.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={()=>{commit(value.filter(s=>!selected.includes(s.id)));setSelected([])}}><Trash2 size={20}/></button>}</div>
+      <div className={styles.status} role="status">{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selected.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'고를 색과 지금 색을 함께 확인해요':tool==='fill'&&activeLayer==='color'?'밑그림 선을 경계로 색칠해요':'두 손가락으로 확대·이동·회전해요')}{tool==='lasso'&&selected.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={()=>{commit(value.filter(s=>!selected.includes(s.id)));setSelected([])}}><Trash2 size={20}/></button>}</div>
     </div>
     <div className={styles.paletteBar}>
       <div className={styles.palette}>{[...new Set([...COLORS,...custom])].map(c=><button type="button" key={c} title={c} aria-label={`색 ${c}`} aria-pressed={(colorTarget==='front'?color:backColor)===c} disabled={blocked} style={{background:c}} onClick={()=>chooseColor(c)}/>)}</div>
