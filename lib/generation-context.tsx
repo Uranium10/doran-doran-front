@@ -125,6 +125,10 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       const instance = controller.current
       await instance.start(profileId, input)
       const result = instance.snapshot()
+      // 접수 거절은 폼 안에 지속적으로 표시한다. 대시보드로 이동하며 원인 안내가 사라지는 일을 막는다.
+      if (controller.current === instance && ["submission_invalid", "submission_unauthorized", "submission_rejected"].includes(result.job?.error_code ?? "")) {
+        throw new Error(result.error ?? "동화를 시작하지 못했어요. 입력을 확인하고 다시 시도해 주세요.")
+      }
       // 네트워크 불명/거부/로그아웃을 접수 성공으로 오인해 작성 폼을 비우지 않는다.
       return controller.current === instance && Boolean(result.job) && !result.connectionLost && !result.error
     }

@@ -52,6 +52,10 @@ state={...state,starting:true};assert.match(render(),/disabled/)
 assert.match(render(),/확인 중/)
 state={job:null,error:'접수 실패'}
 assert.match(renderToStaticMarkup(React.createElement(MyBookshelf,{onCreate:noop})),/접수 실패/)
+// 접수 검증 실패는 이전 미독 동화보다 우선하고 입력 수정 경로를 제공한다.
+state={job:{job_id:'new',profile_id:'p',status:'failed',error_code:'submission_invalid'},error:'읽기 방식 항목을 다시 확인해 주세요.',canRetry:false}
+html=render({latestUnread:{story_id:'old',title:'이전 동화'}})
+assert.match(html,/읽기 방식/);assert.match(html,/>내용 바꾸기</);assert.doesNotMatch(html,/따끈한 동화가 완성/)
 // 확인한 뒤에는 오류가 사라지고 기존 미독 책 안내로 돌아간다.
 state={job:null,error:null}
 assert.equal(render(),'')

@@ -17,7 +17,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   const mounted=useRef(true),readyRef=useRef(false),ref=useRef(draft),rowRef=useRef(row),task=useRef(false),accepted=useRef(false),savedWrites=useRef(Promise.resolve());ref.current=draft;rowRef.current=row;readyRef.current=ready
   const [drawingBusy,setDrawingBusy]=useState(false),[step,setStep]=useState('reading'),[leaving,setLeaving]=useState(false),[saveCopy,setSaveCopy]=useState(false)
   const previewBlob=useRef<Blob|null>(null),discarded=useRef(false),heading=useRef<HTMLHeadingElement>(null)
-  const file=useRef<HTMLInputElement>(null)
+  const file=useRef<HTMLInputElement>(null),errorBox=useRef<HTMLDivElement>(null)
   const restore=(input:DrawingInput)=>{setRow(input);const a=input.analysis;if(a){setName(a.suggested_name);setEvent(a.desired_event);setCharacter(a.characters.length===1?0:null);setPoint(a.characters.length===1?a.characters[0].center:null);setAnswers([]);setNotes('')}}
   useEffect(()=>{
     mounted.current=true;let cancelled=false
@@ -75,6 +75,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   })
   const locked=Boolean(busy)||recording||drawingBusy,analysis=row?.analysis
   const full=step==='canvas'
+  useEffect(()=>{if(error&&!busy&&!full){errorBox.current?.focus({preventScroll:true});errorBox.current?.scrollIntoView({block:'center',behavior:'instant'})}},[error,busy,full])
   useEffect(()=>{onStudioChange?.(full);return()=>onStudioChange?.(false)},[full,onStudioChange])
   useEffect(()=>{
     if(!full)return
@@ -125,16 +126,16 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
           {step==='final'&&<><div className={styles.preview}>{preview&&/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="동화가 될 내 그림"/>}</div><p className={styles.summary}><strong>{name||analysis?.suggested_name}</strong>의 이야기<br/>{event||'그림 속 친구와 작은 모험을 떠나요.'}</p><p className={styles.note}>{provider==='openai'?'파랑':'분홍'} 도깨비의 그림 · {tts?'읽어주는 동화':'내가 읽는 동화'}</p></>}
           </>}
         </section>
-        {error&&<p role="alert" className={styles.error}>{error}</p>}
+        {error&&<div ref={errorBox} tabIndex={-1} role="alert" className={styles.error}>{step==='final'&&<><strong>이런, 문제가 생겼어요!</strong><br/></>}{error}</div>}
         {!busy&&<div className={styles.actions}><button type="button" className={styles.primary} disabled={locked||(step==='preview'&&!preview)||(step==='character'&&!point)||(step==='final'&&row?.status!=='ready')} onClick={()=>{
           if(step==='reading'){setDraft(value=>({...value,step:'canvas'}));setStep('canvas')}
           else if(step==='preview'){if(saveCopy)download();setStep('description')}
           else if(step==='description')void analyze()
           else if(step==='final')void generate()
           else next()
-        }}>{step==='final'?'동화 만들기':step==='description'?'그림 속 이야기 살펴보기':step==='preview'?'이 그림으로 할래요':step==='reading'?'그림 시작하기':'다음으로'}<ArrowRight size={19}/></button></div>}
+        }}>{step==='final'?(error?'다시 시도':'동화 만들기'):step==='description'?'그림 속 이야기 살펴보기':step==='preview'?'이 그림으로 할래요':step==='reading'?'그림 시작하기':'다음으로'}<ArrowRight size={19}/></button></div>}
       </div>
-      <aside className={styles.guide} aria-hidden><div className={busy?styles.thought:styles.bubble}>{busy?'멋진 그림을 살펴보고 있어요…':prompt}</div><span className={provider==='openai'?styles.blueGuide:styles.pinkGuide}/></aside>
+      {!error&&<aside className={styles.guide} aria-hidden><div className={busy?styles.thought:styles.bubble}>{busy?'멋진 그림을 살펴보고 있어요…':prompt}</div><span className={provider==='openai'?styles.blueGuide:styles.pinkGuide}/></aside>}
       {localWarning&&<p className={styles.note} role="status">{localWarning}</p>}
     </>}
     {showSaved&&<div className={styles.savedOverlay}><section className={styles.saved} role="dialog" aria-modal="true" aria-label="보관한 그림"><button type="button" onClick={()=>setShowSaved(false)}>닫기</button><h2>보관한 그림</h2><p>원본을 지워도 완성한 책은 남아요.</p>{!saved.length&&<p>아직 저장한 그림이 없어요.</p>}{saved.map(input=><div key={input.id}><button type="button" disabled={locked||['deleting','uploading','analyzing'].includes(input.status)} onClick={()=>void useSaved(input)}>{input.analysis?.suggested_name||'내 그림'}<small>{new Date(input.created_at).toLocaleDateString('ko-KR')}</small></button><button type="button" aria-label="원본 삭제" disabled={locked} onClick={()=>setDeleting(input.id)}><Trash2 size={18}/></button></div>)}</section></div>}

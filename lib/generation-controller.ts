@@ -46,6 +46,11 @@ export class GenerationController {
     if (!this.stopped) this.timer = setTimeout(() => { void this.refresh() }, ms)
   }
   private receive(job: GenerationJob | null) {
+    // 4xx 접수 거절은 서버 작업이 없다. 자동 조회의 빈 값/예전 결과로 새 실패 안내를 지우지 않는다.
+    // 다른 탭에서 실제로 새 생성을 시작했거나 같은 작업이 복구된 경우에만 새 상태를 받는다.
+    if (this.state.job?.status === "failed" && (!job || (job.job_id !== this.state.job.job_id && !active(job)))) {
+      this.update({ connectionLost: false }); return
+    }
     if (!job) { this.write("pending", null); this.update({ job: null, connectionLost: false }); return }
     const tracked: TrackedJob = { ...job, mode: "queue" }
     this.write("pending", active(job) ? job.job_id : null)
@@ -94,7 +99,7 @@ export class GenerationController {
       } else { this.receive(result) }
     } catch (error) {
       if (this.stopped || version !== this.revision) return
-      this.update({ connectionLost: true, error: statusOf(error) === 401 ? "다시 로그인하면 동화 소식을 확인할 수 있어요." : null })
+      this.update({ connectionLost: true, error: this.state.job?.status === "failed" ? this.state.error : statusOf(error) === 401 ? "다시 로그인하면 동화 소식을 확인할 수 있어요." : null })
     } finally {
       this.polling = false
       this.schedule(this.state.connectionLost ? 5000 : active(this.state.job) ? Math.max(1000, Math.min(this.state.job!.poll_after_ms, 5000)) : 15000)
@@ -102,7 +107,7 @@ export class GenerationController {
   }
   canRetry = () => Boolean(this.lastAttempt && this.state.job?.status === "failed"
     && this.state.job.job_id === this.lastAttempt.id && this.lastAttempt.input.useJobs
-    && !["safety_blocked", "source_topic_unmatched", "profile_unavailable"].includes(this.state.job.error_code ?? ""))
+    && !["safety_blocked", "source_topic_unmatched", "profile_unavailable", "submission_invalid", "submission_unauthorized"].includes(this.state.job.error_code ?? ""))
 
   retry = async () => {
     if (this.stopped || this.retrying || this.state.starting || !this.canRetry()) return
@@ -118,7 +123,7 @@ export class GenerationController {
       if (found && found.status !== "failed") { this.receive(found); return }
       // 미접수/응답 유실은 같은 키를 사용해 늦은 원래 POST와 중복 생성되지 않게 한다.
       // 서버가 실패를 확정한 경우에만 새 키로 새 작업을 만든다.
-      if (found && ["safety_blocked", "source_topic_unmatched", "profile_unavailable"].includes(found.error_code ?? "")) {
+      if (found && ["safety_blocked", "source_topic_unmatched", "profile_unavailable", "submission_invalid", "submission_unauthorized"].includes(found.error_code ?? "")) {
         this.receive(found); return
       }
       this.update({ starting: false, job: null })
@@ -166,7 +171,9 @@ export class GenerationController {
         this.update({ connectionLost: true, error: "접수 여부를 확인하고 있어요. 잠시만 기다려 주세요." })
       } else {
         this.write("pending", null)
-        this.update({ job: null, error: error instanceof Error ? error.message : "동화를 시작하지 못했어요." })
+        this.update({ job: { ...initial, status: "failed", stage: "failed",
+          error_code: status === 400 || status === 422 ? "submission_invalid" : status === 401 || status === 403 ? "submission_unauthorized" : "submission_rejected" },
+          connectionLost: false, error: error instanceof Error ? error.message : "동화를 시작하지 못했어요." })
       }
     } finally {
       this.update({ starting: false }); this.schedule(0)

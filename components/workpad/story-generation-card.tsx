@@ -25,6 +25,7 @@ export function StoryGenerationCard({ bookshelfMode = false, latestUnread, finis
   const failed = job?.status === "failed" || (!job && Boolean(error))
   const done = !failed && (bookshelfMode ? !active && !finishing && Boolean(latestUnread) : job?.status === "completed" && Boolean(job.result))
   if (bookshelfMode && !active && !finishing && !failed && !latestUnread) return null
+  const invalidSubmission = job?.error_code === "submission_invalid"
   const safetyBlocked = failed && job?.error_code === "safety_blocked"
   const title = done ? "따끈한 동화가 완성되었어요!" : failed ? safetyBlocked ? "다른 소재로 이야기를 만들어 볼까요?" : "이런, 문제가 생겼어요!" : finishing ? "따끈한 동화를 책장에 놓고 있어요" : `${name}님의 동화를 짓고 있어요`
   const message = done ? latestUnread?.title ?? "책장에 새 이야기가 도착했어요. 함께 펼쳐 볼까요?" : finishing ? "완성된 책을 펼칠 준비를 하고 있어요." : failed ? error ?? "이번 동화를 완성하지 못했어요. 도깨비와 다시 만들어 볼까요?" : generationMessage(job?.stage ?? "queued")
@@ -38,8 +39,8 @@ export function StoryGenerationCard({ bookshelfMode = false, latestUnread, finis
       {done && (bookshelfMode && latestUnread ? <Link href={bookPath(latestUnread.story_id,"dashboard")} className={styles.primary}>동화 읽기</Link> : job && <><button type="button" onClick={() => openStory(job)} className={styles.primary}>동화 읽기</button><button type="button" onClick={dismiss} className={styles.secondary}>나중에 읽기</button></>)}
       {failed && <>
         <button type="button" disabled={starting} onClick={() => { if (canRetry) void retry(); else reopen() }} className={styles.primary}>
-          {safetyBlocked || job?.error_code === "source_topic_unmatched" ? <PencilLine size={18} aria-hidden="true"/> : <RotateCcw size={18} aria-hidden="true"/>}
-          {starting ? "확인 중…" : safetyBlocked || job?.error_code === "source_topic_unmatched" ? "내용 바꾸기" : "다시 시도"}
+          {invalidSubmission || safetyBlocked || job?.error_code === "source_topic_unmatched" ? <PencilLine size={18} aria-hidden="true"/> : <RotateCcw size={18} aria-hidden="true"/>}
+          {starting ? "확인 중…" : invalidSubmission || safetyBlocked || job?.error_code === "source_topic_unmatched" ? "내용 바꾸기" : "다시 시도"}
         </button>
         <button type="button" disabled={starting} onClick={dismiss} className={styles.secondary}>나중에 할래요</button>
       </>}

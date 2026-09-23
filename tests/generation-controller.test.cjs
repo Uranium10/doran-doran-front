@@ -130,6 +130,29 @@ async function run(){
  memory.clear();a=make({get:async()=>({...job('failed'),error_code:'safety_blocked'})})
  await a.controller.start('profile-1',input);await a.controller.refresh();assert.equal(a.controller.canRetry(),false)
  await a.controller.retry();assert.equal(a.calls.post,1);a.controller.dispose()
+ // 422 실패는 반복 조회의 빈 값/이전 동화로 사라지거나 성공 알림으로 바뀌지 않는다.
+ for(const previous of [null,job('completed','old'),job('failed','old')]) {
+  memory.clear();let posts=0;let unreachable=false;let latest=previous;
+  a=make({enqueue:async()=>{posts++;throw Object.assign(new Error('읽기 방식 항목을 다시 확인해 주세요.'),{status:422})},
+   current:async()=>{if(unreachable)throw new Error('offline');return {available:true,job:latest}}});
+  await a.controller.start('profile-1',input);
+  for(let i=0;i<6;i++)await a.controller.refresh();
+  assert.equal(a.controller.state.job.error_code,'submission_invalid');assert.match(a.controller.state.error,/읽기 방식/);
+  assert.equal(a.controller.state.job.profile_id,'profile-1');assert.equal(a.notices.length,0);assert.equal(posts,1);
+  assert.equal(a.controller.canRetry(),false);await a.controller.retry();assert.equal(posts,1);
+  unreachable=true;await a.controller.refresh();assert.match(a.controller.state.error,/읽기 방식/);
+  unreachable=false;latest=job('running','other-tab');await a.controller.refresh();assert.equal(a.controller.state.job.job_id,'other-tab');assert.equal(a.controller.state.error,null);
+  a.controller.dispose();
+ }
+ // 명시적으로 닫을 때만 접수 실패 상태를 비운다. 다른 계정에는 전달하지 않는다.
+ memory.clear();a=make({enqueue:async()=>{throw Object.assign(new Error('입력 확인'),{status:422})}});
+ await a.controller.start('profile-1',input);a.controller.dismiss();assert.equal(a.controller.state.job,null);assert.equal(a.controller.state.error,null);a.controller.dispose();
+ a=make({},'different-owner');await a.controller.refresh();assert.equal(a.controller.state.job,null);assert.equal(a.controller.state.error,null);a.controller.dispose();
+ // 429는 안내를 보존하고 사용자가 눌렀을 때만 다시 접수한다.
+ memory.clear();let limitPosts=0;
+ a=make({enqueue:async(p,i,key)=>{if(++limitPosts===1)throw Object.assign(new Error('잠시 뒤 시도'),{status:429});return job('queued',key)},get:async()=>{throw {status:404}}});
+ await a.controller.start('profile-1',input);await a.controller.refresh();assert.equal(a.controller.canRetry(),true);assert.equal(limitPosts,1);
+ await a.controller.retry();assert.equal(limitPosts,2);assert.equal(a.controller.state.job.status,'queued');a.controller.dispose();
  // 새로고침/다른 계정으로는 입력 메모리를 넘기지 않는다.
  memory.clear();a=make({current:async()=>({available:true,job:job('failed')})});await a.controller.refresh()
  assert.equal(a.controller.canRetry(),false);a.controller.dispose()
