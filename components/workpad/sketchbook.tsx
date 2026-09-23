@@ -4,6 +4,7 @@ import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,Arrow
 import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
 import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,copyLayer,adoptLayer,paintStroke,strokeLayer,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
 import {pushPixels} from '@/lib/sketchbook-warp'
+import {beginEraserPreview} from '@/lib/sketchbook-eraser'
 import {STICKERS,type StickerKind} from '@/lib/sketchbook-stickers'
 import {IDENTITY,TouchView,paperPoint,type View} from '@/lib/sketchbook-controls'
 import {BrushDial,ColorPanel} from './sketchbook-controls'
@@ -29,6 +30,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
   const inkColor=colorTarget==='front'?color:backColor
   const [toast,setToast]=useState(''),[layerLabel,setLayerLabel]=useState(false),[extras,setExtras]=useState<'stickers'|'paper'|null>(null)
   const toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null),layerTimer=useRef<ReturnType<typeof setTimeout>|null>(null)
+  const eraserWork=useRef<ReturnType<typeof beginEraserPreview>|null>(null)
   const warpWork=useRef<{ink:HTMLCanvasElement;other:HTMLCanvasElement;done:number;layer:DrawingLayer}|null>(null)
   const announce=(label:string)=>{setToast(label);if(toastTimer.current)clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),1600)}
   const selectLayer=(layer:DrawingLayer)=>{if(blocked||active.current)return;setActiveLayer(layer);setSelected([]);setLayerLabel(true);announce(layer==='outline'?'밑그림 레이어':'색칠 레이어');if(layerTimer.current)clearTimeout(layerTimer.current);layerTimer.current=setTimeout(()=>setLayerLabel(false),1700)}
@@ -60,7 +62,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
   const point=(e:{clientX:number;clientY:number},unbounded=false):Point=>{const {width,height}=paperSize.current,{x,y}=paperPoint(viewPoint(e),viewRef.current,width,height);return{x:unbounded?x:clamp(x),y:unbounded?y:clamp(y)}}
   const inPaper=(e:Input)=>{const p=point(e,true);return p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1}
   const clearOverlay=()=>{cancelAnimationFrame(raf.current);raf.current=0;overlay.current?.getContext('2d')?.clearRect(0,0,W,H)}
-  const cancelStroke=()=>{active.current=null;warpWork.current=null;transformedRef.current=null;setTransformed(null);clearOverlay();if(canvas.current)paintSketch(canvas.current,latest.current)}
+  const cancelStroke=()=>{active.current=null;warpWork.current=null;eraserWork.current=null;transformedRef.current=null;setTransformed(null);clearOverlay();if(canvas.current)paintSketch(canvas.current,latest.current)}
   const drawWarp=(stroke:Stroke)=>{
     const work=warpWork.current;if(!work||!canvas.current)return
     const ctx=work.ink.getContext('2d',{willReadFrequently:true})!
@@ -70,7 +72,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
   }
   const drawOverlay=()=>{
     const ctx=overlay.current?.getContext('2d');if(!ctx)return;ctx.clearRect(0,0,W,H);const a=active.current;if(!a||a.tap)return
-    if(a.stroke){if(a.stroke.brush==='warp')drawWarp(a.stroke);else if(a.stroke.erase){if(canvas.current)paintSketch(canvas.current,[...latest.current,a.stroke])}else paintStroke(ctx,a.stroke,W,H)}
+    if(a.stroke){if(a.stroke.brush==='warp')drawWarp(a.stroke);else if(a.stroke.erase){eraserWork.current?.render(a.stroke)}else paintStroke(ctx,a.stroke,W,H)}
     else if(a.moving||a.handle){const last=a.points.at(-1)!,next=a.handle?transformSelection(latest.current,selected,a.handle,a.start,last,W,H):moveSelection(latest.current,selected,last.x-a.start.x,last.y-a.start.y);transformedRef.current=next;setTransformed(next);if(canvas.current)paintSketch(canvas.current,next)}
     else{ctx.strokeStyle='#ba7442';ctx.lineWidth=3;ctx.setLineDash([10,7]);ctx.beginPath();a.points.forEach((p,i)=>i?ctx.lineTo(p.x*W,p.y*H):ctx.moveTo(p.x*W,p.y*H));ctx.closePath();ctx.stroke();ctx.setLineDash([])}
   }
@@ -114,6 +116,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
     // 채우기와 스포이드도 손을 뗄 때 확정해야 두 손가락 확대가 그림을 바꾸지 않는다.
     if(tool==='fill'||tool==='pick'){active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving:false,tap:tool};if(tool==='pick')previewEye(e);return}
     const b=selectionBounds(value,selected)
+    if(tool==='erase'&&canvas.current)eraserWork.current=beginEraserPreview(canvas.current,value,activeLayer)
     if(tool==='warp'){
       const ink=document.createElement('canvas'),other=document.createElement('canvas');ink.width=other.width=W;ink.height=other.height=H
       copyLayer(canvas.current!,ink,value,activeLayer);copyLayer(canvas.current!,other,value,activeLayer==='color'?'outline':'color');warpWork.current={ink,other,done:1,layer:activeLayer}
@@ -145,17 +148,17 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBackgroundChan
         active.current=null;clearOverlay()
         if(a.tap){if(inPaper(e)){if(a.tap==='fill')fillAt(p);else sampleAt(p)}}
         else if(a.stroke){
-          // 지우개 미리보기는 원본 캔버스에 그렸으므로 되돌린 뒤 한 번만 확정한다.
+          // 확정된 미리보기를 레이어 캐시에 넘겨 전체 그림 기록을 다시 계산하지 않는다.
           const next=[...latest.current,a.stroke]
           if(a.stroke.brush==='warp'&&warpWork.current&&canvas.current){drawWarp(a.stroke);adoptLayer(canvas.current,warpWork.current.ink,next,warpWork.current.layer)}
-          else if(a.stroke.erase&&canvas.current)paintSketch(canvas.current,latest.current)
+          else if(a.stroke.erase&&eraserWork.current){eraserWork.current.render(a.stroke);eraserWork.current.commit(next)}
           commit(next)
         }
         else if(a.handle)commit(transformSelection(latest.current,selected,a.handle,a.start,p,W,H))
         else if(a.moving)commit(moveSelection(latest.current,selected,p.x-a.start.x,p.y-a.start.y))
         else setSelected(a.points.length>=3?latest.current.filter(s=>strokeLayer(s)===activeLayer&&!s.fillRuns&&s.brush!=='warp'&&(s.points.some(p=>insidePolygon(p,a.points))||(s.sticker&&insidePolygon({x:s.points.reduce((n,p)=>n+p.x,0)/4,y:s.points.reduce((n,p)=>n+p.y,0)/4},a.points)))).map(s=>s.id):[])
       }
-      warpWork.current=null;transformedRef.current=null;setTransformed(null)
+      warpWork.current=null;eraserWork.current=null;transformedRef.current=null;setTransformed(null)
     }
     setEye(null);if(warpCursor.current&&e.pointerType!=='mouse')warpCursor.current.style.opacity='0';if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
   }
