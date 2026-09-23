@@ -2,7 +2,7 @@ import { request, API_BASE_URL, LONG_TIMEOUT_MS } from './api'
 import { getSupabaseBrowserClient } from './supabase/client'
 export type Point={x:number;y:number}
 export type DrawingLayer="outline"|"color"
-export type Stroke={id:string;color:string;width:number;erase:boolean;points:Point[];brush?:"pen"|"pencil"|"air";opacity?:number;fillRuns?:number[];layer?:DrawingLayer}
+export type Stroke={id:string;color:string;width:number;erase:boolean;points:Point[];brush?:"pen"|"pencil"|"air"|"warp";opacity?:number;fillRuns?:number[];layer?:DrawingLayer;sticker?:import('./sketchbook-stickers').StickerKind}
 export type DrawingAnalysis={observed_elements:string[];characters:{label:string;appearance:string;center:Point}[];child_meaning:string;transcript:string;suggested_name:string;desired_event:string;preserve_features:string[];creative_space:string[];questions:string[];visual_style:string}
 export type DrawingInput={id:string;profile_id:string;status:string;description:string;analysis:DrawingAnalysis|null;confirmed:unknown;has_image:boolean;has_audio:boolean;created_at:string}
 const base='/stories/drawing-inputs'

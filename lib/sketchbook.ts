@@ -1,5 +1,7 @@
 import type {DrawingLayer,Point,Stroke} from './drawing-story'
 import {pencilGrain} from './sketchbook-controls'
+import {pushPixels} from './sketchbook-warp'
+import {paintSticker} from './sketchbook-stickers'
 export const SKETCH_WIDTH=900, SKETCH_HEIGHT=650
 export const clamp=(n:number,min=0,max=1)=>Math.max(min,Math.min(max,n))
 /** 레이어가 없던 기존 그림은 선이 가려지지 않도록 밑그림으로 해석한다. */
@@ -56,6 +58,8 @@ export function transformSelection(strokes:Stroke[],ids:string[],handle:Selectio
     if(handle.includes('w')){ax=b.right;sx=Math.max(.04,(ax-clamp(end.x))/Math.max(.001,b.right-b.left))}
     if(handle.includes('s')){ay=b.top;sy=Math.max(.04,(clamp(end.y)-ay)/Math.max(.001,b.bottom-b.top))}
     if(handle.includes('n')){ay=b.bottom;sy=Math.max(.04,(ay-clamp(end.y))/Math.max(.001,b.bottom-b.top))}
+    // 네 모서리는 반대편 모서리를 기준으로 가로세로 비율을 보존한다.
+    if(handle.length===2){const vx=(start.x-ax)*W,vy=(start.y-ay)*H,denominator=vx*vx+vy*vy;const uniform=denominator>0?Math.max(.04,(((end.x-ax)*W)*vx+((end.y-ay)*H)*vy)/denominator):1;sx=sy=uniform}
   }
   let next=strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*Math.sqrt(sx*sy),2,96),points:s.points.map(p=>handle==='rotate'?{x:cx+((p.x-cx)*W*Math.cos(angle)-(p.y-cy)*H*Math.sin(angle))/W,y:cy+((p.x-cx)*W*Math.sin(angle)+(p.y-cy)*H*Math.cos(angle))/H}:{x:ax+(p.x-ax)*sx,y:ay+(p.y-ay)*sy})}:s)
   // 회전으로 종이 밖에 나갈 때는 모양을 찌그러뜨리지 않고 전체를 같은 비율로 맞춘다.
@@ -71,8 +75,10 @@ export function transformSelection(strokes:Stroke[],ids:string[],handle:Selectio
 /** 고정 크기의 선 데이터로 화면 크기가 변해도 원본 좌표를 보존한다. */
 export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH,H=SKETCH_HEIGHT){
   if(!s.points.length)return
+  if(s.brush==='warp'){for(let i=1;i<s.points.length;i++)pushPixels(ctx,{x:s.points[i-1].x*W,y:s.points[i-1].y*H},{x:s.points[i].x*W,y:s.points[i].y*H},Math.max(12,s.width/2),s.opacity??1);return}
   ctx.save();ctx.globalCompositeOperation=s.erase?'destination-out':'source-over';ctx.globalAlpha=s.opacity??1;ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=s.width;ctx.lineCap='round';ctx.lineJoin='round'
-  if(s.fillRuns){
+  if(s.sticker){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W/100,(b.y-a.y)*H/100,(d.x-a.x)*W/100,(d.y-a.y)*H/100,a.x*W,a.y*H);paintSticker(ctx,s.sticker)}
+  else if(s.fillRuns){
     ctx.translate(s.points[0].x*W,s.points[0].y*H)
     for(let i=0;i<s.fillRuns.length;i+=3)ctx.fillRect(s.fillRuns[i],s.fillRuns[i+1],s.fillRuns[i+2],1)
   }else if(s.brush==='air'){
@@ -98,16 +104,33 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   ctx.restore()
 }
 const layerCanvases=new WeakMap<HTMLCanvasElement,{color:HTMLCanvasElement;outline:HTMLCanvasElement}>()
+const layerHistory=new WeakMap<HTMLCanvasElement,{strokes:Stroke[];width:number;height:number}>()
+export function paintLayer(canvas:HTMLCanvasElement,strokes:Stroke[],layer:DrawingLayer){
+  const filtered=strokes.filter(s=>strokeLayer(s)===layer),previous=layerHistory.get(canvas),ctx=canvas.getContext('2d',{willReadFrequently:true})!
+  const incremental=previous&&previous.width===canvas.width&&previous.height===canvas.height&&previous.strokes.length<=filtered.length&&previous.strokes.every((s,i)=>s===filtered[i])
+  if(!incremental)ctx.clearRect(0,0,canvas.width,canvas.height)
+  for(let i=incremental?previous.strokes.length:0;i<filtered.length;i++)paintStroke(ctx,filtered[i],canvas.width,canvas.height)
+  layerHistory.set(canvas,{strokes:filtered,width:canvas.width,height:canvas.height})
+}
 function layerBuffers(canvas:HTMLCanvasElement){
   let buffers=layerCanvases.get(canvas)
   if(!buffers){buffers={color:document.createElement('canvas'),outline:document.createElement('canvas')};layerCanvases.set(canvas,buffers)}
   for(const buffer of [buffers.color,buffers.outline])if(buffer.width!==canvas.width||buffer.height!==canvas.height){buffer.width=canvas.width;buffer.height=canvas.height}
   return buffers
 }
+/** 유동화 시작/끝에서는 이미 그린 레이어를 복사해 긴 변형 기록을 재계산하지 않는다. */
+export function copyLayer(canvas:HTMLCanvasElement,target:HTMLCanvasElement,strokes:Stroke[],layer:DrawingLayer){
+  const source=layerBuffers(canvas)[layer];paintLayer(source,strokes,layer)
+  const ctx=target.getContext('2d',{willReadFrequently:true})!;ctx.clearRect(0,0,target.width,target.height);ctx.drawImage(source,0,0)
+}
+export function adoptLayer(canvas:HTMLCanvasElement,source:HTMLCanvasElement,strokes:Stroke[],layer:DrawingLayer){
+  const target=layerBuffers(canvas)[layer],ctx=target.getContext('2d',{willReadFrequently:true})!;ctx.clearRect(0,0,target.width,target.height);ctx.drawImage(source,0,0)
+  layerHistory.set(target,{strokes:strokes.filter(s=>strokeLayer(s)===layer),width:target.width,height:target.height})
+}
 /** 색칠을 먼저, 밑그림을 나중에 합성한다. 지우개도 선택한 레이어 안에서만 작동한다. */
 export function paintSketch(canvas:HTMLCanvasElement,strokes:Stroke[]){
   const buffers=layerBuffers(canvas)
-  for(const layer of ['color','outline'] as const){const target=buffers[layer],ctx=target.getContext('2d')!;ctx.clearRect(0,0,target.width,target.height);for(const stroke of strokes)if(strokeLayer(stroke)===layer)paintStroke(ctx,stroke,target.width,target.height)}
+  for(const layer of ['color','outline'] as const)paintLayer(buffers[layer],strokes,layer)
   const ctx=canvas.getContext('2d')!;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(buffers.color,0,0);ctx.drawImage(buffers.outline,0,0)
 }
 /** 비재귀 flood fill: 방문 배열과 정수 큐로 한 픽셀을 한 번만 처리한다. */
