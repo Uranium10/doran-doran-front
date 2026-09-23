@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict'),{test}=require('node:test'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
-const scope={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../lib/sketchbook.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,scope);
+function load(name){const scope={exports:{},require:p=>load(path.basename(p))};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,`../lib/${name}.ts`),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,scope);return scope.exports}
+const scope={exports:load('sketchbook')};
 const {insidePolygon,moveSelection,resizeSelection}=scope.exports;
 const strokes=[{id:'a',width:7,color:'#000',erase:false,points:[{x:.2,y:.2},{x:.4,y:.4}]},{id:'b',width:7,color:'#000',erase:false,points:[{x:.7,y:.7}]}];
 test('올가미는 둘러싼 점만 선택한다',()=>{const polygon=[{x:.1,y:.1},{x:.5,y:.1},{x:.5,y:.5},{x:.1,y:.5}];assert.equal(insidePolygon(strokes[0].points[0],polygon),true);assert.equal(insidePolygon(strokes[1].points[0],polygon),false)});

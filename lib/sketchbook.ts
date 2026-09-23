@@ -1,6 +1,17 @@
 import type {Point,Stroke} from './drawing-story'
+import {pencilGrain} from './sketchbook-controls'
 export const SKETCH_WIDTH=900, SKETCH_HEIGHT=650
 export const clamp=(n:number,min=0,max=1)=>Math.max(min,Math.min(max,n))
+// 작은 색연필 타일만 최대 16색 캐시한다. 움직일 때마다 픽셀 노이즈를 만들지 않는다.
+const pencilTiles=new Map<string,HTMLCanvasElement>()
+const pencilPatterns=new WeakMap<CanvasRenderingContext2D,Map<string,CanvasPattern>>()
+function pencilPattern(ctx:CanvasRenderingContext2D,color:string){
+  let patterns=pencilPatterns.get(ctx);if(!patterns){patterns=new Map();pencilPatterns.set(ctx,patterns)}
+  if(patterns.has(color))return patterns.get(color)!
+  let tile=pencilTiles.get(color)
+  if(!tile){tile=document.createElement('canvas');tile.width=tile.height=128;const c=tile.getContext('2d')!,data=c.createImageData(128,128);data.data.set(pencilGrain(color));c.putImageData(data,0,0);if(pencilTiles.size>=16)pencilTiles.delete(pencilTiles.keys().next().value!);pencilTiles.set(color,tile)}
+  const pattern=ctx.createPattern(tile,'repeat')!;if(patterns.size>=16)patterns.delete(patterns.keys().next().value!);patterns.set(color,pattern);return pattern
+}
 export function insidePolygon(point:Point,polygon:Point[]){
   let inside=false
   for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
@@ -27,6 +38,30 @@ export function resizeSelection(strokes:Stroke[],ids:string[],factor:number){
   const f=Math.min(factor,...[b.right-cx,cx-b.left].filter(v=>v>0).map(v=>Math.min(cx,1-cx)/v),...[b.bottom-cy,cy-b.top].filter(v=>v>0).map(v=>Math.min(cy,1-cy)/v))
   return strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*f,2,96),points:s.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}))}:s)
 }
+export type SelectionHandle='n'|'ne'|'e'|'se'|'s'|'sw'|'w'|'nw'|'rotate'
+/** 드래그 시작 시 원본에서 계산해 연속 변형의 반올림 오차가 쌓이지 않게 한다. */
+export function transformSelection(strokes:Stroke[],ids:string[],handle:SelectionHandle,start:Point,end:Point,W=SKETCH_WIDTH,H=SKETCH_HEIGHT){
+  const b=selectionBounds(strokes,ids);if(!b)return strokes
+  const cx=(b.left+b.right)/2,cy=(b.top+b.bottom)/2
+  let sx=1,sy=1,ax=cx,ay=cy,angle=0
+  if(handle==='rotate')angle=Math.atan2((end.y-cy)*H,(end.x-cx)*W)-Math.atan2((start.y-cy)*H,(start.x-cx)*W)
+  else{
+    if(handle.includes('e')){ax=b.left;sx=Math.max(.04,(clamp(end.x)-ax)/Math.max(.001,b.right-b.left))}
+    if(handle.includes('w')){ax=b.right;sx=Math.max(.04,(ax-clamp(end.x))/Math.max(.001,b.right-b.left))}
+    if(handle.includes('s')){ay=b.top;sy=Math.max(.04,(clamp(end.y)-ay)/Math.max(.001,b.bottom-b.top))}
+    if(handle.includes('n')){ay=b.bottom;sy=Math.max(.04,(ay-clamp(end.y))/Math.max(.001,b.bottom-b.top))}
+  }
+  let next=strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*Math.sqrt(sx*sy),2,96),points:s.points.map(p=>handle==='rotate'?{x:cx+((p.x-cx)*W*Math.cos(angle)-(p.y-cy)*H*Math.sin(angle))/W,y:cy+((p.x-cx)*W*Math.sin(angle)+(p.y-cy)*H*Math.cos(angle))/H}:{x:ax+(p.x-ax)*sx,y:ay+(p.y-ay)*sy})}:s)
+  // 회전으로 종이 밖에 나갈 때는 모양을 찌그러뜨리지 않고 전체를 같은 비율로 맞춘다.
+  const inkBounds=(list:Stroke[])=>{
+    const chosen=list.filter(s=>ids.includes(s.id)),points=selectionBounds(list,ids)!,radius=Math.max(...chosen.map(s=>s.width/2),0)
+    return {left:points.left-radius/W,right:points.right+radius/W,top:points.top-radius/H,bottom:points.bottom+radius/H}
+  }
+  const box=inkBounds(next),scale=Math.min(1,1/Math.max(.001,box.right-box.left),1/Math.max(.001,box.bottom-box.top))
+  if(scale<1)next=next.map(s=>ids.includes(s.id)?{...s,width:s.width*scale,points:s.points.map(p=>({x:cx+(p.x-cx)*scale,y:cy+(p.y-cy)*scale}))}:s)
+  const bounds=inkBounds(next),dx=bounds.left<0?-bounds.left:bounds.right>1?1-bounds.right:0,dy=bounds.top<0?-bounds.top:bounds.bottom>1?1-bounds.bottom:0
+  return next.map(s=>ids.includes(s.id)?{...s,points:s.points.map(p=>({x:p.x+dx,y:p.y+dy}))}:s)
+}
 /** 고정 크기의 선 데이터로 화면 크기가 변해도 원본 좌표를 보존한다. */
 export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH,H=SKETCH_HEIGHT){
   if(!s.points.length)return
@@ -46,11 +81,12 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
     }
   }else{
     ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p.x*W,p.y*H):ctx.moveTo(p.x*W,p.y*H))
-    if(s.brush==='pencil'){ctx.globalAlpha*=.68;ctx.lineWidth=s.width*.75}
+    if(s.brush==='pencil'){const grain=pencilPattern(ctx,s.color);ctx.strokeStyle=grain;ctx.fillStyle=grain;ctx.lineWidth=s.width}
     if(s.points.length===1){const p=s.points[0];ctx.arc(p.x*W,p.y*H,ctx.lineWidth/2,0,Math.PI*2);ctx.fill()}else ctx.stroke()
-    // 같은 선을 다시 그릴 때도 무늬가 바뀌지 않는 작은 종이결.
+    // 중앙은 조금 더 진하고 가장자리는 성기게 남긴다. 겹쳐 칠하면 종이 결 위에 색이 쌓인다.
     if(s.brush==='pencil'){
-      ctx.globalAlpha=(s.opacity??1)*.2;ctx.lineWidth=Math.max(1,s.width*.18);ctx.setLineDash([1,3]);ctx.stroke()
+      ctx.globalAlpha=(s.opacity??1)*.32;ctx.lineWidth=s.width*.72
+      if(s.points.length===1){ctx.beginPath();ctx.arc(s.points[0].x*W,s.points[0].y*H,ctx.lineWidth/2,0,Math.PI*2);ctx.fill()}else ctx.stroke()
     }
   }
   ctx.restore()

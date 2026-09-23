@@ -8,6 +8,7 @@ import {analyzeDrawing,confirmDrawing,deleteDrawing,deleteVoice,drawingImage,get
 import type {StoryInput} from '@/lib/workpad-data'
 import styles from './drawing-wizard.module.css'
 const EMPTY:DrawingDraft={tab:'sketch',strokes:[],description:'',version:1,background:'#fffaf0'}
+const newDraft=():DrawingDraft=>({...EMPTY,paperHeight:window.matchMedia('(max-width: 700px)').matches?1300:650})
 export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStudioChange,onExit}:{profileId:string;draftKey:string;onSubmit:(input:StoryInput)=>Promise<boolean>;onAccepted:()=>void;onStudioChange?:(full:boolean)=>void;onExit?:()=>void}){
   const [draft,setDraft]=useState<DrawingDraft>(EMPTY),[ready,setReady]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[preview,setPreview]=useState(''),[row,setRow]=useState<DrawingInput|null>(null)
   const [name,setName]=useState(''),[event,setEvent]=useState(''),[character,setCharacter]=useState<number|null>(null),[point,setPoint]=useState<Point|null>(null),[answers,setAnswers]=useState<string[]>([]),[notes,setNotes]=useState(''),[tts,setTts]=useState(false),[provider,setProvider]=useState<'openai'|'gemini'>('openai'),[recording,setRecording]=useState(false)
@@ -21,9 +22,10 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
     mounted.current=true;let cancelled=false
     void loadDrawingDraft(draftKey).then(async value=>{
       if(cancelled)return
-      if(!value)setDraft({...EMPTY,paperHeight:window.innerWidth<700?1300:650});
-      if(value){setDraft(value);if(value.inputId){try{const input=await getDrawing(value.inputId);if(!cancelled)restore(input)}catch{if(!cancelled)setDraft(v=>({...v,inputId:undefined}))}}}
-    }).catch(()=>{if(!cancelled)setLocalWarning('이 브라우저에서는 임시 저장이 어려워요. 창을 닫기 전에 그림을 저장해 주세요.')}).finally(()=>{if(!cancelled)setReady(true)})
+      if(!value)setDraft(newDraft());
+      // 비어 있는 예전 초안도 모바일에서 세로로 시작하되, 이미 그린 그림의 비율은 보존한다.
+      if(value){setDraft(value.strokes.length?value:{...value,paperHeight:newDraft().paperHeight});if(value.inputId){try{const input=await getDrawing(value.inputId);if(!cancelled)restore(input)}catch{if(!cancelled)setDraft(v=>({...v,inputId:undefined}))}}}
+    }).catch(()=>{if(!cancelled){setDraft(newDraft());setLocalWarning('이 브라우저에서는 임시 저장이 어려워요. 창을 닫기 전에 그림을 저장해 주세요.')}}).finally(()=>{if(!cancelled)setReady(true)})
     return()=>{cancelled=true;mounted.current=false;if(readyRef.current&&!accepted.current&&!discarded.current){const value=ref.current;savedWrites.current=savedWrites.current.catch(()=>{}).then(()=>saveDrawingDraft(draftKey,value)).catch(()=>{})}}
   },[draftKey])
   useEffect(()=>{
@@ -66,8 +68,8 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   const useSaved=(input:DrawingInput)=>run('그림을 불러오고 있어요…',async()=>{
     const image=await drawingImage(input.id);if(!mounted.current)return
     // 이미 생성에 쓴 입력은 잠겨 있다. 같은 그림으로 새 이야기를 만들 때는 새 입력으로 복사한다.
-    if(input.status==='queued'){setDraft({...EMPTY,tab:'upload',upload:image,description:input.description});setRow(null)}
-    else {setDraft({...EMPTY,tab:'upload',upload:image,description:input.description,inputId:input.id});restore(input)}
+    if(input.status==='queued'){setDraft({...newDraft(),tab:'upload',upload:image,description:input.description});setRow(null)}
+    else {setDraft({...newDraft(),tab:'upload',upload:image,description:input.description,inputId:input.id});restore(input)}
     setShowSaved(false);setStep('preview')
   })
   const locked=Boolean(busy)||recording||drawingBusy,analysis=row?.analysis
@@ -133,7 +135,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
       {localWarning&&<p className={styles.note} role="status">{localWarning}</p>}
     </>}
     {showSaved&&<div className={styles.savedOverlay}><section className={styles.saved} role="dialog" aria-modal="true" aria-label="보관한 그림"><button type="button" onClick={()=>setShowSaved(false)}>닫기</button><h2>보관한 그림</h2><p>원본을 지워도 완성한 책은 남아요.</p>{!saved.length&&<p>아직 저장한 그림이 없어요.</p>}{saved.map(input=><div key={input.id}><button type="button" disabled={locked||['deleting','uploading','analyzing'].includes(input.status)} onClick={()=>void useSaved(input)}>{input.analysis?.suggested_name||'내 그림'}<small>{new Date(input.created_at).toLocaleDateString('ko-KR')}</small></button><button type="button" aria-label="원본 삭제" disabled={locked} onClick={()=>setDeleting(input.id)}><Trash2 size={18}/></button></div>)}</section></div>}
-    {deleting&&<ConfirmDialog title="원본을 지울까요?" description="그림과 녹음, 설명을 지워요. 완성된 동화와 스티커는 남아요." confirm="원본 지우기" onCancel={()=>setDeleting(null)} onConfirm={()=>{const id=deleting;setDeleting(null);void run('원본을 지우고 있어요.',async()=>{await deleteDrawing(id);if(row?.id===id){setRow(null);setDraft({...EMPTY});setStep('canvas');await saveDrawingDraft(draftKey,null)}await refresh()})}}/>}
+    {deleting&&<ConfirmDialog title="원본을 지울까요?" description="그림과 녹음, 설명을 지워요. 완성된 동화와 스티커는 남아요." confirm="원본 지우기" onCancel={()=>setDeleting(null)} onConfirm={()=>{const id=deleting;setDeleting(null);void run('원본을 지우고 있어요.',async()=>{await deleteDrawing(id);if(row?.id===id){setRow(null);setDraft(newDraft());setStep('canvas');await saveDrawingDraft(draftKey,null)}await refresh()})}}/>}
     {leaving&&<ConfirmDialog title="그림을 두고 나갈까요?" description="지금 그리던 그림과 이 기기의 초안이 사라져요. 완성 버튼을 누르면 그림을 기기에 저장할 수 있어요." confirm="나갈래요" onCancel={()=>setLeaving(false)} onConfirm={discard}/>}
   </div>
 }
