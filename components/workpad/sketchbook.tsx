@@ -1,24 +1,27 @@
 "use client"
 import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from 'react'
-import {PenTool,Pencil,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,RotateCcw} from 'lucide-react'
-import type {Point,Stroke} from '@/lib/drawing-story'
-import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,paintStroke,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
+import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,RotateCcw} from 'lucide-react'
+import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
+import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,paintStroke,strokeLayer,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
 import {IDENTITY,TouchView,type View} from '@/lib/sketchbook-controls'
 import {BrushDial,ColorPanel} from './sketchbook-controls'
 import styles from './sketchbook.module.css'
 const COLORS=['#303d43','#b84839','#edaa35','#527a53','#467ba1','#8961a1','#d87a96','#ffffff']
 type Tool='pen'|'pencil'|'air'|'erase'|'fill'|'lasso'|'pick'
-const TOOLS=[{id:'pen',label:'펜',Icon:PenTool},{id:'pencil',label:'색연필',Icon:Pencil},{id:'air',label:'에어브러시',Icon:SprayCan},{id:'erase',label:'지우개',Icon:Eraser},{id:'fill',label:'채우기',Icon:PaintBucket},{id:'lasso',label:'선택',Icon:LassoSelect},{id:'pick',label:'스포이드',Icon:Pipette}] as const
+function ColorPencil({size=22}:{size?:number}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden><path d="m4 18 1.2-4.4L15.8 3a2.1 2.1 0 0 1 3 0l2.2 2.2a2.1 2.1 0 0 1 0 3L10.4 18.8 6 20Z" fill="#d85f57" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round"/><path d="m5.2 13.6 5.2 5.2M15 3.8l5.2 5.2M7.2 15.6l9.6-9.7" stroke="#ffe0a6" strokeWidth="1.15"/><path d="M4 18 3.2 21l2.8-1Z" fill="currentColor"/></svg>}
+function LayerGlyph({kind}:{kind:DrawingLayer}){return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>{kind==='outline'?<><path d="m4 8 8-4 8 4-8 4Z" fill="#fff8e8" stroke="currentColor"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></>:<><path d="m4 8 8-4 8 4-8 4Z" fill="#e89a61" stroke="currentColor"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></>}</svg>}
+const TOOLS=[{id:'pen',label:'펜',Icon:PenTool},{id:'pencil',label:'색연필',Icon:ColorPencil},{id:'air',label:'에어브러시',Icon:SprayCan},{id:'erase',label:'지우개',Icon:Eraser},{id:'fill',label:'채우기',Icon:PaintBucket},{id:'lasso',label:'선택',Icon:LassoSelect},{id:'pick',label:'스포이드',Icon:Pipette}] as const
 const HANDLES=[['nw',0,0,'왼쪽 위'],['n',50,0,'위'],['ne',100,0,'오른쪽 위'],['e',100,50,'오른쪽'],['se',100,100,'오른쪽 아래'],['s',50,100,'아래'],['sw',0,100,'왼쪽 아래'],['w',0,50,'왼쪽']] as const
 type Input=PointerEvent<HTMLDivElement>
 export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,disabled=false,width:paperWidth=SKETCH_WIDTH,height:paperHeight=SKETCH_HEIGHT}:{value:Stroke[];onChange:(v:Stroke[])=>void;background?:string;onBackgroundChange?:(color:string)=>void;onBusyChange?:(busy:boolean)=>void;disabled?:boolean;width?:number;height?:number}){
   const W=paperWidth,H=paperHeight
-  const canvas=useRef<HTMLCanvasElement>(null),overlay=useRef<HTMLCanvasElement>(null),base=useRef<HTMLCanvasElement|null>(null),raf=useRef(0)
+  const canvas=useRef<HTMLCanvasElement>(null),overlay=useRef<HTMLCanvasElement>(null),raf=useRef(0)
   const viewport=useRef<HTMLDivElement>(null),paper=useRef<HTMLDivElement>(null),touches=useRef(new TouchView()),viewRef=useRef<View>({...IDENTITY})
   const [view,setView]=useState<View>({...IDENTITY}),[fit,setFit]=useState(1),[preview,setPreview]=useState<'size'|'opacity'|null>(null)
   const active=useRef<{id:number;pointerType:string;start:Point;points:Point[];stroke?:Stroke;moving:boolean;tap?:'fill'|'pick';handle?:SelectionHandle}|null>(null)
   const [transformed,setTransformed]=useState<Stroke[]|null>(null),transformedRef=useRef<Stroke[]|null>(null)
   const [tool,setTool]=useState<Tool>('pen'),[color,setColor]=useState(COLORS[0]),[backColor,setBackColor]=useState('#ffffff'),[colorTarget,setColorTarget]=useState<'front'|'back'>('front')
+  const [activeLayer,setActiveLayer]=useState<DrawingLayer>('outline'),[eye,setEye]=useState<{x:number;y:number;sample:string;current:string}|null>(null)
   const previousTool=useRef<Tool>('pen')
   const [width,setWidth]=useState(8),[eraseWidth,setEraseWidth]=useState(32),[opacity,setOpacity]=useState(1),[selected,setSelected]=useState<string[]>([])
   const [history,setHistory]=useState<Stroke[][]>([]),[future,setFuture]=useState<Stroke[][]>([]),[clear,setClear]=useState(false),[notice,setNotice]=useState(''),[picker,setPicker]=useState(false),[custom,setCustom]=useState<string[]>([])
@@ -31,7 +34,8 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
   useEffect(()=>{
     const c=canvas.current;if(!c)return;const previous=painted.current
     // 새 선 하나를 추가할 때는 기존 그림 전체를 다시 그리지 않는다.
-    if(previous&&previous.width===W&&previous.height===H&&value.length===previous.strokes.length+1&&previous.strokes.every((s,i)=>s===value[i]))paintStroke(c.getContext('2d')!,value[value.length-1],W,H)
+    const added=value[value.length-1]
+    if(previous&&previous.width===W&&previous.height===H&&value.length===previous.strokes.length+1&&previous.strokes.every((s,i)=>s===value[i])&&strokeLayer(added)==='outline'&&!added.erase)paintStroke(c.getContext('2d')!,added,W,H)
     else paintSketch(c,value)
     painted.current={strokes:value,width:W,height:H}
   },[value,W,H])
@@ -46,7 +50,7 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
   const cancelStroke=()=>{active.current=null;transformedRef.current=null;setTransformed(null);clearOverlay();if(canvas.current)paintSketch(canvas.current,latest.current)}
   const drawOverlay=()=>{
     const ctx=overlay.current?.getContext('2d');if(!ctx)return;ctx.clearRect(0,0,W,H);const a=active.current;if(!a||a.tap)return
-    if(a.stroke){if(a.stroke.erase){const ink=canvas.current?.getContext('2d');if(ink&&base.current){ink.clearRect(0,0,W,H);ink.drawImage(base.current,0,0);paintStroke(ink,a.stroke,W,H)}}else paintStroke(ctx,a.stroke,W,H)}
+    if(a.stroke){if(a.stroke.erase){if(canvas.current)paintSketch(canvas.current,[...latest.current,a.stroke])}else paintStroke(ctx,a.stroke,W,H)}
     else if(a.moving||a.handle){const last=a.points.at(-1)!,next=a.handle?transformSelection(latest.current,selected,a.handle,a.start,last,W,H):moveSelection(latest.current,selected,last.x-a.start.x,last.y-a.start.y);transformedRef.current=next;setTransformed(next);if(canvas.current)paintSketch(canvas.current,next)}
     else{ctx.strokeStyle='#ba7442';ctx.lineWidth=3;ctx.setLineDash([10,7]);ctx.beginPath();a.points.forEach((p,i)=>i?ctx.lineTo(p.x*W,p.y*H):ctx.moveTo(p.x*W,p.y*H));ctx.closePath();ctx.stroke();ctx.setLineDash([])}
   }
@@ -60,14 +64,19 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
       // 픽셀 탐색은 워커로 넘기고 원본 배열의 소유권도 함께 이전한다.
       if(!fillWorker.current)fillWorker.current=new Worker(new URL('../../lib/sketchbook-fill.worker.ts',import.meta.url))
       const worker=fillWorker.current,release=()=>{fillBusy.current=false;setFilling(false);onBusyChange?.(false)}
-      worker.onmessage=event=>{if(event.data.length>500000){setNotice('너무 복잡한 부분이에요. 조금 작은 영역을 채워 주세요.');release();return}commit([...latest.current,{id:crypto.randomUUID(),color,width:1,erase:false,opacity,points:[{x:0,y:0}],fillRuns:Array.from(event.data as Int32Array)}]);release()}
+      worker.onmessage=event=>{if(event.data.length>500000){setNotice('너무 복잡한 부분이에요. 조금 작은 영역을 채워 주세요.');release();return}commit([...latest.current,{id:crypto.randomUUID(),color,width:1,erase:false,opacity,layer:activeLayer,points:[{x:0,y:0}],fillRuns:Array.from(event.data as Int32Array)}]);release()}
       worker.onerror=()=>{setNotice('색을 채우지 못했어요. 다시 눌러 주세요.');worker.terminate();fillWorker.current=null;release()}
       worker.postMessage({data,width:W,height:H,x:p.x*W,y:p.y*H},[data.buffer])
     }catch{setNotice('이 브라우저에서는 채우기가 어려워요. 펜으로 칠해 주세요.');fillBusy.current=false;setFilling(false);onBusyChange?.(false)}
   }
-  const sampleAt=(p:Point)=>{
+  const colorAt=(p:Point)=>{
     const pixel=canvas.current!.getContext('2d')!.getImageData(Math.min(W-1,Math.floor(p.x*W)),Math.min(H-1,Math.floor(p.y*H)),1,1).data
-    const a=pixel[3]/255,hex='#'+[0,1,2].map(i=>Math.round(pixel[i]*a+parseInt(background.slice(1+i*2,3+i*2),16)*(1-a)).toString(16).padStart(2,'0')).join('')
+    const a=pixel[3]/255
+    return '#'+[0,1,2].map(i=>Math.round(pixel[i]*a+parseInt(background.slice(1+i*2,3+i*2),16)*(1-a)).toString(16).padStart(2,'0')).join('')
+  }
+  const previewEye=(e:Input)=>{if(tool!=='pick'||!inPaper(e)){setEye(null);return}const box=e.currentTarget.getBoundingClientRect();setEye({x:e.clientX-box.left,y:e.clientY-box.top,sample:colorAt(point(e)),current:color})}
+  const sampleAt=(p:Point)=>{
+    const hex=colorAt(p)
     setColor(hex);setColorTarget('front');setTool(previousTool.current);setNotice('그림에서 고른 색으로 이어서 그려요.')
   }
   const down=(e:Input)=>{
@@ -82,15 +91,13 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
     const p=point(e,Boolean(handle));setNotice('')
     if(handle&&tool==='lasso'&&selected.length){active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving:false,handle};return}
     // 채우기와 스포이드도 손을 뗄 때 확정해야 두 손가락 확대가 그림을 바꾸지 않는다.
-    if(tool==='fill'||tool==='pick'){active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving:false,tap:tool};return}
+    if(tool==='fill'||tool==='pick'){active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving:false,tap:tool};if(tool==='pick')previewEye(e);return}
     const b=selectionBounds(value,selected)
-    if(!base.current)base.current=document.createElement('canvas')
-    if(base.current.width!==W||base.current.height!==H){base.current.width=W;base.current.height=H}
-    const cached=base.current.getContext('2d')!;cached.clearRect(0,0,W,H);if(canvas.current)cached.drawImage(canvas.current,0,0)
     const moving=tool==='lasso'&&Boolean(b&&p.x>=b.left&&p.x<=b.right&&p.y>=b.top&&p.y<=b.bottom)
-    active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving,stroke:tool!=='lasso'?{id:crypto.randomUUID(),color,width:tool==='erase'?eraseWidth:width,erase:tool==='erase',brush:tool==='erase'?'pen':tool,opacity,points:[p]}:undefined};queuePaint()
+    active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving,stroke:tool!=='lasso'?{id:crypto.randomUUID(),color,width:tool==='erase'?eraseWidth:width,erase:tool==='erase',brush:tool==='erase'?'pen':tool,opacity,layer:activeLayer,points:[p]}:undefined};queuePaint()
   }
   const move=(e:Input)=>{
+    if(tool==='pick')previewEye(e)
     if(e.pointerType==='touch'){
       const next=touches.current.move(e.pointerId,viewPoint(e));if(next){changeView(next);e.preventDefault()}
       if(touches.current.locked)return
@@ -113,16 +120,16 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
         if(a.tap){if(inPaper(e)){if(a.tap==='fill')fillAt(p);else sampleAt(p)}}
         else if(a.stroke){
           // 지우개 미리보기는 원본 캔버스에 그렸으므로 되돌린 뒤 한 번만 확정한다.
-          if(a.stroke.erase&&base.current&&canvas.current){const ctx=canvas.current.getContext('2d')!;ctx.clearRect(0,0,W,H);ctx.drawImage(base.current,0,0)}
+          if(a.stroke.erase&&canvas.current)paintSketch(canvas.current,latest.current)
           commit([...latest.current,a.stroke])
         }
         else if(a.handle)commit(transformSelection(latest.current,selected,a.handle,a.start,p,W,H))
         else if(a.moving)commit(moveSelection(latest.current,selected,p.x-a.start.x,p.y-a.start.y))
-        else setSelected(a.points.length>=3?latest.current.filter(s=>!s.fillRuns&&s.points.some(p=>insidePolygon(p,a.points))).map(s=>s.id):[])
+        else setSelected(a.points.length>=3?latest.current.filter(s=>strokeLayer(s)===activeLayer&&!s.fillRuns&&s.points.some(p=>insidePolygon(p,a.points))).map(s=>s.id):[])
       }
       transformedRef.current=null;setTransformed(null)
     }
-    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
+    setEye(null);if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
   }
   const undo=()=>{if(blocked||active.current||!history.length)return;setFuture(f=>[...f,value]);onChange(history.at(-1)!);setHistory(h=>h.slice(0,-1));setSelected([])}
   const redo=()=>{if(blocked||active.current||!future.length)return;setHistory(h=>[...h,value]);onChange(future.at(-1)!);setFuture(f=>f.slice(0,-1));setSelected([])}
@@ -132,11 +139,11 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
   return <div className={styles.studio} onKeyDown={e=>{
     if(e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement||blocked)return
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redo();else undo()}
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'&&e.target instanceof HTMLCanvasElement){e.preventDefault();setTool('lasso');setSelected(value.filter(s=>!s.fillRuns).map(s=>s.id))}
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'&&e.target instanceof HTMLCanvasElement){e.preventDefault();setTool('lasso');setSelected(value.filter(s=>strokeLayer(s)===activeLayer&&!s.fillRuns).map(s=>s.id))}
     else if(!e.ctrlKey&&!e.metaKey&&!e.altKey){if(e.key.toLowerCase()==='x')swap();if(e.key.toLowerCase()==='d'){setColor('#000000');setBackColor('#ffffff')}}
   }}>
     <aside className={styles.rail} aria-label="그리기 도구">
-      <div className={styles.tools} role="toolbar" aria-label="붓 종류">{TOOLS.map(({id,label,Icon})=><button type="button" key={id} title={label} aria-label={label} aria-pressed={tool===id} disabled={blocked} onClick={()=>{if(id==='pick'&&tool!=='pick')previousTool.current=tool==='lasso'||tool==='fill'||tool==='erase'?'pen':tool;setTool(id);setSelected([])}}><Icon size={22}/><span>{label}</span></button>)}</div>
+      <div className={styles.tools} role="toolbar" aria-label="붓 종류">{TOOLS.map(({id,label,Icon})=><button type="button" key={id} title={label} aria-label={label} aria-pressed={tool===id} disabled={blocked} onClick={()=>{if(id==='pick'&&tool!=='pick')previousTool.current=tool==='lasso'||tool==='fill'||tool==='erase'?'pen':tool;if(id!=='pick')setEye(null);setTool(id);setSelected([])}}><Icon size={22}/><span>{label}</span></button>)}</div>
       <div className={styles.colorTools}>
         <div className={styles.swatches}>
           <button type="button" className={styles.backSwatch} aria-label="배경색 고르기" title="배경색 (종이색과 별개)" aria-pressed={colorTarget==='back'} disabled={blocked} style={{background:backColor}} onClick={()=>{setColorTarget('back');setPicker(true)}}/>
@@ -148,8 +155,8 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
       <BrushDial label="브러시 불투명도" value={Math.round(opacity*100)} min={1} max={100} unit="%" color={color} alpha disabled={blocked} onChange={v=>setOpacity(v/100)} onPreview={on=>setPreview(on?'opacity':null)}/>
     </aside>
     <div className={styles.stage}>
-      <div className={styles.history}><button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.length} onClick={undo}><Undo2 size={22}/></button><button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!future.length} onClick={redo}><Redo2 size={22}/></button><button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title="화면에 맞추기" onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY})}}><RotateCcw size={14}/>{Math.round(view.scale*100)}%</button><button type="button" title="전부 지우기" aria-label="전부 지우기" disabled={blocked||!value.length} onClick={()=>setClear(true)}><Trash2 size={20}/></button></div>
-      <div ref={viewport} className={styles.canvasSlot} onPointerDown={down} onPointerMove={move} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)}>
+      <div className={styles.history}><button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.length} onClick={undo}><Undo2 size={22}/></button><button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!future.length} onClick={redo}><Redo2 size={22}/></button><button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title="화면에 맞추기" onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY})}}><RotateCcw size={14}/>{Math.round(view.scale*100)}%</button><div className={styles.layers} role="radiogroup" aria-label="그림 레이어">{(['outline','color'] as const).map(layer=><button type="button" role="radio" aria-checked={activeLayer===layer} data-active={activeLayer===layer} title={layer==='outline'?'밑그림 레이어':'색칠 레이어'} key={layer} onClick={()=>{if(active.current)return;setActiveLayer(layer);setSelected([])}}><LayerGlyph kind={layer}/><span>{layer==='outline'?'밑그림':'색칠'}</span></button>)}</div><button type="button" title="전부 지우기" aria-label="전부 지우기" disabled={blocked||!value.length} onClick={()=>setClear(true)}><Trash2 size={20}/></button></div>
+      <div ref={viewport} className={styles.canvasSlot} onPointerDown={down} onPointerMove={move} onPointerLeave={()=>{if(!active.current)setEye(null)}} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)}>
         <div ref={paper} className={styles.canvasWrap} style={{background,width:`min(100cqw,calc(100cqh * ${W} / ${H}))`,aspectRatio:`${W}/${H}`,transform:`translate(${view.x}px,${view.y}px) scale(${view.scale})`}}>
           <canvas width={W} height={H} ref={canvas} aria-hidden/>
           <canvas width={W} height={H} ref={overlay} className={styles.ink} aria-label="여기에 자유롭게 그려 주세요" tabIndex={0}/>
@@ -159,8 +166,9 @@ export function Sketchbook({value,onChange,background='#fffaf0',onBusyChange,dis
           </div>}
         </div>
         {preview&&<div className={styles.brushPreview} aria-hidden><div className={preview==='opacity'?styles.checker:styles.previewPaper}><i style={{width:preview==='size'?size*fit*view.scale:64,height:preview==='size'?size*fit*view.scale:64,background:tool==='erase'?'#647267':color,opacity:preview==='opacity'?opacity:1}}/></div><span>{preview==='size'?`${size}px · 실제 크기`:`불투명도 ${Math.round(opacity*100)}%`}</span></div>}
+        {eye&&<div className={styles.eyePreview} aria-hidden style={{left:eye.x,top:eye.y,'--sample':eye.sample,'--current':eye.current} as CSSProperties}><i/><span>{eye.sample.toUpperCase()}</span></div>}
       </div>
-      <div className={styles.status} role="status">{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selected.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'그림에서 원하는 색을 짚어요':'두 손가락으로 확대하고 옮겨요')}{tool==='lasso'&&selected.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={()=>{commit(value.filter(s=>!selected.includes(s.id)));setSelected([])}}><Trash2 size={20}/></button>}</div>
+      <div className={styles.status} role="status">{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selected.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'고를 색과 지금 색을 함께 확인해요':tool==='fill'&&activeLayer==='color'?'밑그림 선을 경계로 색칠해요':'두 손가락으로 확대하고 옮겨요')}{tool==='lasso'&&selected.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={()=>{commit(value.filter(s=>!selected.includes(s.id)));setSelected([])}}><Trash2 size={20}/></button>}</div>
     </div>
     <div className={styles.paletteBar}>
       <div className={styles.palette}>{[...new Set([...COLORS,...custom])].map(c=><button type="button" key={c} title={c} aria-label={`색 ${c}`} aria-pressed={(colorTarget==='front'?color:backColor)===c} disabled={blocked} style={{background:c}} onClick={()=>chooseColor(c)}/>)}</div>

@@ -1,7 +1,8 @@
 import { request, API_BASE_URL, LONG_TIMEOUT_MS } from './api'
 import { getSupabaseBrowserClient } from './supabase/client'
 export type Point={x:number;y:number}
-export type Stroke={id:string;color:string;width:number;erase:boolean;points:Point[];brush?:"pen"|"pencil"|"air";opacity?:number;fillRuns?:number[]}
+export type DrawingLayer="outline"|"color"
+export type Stroke={id:string;color:string;width:number;erase:boolean;points:Point[];brush?:"pen"|"pencil"|"air";opacity?:number;fillRuns?:number[];layer?:DrawingLayer}
 export type DrawingAnalysis={observed_elements:string[];characters:{label:string;appearance:string;center:Point}[];child_meaning:string;transcript:string;suggested_name:string;desired_event:string;preserve_features:string[];creative_space:string[];questions:string[];visual_style:string}
 export type DrawingInput={id:string;profile_id:string;status:string;description:string;analysis:DrawingAnalysis|null;confirmed:unknown;has_image:boolean;has_audio:boolean;created_at:string}
 const base='/stories/drawing-inputs'
@@ -48,7 +49,7 @@ export async function recordingToWav(blob:Blob):Promise<Blob>{
   }finally{await context.close()}
 }
 
-export type DrawingDraft={tab:'upload'|'sketch';upload?:Blob;strokes:Stroke[];description:string;inputId?:string;version:number;background?:string;paperHeight?:number;step?:string}
+export type DrawingDraft={tab:'upload'|'sketch';upload?:Blob;strokes:Stroke[];description:string;inputId?:string;version:number;background?:string;paperHeight?:number;step?:string;readingMode?:'level_aligned'|'relaxed'}
 // 바이너리를 localStorage/base64에 넣지 않는다. 짧게 보관하고 생성 접수·직접 삭제 시 함께 비운다.
 async function draftDb(){return new Promise<IDBDatabase>((resolve,reject)=>{const req=indexedDB.open('doran-drawing-drafts',1);req.onupgradeneeded=()=>req.result.createObjectStore('drafts');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 export async function loadDrawingDraft(key:string):Promise<DrawingDraft|null>{

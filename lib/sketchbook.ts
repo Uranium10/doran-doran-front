@@ -1,7 +1,13 @@
-import type {Point,Stroke} from './drawing-story'
+import type {DrawingLayer,Point,Stroke} from './drawing-story'
 import {pencilGrain} from './sketchbook-controls'
 export const SKETCH_WIDTH=900, SKETCH_HEIGHT=650
 export const clamp=(n:number,min=0,max=1)=>Math.max(min,Math.min(max,n))
+/** 레이어가 없던 기존 그림은 선이 가려지지 않도록 밑그림으로 해석한다. */
+export const strokeLayer=(stroke:Stroke):DrawingLayer=>stroke.layer??'outline'
+export const orderedStrokes=(strokes:Stroke[])=>[
+  ...strokes.filter(stroke=>strokeLayer(stroke)==='color'),
+  ...strokes.filter(stroke=>strokeLayer(stroke)==='outline'),
+]
 // 작은 색연필 타일만 최대 16색 캐시한다. 움직일 때마다 픽셀 노이즈를 만들지 않는다.
 const pencilTiles=new Map<string,HTMLCanvasElement>()
 const pencilPatterns=new WeakMap<CanvasRenderingContext2D,Map<string,CanvasPattern>>()
@@ -91,7 +97,19 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   }
   ctx.restore()
 }
-export function paintSketch(canvas:HTMLCanvasElement,strokes:Stroke[]){const ctx=canvas.getContext('2d')!;ctx.clearRect(0,0,canvas.width,canvas.height);for(const s of strokes)paintStroke(ctx,s,canvas.width,canvas.height)}
+const layerCanvases=new WeakMap<HTMLCanvasElement,{color:HTMLCanvasElement;outline:HTMLCanvasElement}>()
+function layerBuffers(canvas:HTMLCanvasElement){
+  let buffers=layerCanvases.get(canvas)
+  if(!buffers){buffers={color:document.createElement('canvas'),outline:document.createElement('canvas')};layerCanvases.set(canvas,buffers)}
+  for(const buffer of [buffers.color,buffers.outline])if(buffer.width!==canvas.width||buffer.height!==canvas.height){buffer.width=canvas.width;buffer.height=canvas.height}
+  return buffers
+}
+/** 색칠을 먼저, 밑그림을 나중에 합성한다. 지우개도 선택한 레이어 안에서만 작동한다. */
+export function paintSketch(canvas:HTMLCanvasElement,strokes:Stroke[]){
+  const buffers=layerBuffers(canvas)
+  for(const layer of ['color','outline'] as const){const target=buffers[layer],ctx=target.getContext('2d')!;ctx.clearRect(0,0,target.width,target.height);for(const stroke of strokes)if(strokeLayer(stroke)===layer)paintStroke(ctx,stroke,target.width,target.height)}
+  const ctx=canvas.getContext('2d')!;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(buffers.color,0,0);ctx.drawImage(buffers.outline,0,0)
+}
 /** 비재귀 flood fill: 방문 배열과 정수 큐로 한 픽셀을 한 번만 처리한다. */
 export function floodRuns(data:Uint8ClampedArray,width:number,height:number,x:number,y:number,tolerance=28):number[]{
   x=Math.floor(clamp(x,0,width-1));y=Math.floor(clamp(y,0,height-1));const seed=(y*width+x)*4,target=data.slice(seed,seed+4)

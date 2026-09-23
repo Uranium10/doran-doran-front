@@ -3,18 +3,19 @@ import {useEffect,useRef,useState} from 'react'
 import {ImagePlus,Pencil,ArrowRight,Check,Trash2,BookOpen,RefreshCw,ArrowLeft,Download,Volume2,CheckCircle2} from 'lucide-react'
 import {Sketchbook,ConfirmDialog} from './sketchbook'
 import {DrawingVoice} from './drawing-voice'
+import {ReadingModePicker} from './reading-mode-picker'
 import {sketchBlob} from '@/lib/sketchbook'
 import {analyzeDrawing,confirmDrawing,deleteDrawing,deleteVoice,drawingImage,getDrawing,listDrawings,loadDrawingDraft,normalizePicture,saveDrawingDraft,uploadDrawing,uploadVoice,type DrawingDraft,type DrawingInput,type Point} from '@/lib/drawing-story'
 import type {StoryInput} from '@/lib/workpad-data'
 import styles from './drawing-wizard.module.css'
-const EMPTY:DrawingDraft={tab:'sketch',strokes:[],description:'',version:1,background:'#fffaf0'}
+const EMPTY:DrawingDraft={tab:'sketch',strokes:[],description:'',version:1,background:'#fffaf0',step:'reading',readingMode:'level_aligned'}
 const newDraft=():DrawingDraft=>({...EMPTY,paperHeight:window.matchMedia('(max-width: 700px)').matches?1300:650})
 export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStudioChange,onExit}:{profileId:string;draftKey:string;onSubmit:(input:StoryInput)=>Promise<boolean>;onAccepted:()=>void;onStudioChange?:(full:boolean)=>void;onExit?:()=>void}){
   const [draft,setDraft]=useState<DrawingDraft>(EMPTY),[ready,setReady]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[preview,setPreview]=useState(''),[row,setRow]=useState<DrawingInput|null>(null)
   const [name,setName]=useState(''),[event,setEvent]=useState(''),[character,setCharacter]=useState<number|null>(null),[point,setPoint]=useState<Point|null>(null),[answers,setAnswers]=useState<string[]>([]),[notes,setNotes]=useState(''),[tts,setTts]=useState(false),[provider,setProvider]=useState<'openai'|'gemini'>('openai'),[recording,setRecording]=useState(false)
   const [saved,setSaved]=useState<DrawingInput[]>([]),[showSaved,setShowSaved]=useState(false),[deleting,setDeleting]=useState<string|null>(null),[localWarning,setLocalWarning]=useState('')
   const mounted=useRef(true),readyRef=useRef(false),ref=useRef(draft),rowRef=useRef(row),task=useRef(false),accepted=useRef(false),savedWrites=useRef(Promise.resolve());ref.current=draft;rowRef.current=row;readyRef.current=ready
-  const [drawingBusy,setDrawingBusy]=useState(false),[step,setStep]=useState('canvas'),[leaving,setLeaving]=useState(false),[saveCopy,setSaveCopy]=useState(false)
+  const [drawingBusy,setDrawingBusy]=useState(false),[step,setStep]=useState('reading'),[leaving,setLeaving]=useState(false),[saveCopy,setSaveCopy]=useState(false)
   const previewBlob=useRef<Blob|null>(null),discarded=useRef(false),heading=useRef<HTMLHeadingElement>(null)
   const file=useRef<HTMLInputElement>(null)
   const restore=(input:DrawingInput)=>{setRow(input);const a=input.analysis;if(a){setName(a.suggested_name);setEvent(a.desired_event);setCharacter(a.characters.length===1?0:null);setPoint(a.characters.length===1?a.characters[0].center:null);setAnswers([]);setNotes('')}}
@@ -22,9 +23,9 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
     mounted.current=true;let cancelled=false
     void loadDrawingDraft(draftKey).then(async value=>{
       if(cancelled)return
-      if(!value)setDraft(newDraft());
+      if(!value){setDraft(newDraft());setStep('reading')}
       // 비어 있는 예전 초안도 모바일에서 세로로 시작하되, 이미 그린 그림의 비율은 보존한다.
-      if(value){setDraft(value.strokes.length?value:{...value,paperHeight:newDraft().paperHeight});if(value.inputId){try{const input=await getDrawing(value.inputId);if(!cancelled)restore(input)}catch{if(!cancelled)setDraft(v=>({...v,inputId:undefined}))}}}
+      if(value){setDraft(value.strokes.length?value:{...value,paperHeight:newDraft().paperHeight});setStep(value.step??(value.strokes.length||value.upload?'canvas':'reading'));if(value.inputId){try{const input=await getDrawing(value.inputId);if(!cancelled)restore(input)}catch{if(!cancelled)setDraft(v=>({...v,inputId:undefined}))}}}
     }).catch(()=>{if(!cancelled){setDraft(newDraft());setLocalWarning('이 브라우저에서는 임시 저장이 어려워요. 창을 닫기 전에 그림을 저장해 주세요.')}}).finally(()=>{if(!cancelled)setReady(true)})
     return()=>{cancelled=true;mounted.current=false;if(readyRef.current&&!accepted.current&&!discarded.current){const value=ref.current;savedWrites.current=savedWrites.current.catch(()=>{}).then(()=>saveDrawingDraft(draftKey,value)).catch(()=>{})}}
   },[draftKey])
@@ -61,7 +62,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   const generate=()=>run('동화 만들기를 시작해요…',async()=>{
     if(!row||!row.analysis)throw new Error('그림 이야기를 먼저 확인해 주세요.')
     await confirmDrawing(row.id,{protagonist_name:name,protagonist_index:character,protagonist_point:point,desired_event:event,answers,preserve_notes:notes})
-    const ok=await onSubmit({mode:'drawing',drawingInputId:row.id,protagonistName:'',favorite:'',todayEvent:'',pageImages:true,tts,imageProvider:provider,useJobs:true,readingMode:'level_aligned'})
+    const ok=await onSubmit({mode:'drawing',drawingInputId:row.id,protagonistName:'',favorite:'',todayEvent:'',pageImages:true,tts,imageProvider:provider,useJobs:true,readingMode:draft.readingMode??'level_aligned'})
     if(ok){accepted.current=true;await savedWrites.current.catch(()=>{});await saveDrawingDraft(draftKey,null).catch(()=>{});if(mounted.current)onAccepted()}
   })
   const refresh=async()=>{const result=await listDrawings(profileId);if(mounted.current)setSaved(result.inputs)}
@@ -90,13 +91,13 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   const previous=()=>setStep(step==='preview'?'canvas':steps[Math.max(0,steps.indexOf(step)-1)])
   const discard=()=>void run('그림을 정리하고 있어요.',async()=>{discarded.current=true;await savedWrites.current.catch(()=>{});await saveDrawingDraft(draftKey,null).catch(()=>{discarded.current=false;throw new Error('초안을 지우지 못했어요. 다시 시도해 주세요.')});setLeaving(false);onExit?.()})
   const download=()=>{if(!previewBlob.current)return;const url=URL.createObjectURL(previewBlob.current),a=document.createElement('a');a.href=url;a.download='내가-그린-이야기.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000)}
-  const prompt=busy||({preview:'이 그림으로 이야기를 만들어 볼까요?',description:'이 그림에는 어떤 이야기가 숨어 있나요?',character:'누가 이야기의 주인공인가요?',name:'주인공의 이름을 알려 주세요.',event:'어떤 일이 생기면 좋을까요?',correction:'제가 다르게 이해한 곳이 있나요?',artist:'누가 그림을 그려 줄까요?',voice:'동화를 목소리로도 들을까요?',final:'준비됐어요. 동화를 만들어 볼까요?'} as Record<string,string>)[step]||analysis?.questions[Number(step.at(-1))]||''
+  const prompt=busy||({reading:'먼저, 오늘 읽을 방법을 골라 주세요.',preview:'이 그림으로 이야기를 만들어 볼까요?',description:'이 그림에는 어떤 이야기가 숨어 있나요?',character:'누가 이야기의 주인공인가요?',name:'주인공의 이름을 알려 주세요.',event:'어떤 일이 생기면 좋을까요?',correction:'제가 다르게 이해한 곳이 있나요?',artist:'누가 그림을 그려 줄까요?',voice:'동화를 목소리로도 들을까요?',final:'준비됐어요. 동화를 만들어 볼까요?'} as Record<string,string>)[step]||analysis?.questions[Number(step.at(-1))]||''
   if(!ready)return <p role="status">그리던 이야기를 준비해요…</p>
   return <div className={full?styles.fullscreen:styles.wizard}>
     {/* 미리보기를 오가도 도구의 실행 취소 기록은 유지한다. */}
     <div className={styles.editorShell} hidden={!full}>
       <header className={styles.studioHeader}>
-        <button type="button" aria-label="그림 도구 나가기" onClick={()=>setLeaving(true)} disabled={locked}><ArrowLeft size={23}/></button>
+        <button type="button" aria-label="그림 도구 나가기" onClick={()=>{if(hasPicture)setLeaving(true);else {setDraft(v=>({...v,step:'reading'}));setStep('reading')}}} disabled={locked}><ArrowLeft size={23}/></button>
         <div className={styles.switch} role="tablist" aria-label="그림 또는 사진"><i data-photo={draft.tab==='upload'}/>{([{id:'sketch',label:'그림',Icon:Pencil},{id:'upload',label:'사진',Icon:ImagePlus}]as const).map(({id,label,Icon})=><button type="button" key={id} role="tab" aria-selected={draft.tab===id} disabled={locked} onClick={()=>{if(draft.tab!==id)changePicture({tab:id})}}><Icon size={19}/><span>{label}</span></button>)}</div>
         <button type="button" className={styles.done} disabled={!hasPicture||locked} onClick={()=>{setError('');setStep('preview')}}>다했어요!<Check size={18}/></button>
       </header>
@@ -106,11 +107,12 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
       </div>
       {error&&<p className={styles.studioError} role="alert">{error}</p>}
     </div>{!full&&<>
-      <div className={styles.stepTop}><button type="button" onClick={previous} disabled={locked}><ArrowLeft size={18}/>이전 단계</button><span>그림에서 시작하는 이야기</span></div>
+      <div className={styles.stepTop}><button type="button" onClick={()=>step==='reading'?onExit?.():previous()} disabled={locked}><ArrowLeft size={18}/>이전 단계</button><span>그림에서 시작하는 이야기</span></div>
       <div className={styles.conversation}>
         <header className={styles.question}><span>{step==='preview'?'내 작은 작품':step==='final'?'이야기 출발!':'생각을 들려주세요'}</span><h1 ref={heading} tabIndex={-1}>{prompt}</h1></header>
         <section className={styles.answer} aria-busy={Boolean(busy)}>
           {busy?<div className={styles.thinking} role="status">{preview&&/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="살펴보는 그림"/>}<span><i/><i/><i/></span><p>그림의 모양과 색, 담아 준 생각을 모아요.</p></div>:<>
+          {step==='reading'&&<ReadingModePicker value={draft.readingMode??'level_aligned'} onChange={readingMode=>setDraft(value=>({...value,readingMode}))}/>}
           {step==='preview'&&<><div className={styles.preview}>{preview&&/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="내가 완성한 그림"/>}</div><label className={styles.saveChoice}><input type="checkbox" checked={saveCopy} onChange={e=>setSaveCopy(e.target.checked)}/><Download size={18}/>내 기기에도 그림을 저장할까요?</label><p className={styles.note}>다음 단계에서 그림을 분석할 때 비공개로 보관해요.</p></>}
           {step==='description'&&<><div className={styles.thumb}>{preview&&/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="내 그림"/>}</div><textarea aria-label="내 그림 이야기" placeholder="이 친구는 누구인가요? 어떤 이야기를 만들고 싶나요?" value={draft.description} maxLength={2000} disabled={locked} onChange={e=>{setRow(v=>v?{...v,analysis:null,confirmed:null}:v);setDraft(v=>({...v,description:e.target.value}))}}/><p className={styles.note}>글로 쓰거나 말로 들려주세요. 그림만 있어도 괜찮아요.</p><DrawingVoice disabled={locked||Boolean(row&&row.status==='queued')} hasAudio={row?.has_audio??false} onRecording={setRecording} onVoice={async blob=>{const input=await ensureInput();const result=await uploadVoice(input.id,blob);if(mounted.current)setRow(result)}} onRemove={async()=>{if(row){const result=await deleteVoice(row.id);if(mounted.current)setRow(result)}}}/></>}
           {step==='character'&&analysis&&<><p className={styles.note}>동그라미를 누르거나, 그림에서 직접 짚어 주세요.</p><div className={styles.characterPicture} onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setPoint({x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))});setCharacter(null)}}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={preview} alt="주인공을 고를 그림"/>{analysis.characters.map((c,i)=><button type="button" key={i} aria-label={`${c.label}를 주인공으로`} aria-pressed={character===i} style={{left:`${c.center.x*100}%`,top:`${c.center.y*100}%`}} onClick={e=>{e.stopPropagation();setCharacter(i);setPoint(c.center)}}>{character===i?<Check size={20}/>:i+1}</button>)}{point&&character===null&&<span className={styles.customPoint} style={{left:`${point.x*100}%`,top:`${point.y*100}%`}}>★</span>}</div><div className={styles.characters}>{analysis.characters.map((c,i)=><button type="button" key={i} aria-pressed={character===i} onClick={()=>{setCharacter(i);setPoint(c.center)}}>{c.label}</button>)}</div></>}
@@ -125,17 +127,18 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
         </section>
         {error&&<p role="alert" className={styles.error}>{error}</p>}
         {!busy&&<div className={styles.actions}><button type="button" className={styles.primary} disabled={locked||(step==='preview'&&!preview)||(step==='character'&&!point)||(step==='final'&&row?.status!=='ready')} onClick={()=>{
-          if(step==='preview'){if(saveCopy)download();setStep('description')}
+          if(step==='reading'){setDraft(value=>({...value,step:'canvas'}));setStep('canvas')}
+          else if(step==='preview'){if(saveCopy)download();setStep('description')}
           else if(step==='description')void analyze()
           else if(step==='final')void generate()
           else next()
-        }}>{step==='final'?'동화 만들기':step==='description'?'그림 속 이야기 살펴보기':step==='preview'?'이 그림으로 할래요':'다음으로'}<ArrowRight size={19}/></button></div>}
+        }}>{step==='final'?'동화 만들기':step==='description'?'그림 속 이야기 살펴보기':step==='preview'?'이 그림으로 할래요':step==='reading'?'그림 시작하기':'다음으로'}<ArrowRight size={19}/></button></div>}
       </div>
       <aside className={styles.guide} aria-hidden><div className={busy?styles.thought:styles.bubble}>{busy?'멋진 그림을 살펴보고 있어요…':prompt}</div><span className={provider==='openai'?styles.blueGuide:styles.pinkGuide}/></aside>
       {localWarning&&<p className={styles.note} role="status">{localWarning}</p>}
     </>}
     {showSaved&&<div className={styles.savedOverlay}><section className={styles.saved} role="dialog" aria-modal="true" aria-label="보관한 그림"><button type="button" onClick={()=>setShowSaved(false)}>닫기</button><h2>보관한 그림</h2><p>원본을 지워도 완성한 책은 남아요.</p>{!saved.length&&<p>아직 저장한 그림이 없어요.</p>}{saved.map(input=><div key={input.id}><button type="button" disabled={locked||['deleting','uploading','analyzing'].includes(input.status)} onClick={()=>void useSaved(input)}>{input.analysis?.suggested_name||'내 그림'}<small>{new Date(input.created_at).toLocaleDateString('ko-KR')}</small></button><button type="button" aria-label="원본 삭제" disabled={locked} onClick={()=>setDeleting(input.id)}><Trash2 size={18}/></button></div>)}</section></div>}
-    {deleting&&<ConfirmDialog title="원본을 지울까요?" description="그림과 녹음, 설명을 지워요. 완성된 동화와 스티커는 남아요." confirm="원본 지우기" onCancel={()=>setDeleting(null)} onConfirm={()=>{const id=deleting;setDeleting(null);void run('원본을 지우고 있어요.',async()=>{await deleteDrawing(id);if(row?.id===id){setRow(null);setDraft(newDraft());setStep('canvas');await saveDrawingDraft(draftKey,null)}await refresh()})}}/>}
+    {deleting&&<ConfirmDialog title="원본을 지울까요?" description="그림과 녹음, 설명을 지워요. 완성된 동화와 스티커는 남아요." confirm="원본 지우기" onCancel={()=>setDeleting(null)} onConfirm={()=>{const id=deleting;setDeleting(null);void run('원본을 지우고 있어요.',async()=>{await deleteDrawing(id);if(row?.id===id){setRow(null);setDraft(newDraft());setStep('reading');await saveDrawingDraft(draftKey,null)}await refresh()})}}/>}
     {leaving&&<ConfirmDialog title="그림을 두고 나갈까요?" description="지금 그리던 그림과 이 기기의 초안이 사라져요. 완성 버튼을 누르면 그림을 기기에 저장할 수 있어요." confirm="나갈래요" onCancel={()=>setLeaving(false)} onConfirm={discard}/>}
   </div>
 }

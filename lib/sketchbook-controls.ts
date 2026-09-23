@@ -38,7 +38,8 @@ export function pencilGrain(color:string,size=128){
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const k=(y*size+x)*4,n=rand(),grain=coarse[Math.floor(y/4)*stride+Math.floor(x/4)]
     data[k]=rgb[0];data[k+1]=rgb[1];data[k+2]=rgb[2]
-    data[k+3]=n<.13?0:Math.round(255*(.14+.68*n)*(.55+.45*grain))
+    // 종이 결은 남기되 입자 사이가 지나치게 비어 보이지 않도록 심지 밀도를 높인다.
+    data[k+3]=n<.035?0:Math.round(255*(.34+.66*n)*(.75+.25*grain))
   }
   return data
 }
