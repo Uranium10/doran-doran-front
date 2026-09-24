@@ -13,3 +13,20 @@ function pixels(w,h){const a=new Uint8ClampedArray(w*h*4);a.fill(255);return a}
 test('채우기는 닫힌 경계 너머로 번지지 않는다',()=>{const a=pixels(5,5);for(let y=0;y<5;y++){const k=(y*5+2)*4;a[k]=a[k+1]=a[k+2]=0}const runs=floodRuns(a,5,5,0,2);assert.deepEqual(Array.from(runs),[0,0,2,0,1,2,0,2,2,0,3,2,0,4,2]);assert.equal(a[0],255)});
 test('채우기는 화면 밖 좌표를 가장자리로 제한한다',()=>{const runs=floodRuns(pixels(3,2),3,2,999,-5);assert.deepEqual(Array.from(runs),[0,0,3,0,1,3])});
 test('세로 종이 전체 채우기는 재귀 없이 압축된 행 목록을 반환한다',()=>{const start=performance.now(),runs=floodRuns(pixels(900,1300),900,1300,450,600);assert.equal(runs.length,3900);assert.equal(runs.filter((_,i)=>i%3===2).reduce((a,b)=>a+b,0),1170000);console.log('portrait fill milliseconds:',(performance.now()-start).toFixed(1))});
+
+test('채우기 허용 오차를 높이면 인접한 비슷한 색까지 채우지만 분리된 영역은 건너뛰지 않는다',()=>{
+ const data=Uint8ClampedArray.from([100,100,100,255,120,120,120,255,250,250,250,255,100,100,100,255]);
+ assert.deepEqual(Array.from(floodRuns(data,4,1,0,0,0)),[0,0,1]);
+ assert.deepEqual(Array.from(floodRuns(data,4,1,0,0,28)),[0,0,2]);
+ assert.deepEqual(Array.from(floodRuns(data,4,1,0,0,255)),[0,0,4]);
+});
+const {validSketchDocument,DEFAULT_LAYERS}=load('sketchbook-document');
+test('저장 문서는 레이어 설정과 스티커, 채우기 영역을 보존하고 손상된 값은 거부한다',()=>{
+ const doc={width:900,height:1300,background:'#fffaf0',activeLayer:'color',layers:DEFAULT_LAYERS,strokes:[{id:'fill',color:'#123456',width:1,erase:false,points:[{x:0,y:0}],fillRuns:[0,0,900]}]};
+ assert.equal(validSketchDocument(doc),true);
+ assert.equal(validSketchDocument({...doc,layers:{...DEFAULT_LAYERS,color:{visible:true,opacity:NaN}}}),false);
+ assert.equal(validSketchDocument({...doc,strokes:[{...doc.strokes[0],fillRuns:[899,0,2]}]}),false);
+ assert.equal(validSketchDocument({...doc,strokes:[{...doc.strokes[0],points:[{x:Infinity,y:0}]}]}),false);
+ assert.equal(validSketchDocument({...doc,strokes:Array(501).fill(doc.strokes[0])}),false);
+ assert.equal(validSketchDocument({...doc,strokes:[{...doc.strokes[0],sticker:'leaf',fillRuns:undefined,points:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]}]}),true);
+});

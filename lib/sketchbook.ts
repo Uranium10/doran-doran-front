@@ -1,3 +1,4 @@
+import {DEFAULT_LAYERS,type LayerSettings} from './sketchbook-document'
 import type {DrawingLayer,Point,Stroke} from './drawing-story'
 import {pencilGrain} from './sketchbook-controls'
 import {pushPixels} from './sketchbook-warp'
@@ -128,10 +129,15 @@ export function adoptLayer(canvas:HTMLCanvasElement,source:HTMLCanvasElement,str
   layerHistory.set(target,{strokes:strokes.filter(s=>strokeLayer(s)===layer),width:target.width,height:target.height})
 }
 /** 색칠을 먼저, 밑그림을 나중에 합성한다. 지우개도 선택한 레이어 안에서만 작동한다. */
-export function paintSketch(canvas:HTMLCanvasElement,strokes:Stroke[]){
+export function compositeLayers(canvas:HTMLCanvasElement,color:HTMLCanvasElement,outline:HTMLCanvasElement,layers:LayerSettings=DEFAULT_LAYERS){
+  const ctx=canvas.getContext('2d')!;ctx.save();ctx.clearRect(0,0,canvas.width,canvas.height)
+  for(const [layer,source] of [['color',color],['outline',outline]] as const){if(layers[layer].visible){ctx.globalAlpha=layers[layer].opacity;ctx.drawImage(source,0,0)}}
+  ctx.restore()
+}
+export function paintSketch(canvas:HTMLCanvasElement,strokes:Stroke[],layers:LayerSettings=DEFAULT_LAYERS){
   const buffers=layerBuffers(canvas)
   for(const layer of ['color','outline'] as const)paintLayer(buffers[layer],strokes,layer)
-  const ctx=canvas.getContext('2d')!;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(buffers.color,0,0);ctx.drawImage(buffers.outline,0,0)
+  compositeLayers(canvas,buffers.color,buffers.outline,layers)
 }
 /** 비재귀 flood fill: 방문 배열과 정수 큐로 한 픽셀을 한 번만 처리한다. */
 export function floodRuns(data:Uint8ClampedArray,width:number,height:number,x:number,y:number,tolerance=28):number[]{
@@ -145,8 +151,8 @@ export function floodRuns(data:Uint8ClampedArray,width:number,height:number,x:nu
   for(let row=0;row<height;row++){let start=-1;for(let col=0;col<=width;col++){if(col<width&&seen[row*width+col]===2){if(start<0)start=col}else if(start>=0){runs.push(start,row,col-start);start=-1}}}
   return runs
 }
-export async function sketchBlob(strokes:Stroke[],background='#fffaf0',W=SKETCH_WIDTH,H=SKETCH_HEIGHT):Promise<Blob>{
-  const ink=document.createElement('canvas');ink.width=W;ink.height=H;paintSketch(ink,strokes)
+export async function sketchBlob(strokes:Stroke[],background='#fffaf0',W=SKETCH_WIDTH,H=SKETCH_HEIGHT,layers:LayerSettings=DEFAULT_LAYERS):Promise<Blob>{
+  const ink=document.createElement('canvas');ink.width=W;ink.height=H;paintSketch(ink,strokes,layers)
   const flat=document.createElement('canvas');flat.width=W;flat.height=H;const ctx=flat.getContext('2d')!;ctx.fillStyle=background;ctx.fillRect(0,0,flat.width,flat.height);ctx.drawImage(ink,0,0)
   return new Promise((resolve,reject)=>flat.toBlob(b=>b?resolve(b):reject(new Error('그림을 준비하지 못했어요.')),'image/jpeg',.92))
 }

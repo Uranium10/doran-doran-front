@@ -5,11 +5,11 @@ import {draggedValue,hexToHsv,hsvToHex} from '@/lib/sketchbook-controls'
 import {clamp} from '@/lib/sketchbook'
 import styles from './sketchbook.module.css'
 
-export function BrushDial({label,value,min,max,unit,color,alpha=false,disabled,onChange,onPreview}:{label:string;value:number;min:number;max:number;unit:string;color:string;alpha?:boolean;disabled:boolean;onChange:(v:number)=>void;onPreview:(active:boolean)=>void}){
+export function BrushDial({label,value,min,max,unit,color,indicator,alpha=false,disabled,onChange,onPreview}:{label:string;value:number;min:number;max:number;unit:string;color:string;indicator?:number;alpha?:boolean;disabled:boolean;onChange:(v:number)=>void;onPreview:(active:boolean)=>void}){
   const drag=useRef<{id:number;y:number;value:number}|null>(null)
   const end=(e:PointerEvent<HTMLDivElement>,cancel=false)=>{if(drag.current?.id!==e.pointerId)return;if(cancel)onChange(drag.current.value);drag.current=null;onPreview(false);if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}
   return <div className={styles.dial} role="slider" tabIndex={disabled?-1:0} aria-disabled={disabled} aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${value}${unit}`} aria-orientation="vertical" title={`${label}: 누른 채 위아래로 움직여요`} onPointerDown={e=>{if(disabled||drag.current||e.button!==0)return;e.preventDefault();drag.current={id:e.pointerId,y:e.clientY,value};e.currentTarget.setPointerCapture(e.pointerId);onPreview(true)}} onPointerMove={e=>{const d=drag.current;if(d?.id===e.pointerId){e.preventDefault();onChange(draggedValue(d.value,e.clientY-d.y,min,max))}}} onPointerUp={e=>end(e)} onPointerCancel={e=>end(e,true)} onLostPointerCapture={e=>end(e,true)} onBlur={()=>onPreview(false)} onKeyDown={e=>{if(disabled)return;const step=e.shiftKey?10:1;const next=({ArrowUp:value+step,ArrowRight:value+step,ArrowDown:value-step,ArrowLeft:value-step,PageUp:value+10,PageDown:value-10,Home:min,End:max} as Record<string,number>)[e.key];if(next!==undefined){e.preventDefault();onChange(clamp(next,min,max));onPreview(true)}}} onKeyUp={()=>onPreview(false)}>
-    <span className={`${styles.dialFace} ${alpha?styles.checker:''}`}><i style={{width:alpha?32:value,height:alpha?32:value,background:color,opacity:alpha?value/100:1}}/></span><span>{value}<small>{unit}</small></span>
+    <span className={`${styles.dialFace} ${alpha?styles.checker:''}`}><i style={{width:alpha?32:indicator??value,height:alpha?32:indicator??value,background:color,opacity:alpha?value/100:1}}/></span><span>{value}<small>{unit}</small></span>
   </div>
 }
 

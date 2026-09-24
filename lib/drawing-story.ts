@@ -49,7 +49,7 @@ export async function recordingToWav(blob:Blob):Promise<Blob>{
   }finally{await context.close()}
 }
 
-export type DrawingDraft={tab:'upload'|'sketch';upload?:Blob;strokes:Stroke[];description:string;inputId?:string;version:number;background?:string;paperHeight?:number;step?:string;readingMode?:'level_aligned'|'relaxed'}
+export type DrawingDraft={layers?:import('./sketchbook-document').LayerSettings;tab:'upload'|'sketch';upload?:Blob;strokes:Stroke[];description:string;inputId?:string;version:number;background?:string;paperHeight?:number;step?:string;readingMode?:'level_aligned'|'relaxed'}
 // 바이너리를 localStorage/base64에 넣지 않는다. 짧게 보관하고 생성 접수·직접 삭제 시 함께 비운다.
 async function draftDb(){return new Promise<IDBDatabase>((resolve,reject)=>{const req=indexedDB.open('doran-drawing-drafts',1);req.onupgradeneeded=()=>req.result.createObjectStore('drafts');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 export async function loadDrawingDraft(key:string):Promise<DrawingDraft|null>{

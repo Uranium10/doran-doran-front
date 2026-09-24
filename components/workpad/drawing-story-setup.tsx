@@ -37,10 +37,10 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   useEffect(()=>{
     if(step==='canvas'&&draft.tab==='sketch')return
     let cancelled=false,url=''
-    const make=async()=>{const blob=draft.tab==='upload'?draft.upload:draft.strokes.length?await sketchBlob(draft.strokes,draft.background,900,draft.paperHeight??650):undefined
+    const make=async()=>{const blob=draft.tab==='upload'?draft.upload:draft.strokes.length?await sketchBlob(draft.strokes,draft.background,900,draft.paperHeight??650,draft.layers):undefined
       if(blob&&!cancelled){previewBlob.current=blob;url=URL.createObjectURL(blob);setPreview(url)}else if(!cancelled)setPreview('')}
     void make().catch(()=>{if(!cancelled)setError('그림 미리보기를 준비하지 못했어요. 다시 시도해 주세요.')});return()=>{cancelled=true;if(url)URL.revokeObjectURL(url)}
-  },[step==='canvas',draft.tab,draft.upload,draft.strokes,draft.background,draft.paperHeight])
+  },[step==='canvas',draft.tab,draft.upload,draft.strokes,draft.background,draft.paperHeight,draft.layers])
   const run=async(label:string,operation:()=>Promise<void>)=>{
     if(task.current)return;task.current=true;setBusy(label);setError('')
     try{await operation()}catch(e){if(mounted.current)setError(e instanceof Error?e.message:'잠시 문제가 생겼어요. 다시 시도해 주세요.')}
@@ -49,7 +49,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   const changePicture=(patch:Partial<DrawingDraft>)=>{setRow(null);setDraft(v=>({...v,...patch,inputId:undefined,version:v.version+1}))}
   const ensureInput=async()=>{
     if(rowRef.current&&rowRef.current.id===ref.current.inputId)return rowRef.current
-    const d=ref.current,blob=d.tab==='upload'?d.upload:d.strokes.length?await sketchBlob(d.strokes,d.background,900,d.paperHeight??650):undefined
+    const d=ref.current,blob=d.tab==='upload'?d.upload:d.strokes.length?await sketchBlob(d.strokes,d.background,900,d.paperHeight??650,d.layers):undefined
     if(!blob)throw new Error('그림을 먼저 올리거나 그려 주세요.')
     const input=await uploadDrawing(profileId,blob)
     if(mounted.current){setRow(input);rowRef.current=input;setDraft(v=>({...v,inputId:input.id}))}
@@ -103,7 +103,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
         <button type="button" className={styles.done} disabled={!hasPicture||locked} onClick={()=>{setError('');setStep('preview')}}>다했어요!<Check size={18}/></button>
       </header>
       <div className={styles.editorBody}>
-        <div className={styles.sketchPane} hidden={draft.tab!=='sketch'}><Sketchbook onBusyChange={setDrawingBusy} value={draft.strokes} background={draft.background} height={draft.paperHeight??650} disabled={locked||!full} onChange={strokes=>changePicture({strokes})} onBackgroundChange={background=>changePicture({background})}/></div>
+        <div className={styles.sketchPane} hidden={draft.tab!=='sketch'}><Sketchbook key={draftKey} storageKey={draftKey} layers={draft.layers} onDocumentChange={doc=>changePicture({strokes:doc.strokes,background:doc.background,paperHeight:doc.height,layers:doc.layers})} onBusyChange={setDrawingBusy} value={draft.strokes} background={draft.background} height={draft.paperHeight??650} disabled={locked||!full||draft.tab!=='sketch'} onChange={strokes=>changePicture({strokes})} onBackgroundChange={background=>changePicture({background})}/></div>
         {draft.tab==='upload'&&<div className={styles.photoPane}><input ref={file} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="그림이나 사진 파일" onChange={e=>{const f=e.target.files?.[0];e.target.value='';if(f)void run('사진을 준비하고 있어요.',async()=>{const upload=await normalizePicture(f);if(mounted.current)changePicture({upload})})}}/><button type="button" className={styles.upload} disabled={locked} onClick={()=>file.current?.click()}>{draft.upload&&preview?/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="선택한 사진"/>:<><ImagePlus size={52}/><strong>그림이나 사진을 골라 주세요</strong><span>종이에 그린 그림도 좋아요</span></>}</button>{draft.upload&&<button type="button" className={styles.textButton} onClick={()=>file.current?.click()}>다른 사진 고르기</button>}<button type="button" className={styles.savedLink} disabled={locked} onClick={()=>{setShowSaved(true);void run('저장한 그림을 찾아요.',refresh)}}><BookOpen size={17}/>보관한 그림</button></div>}
       </div>
       {error&&<p className={styles.studioError} role="alert">{error}</p>}

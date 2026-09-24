@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const root=process.env.SKETCHBOOK_ROOT||path.resolve(__dirname,'../..');
- const names=['sketchbook-controls','sketchbook-stickers','sketchbook-warp','sketchbook','sketchbook-eraser'];
+ const names=['sketchbook-document','sketchbook-controls','sketchbook-stickers','sketchbook-warp','sketchbook','sketchbook-eraser'];
  const source=names.map(n=>`factories[${JSON.stringify('./'+n)}]=function(exports,require){${ts.transpileModule(fs.readFileSync(path.join(root,'lib',n+'.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText}};`).join('\n');
  const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});
  try{
@@ -27,6 +27,14 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  preview.render(e);preview.commit([...base,e]);paintSketch(c,[...base,e]);const committed=same(c,reference);
  paintSketch(c,base);const undo=c.toDataURL()===original;paintSketch(c,[...base,e]);const redo=same(c,reference);
  cases.push({layer,opacity,previewMatches,repeatedStable,cancelled,committed,undo,redo});
+ }
+ // 현재 선이 색칠 레이어에 있어도 밑그림보다 앞에 나타나지 않으며, 숨김/농도도 같은 결과를 내야 한다.
+ for(const layer of ['outline','color'])for(const visible of [true,false])for(const alpha of [1,.35]){
+  const c=canvas(),reference=canvas(),settings={outline:{visible,opacity:alpha},color:{visible:true,opacity:.6}};
+  const stroke={id:'live',color:'#33aa55',width:95,erase:false,layer,opacity:.7,points:[{x:.2,y:.5},{x:.7,y:.5}]};
+  paintSketch(c,base,settings);const preview=beginEraserPreview(c,base,layer,settings);preview.render(stroke);paintSketch(reference,[...base,stroke],settings);
+  const previewMatches=same(c,reference);preview.commit([...base,stroke]);paintSketch(c,[...base,stroke],settings);
+  cases.push({layer,visible,alpha,previewMatches,repeatedStable:true,cancelled:true,committed:same(c,reference),undo:true,redo:true});
  }
  const old=canvas();paintSketch(old,base);const e={id:'old',color:'#000000',width:100,erase:true,points:[{x:.2,y:.5}]};paintSketch(old,[...base,e]);const before=pixel(old);e.points.push({x:.7,y:.5});paintSketch(old,[...base,e]);const stale=JSON.stringify(before)===JSON.stringify(pixel(old));
  const history=Array.from({length:80},(_,i)=>({id:String(i),color:['#b84839','#467ba1'][i%2],width:30,erase:false,brush:'pencil',points:Array.from({length:160},(_,j)=>({x:.1+j*.0045,y:.1+i*.01+Math.sin(j/8)*.005}))}));
