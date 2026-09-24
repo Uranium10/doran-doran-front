@@ -82,6 +82,9 @@ export type AssessmentPayload = {
     theme_label?: string | null
     topic_version?: string | null
     source_title?: string | null
+    /** 그림 동화 설계 단계에서 살펴본 원전. 아이의 그림을 대체한 원작이라는 뜻은 아니다. */
+    reference_source_title?: string | null
+    reference_source_id?: string | null
     /** 공통 장면 설계 버전과 성공/기존 집필 전환 상태. 오래된 동화에는 없다. */
     planning_version?: string | null
     planning_status?: "ready" | "fallback" | null

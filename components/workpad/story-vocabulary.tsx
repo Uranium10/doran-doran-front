@@ -8,8 +8,9 @@ import { vocabAnalysis } from "@/lib/vocab-analysis"
 import styles from "./story-vocabulary.module.css"
 
 /** 책 마지막 화면에서만 가벼운 분석 API를 조회한다. 책 전체/삽화는 다시 받지 않는다. */
-export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, open, onClose, onReady }: {
+export function StoryVocabulary({ profileId, storyId, initialAnalysis, sourceMode, sourceTitle, referenceSourceTitle, active, open, onClose, onReady }: {
   profileId: string; storyId: string; initialAnalysis?: unknown
+  sourceMode?: "original" | "personalized" | "drawing"; sourceTitle?: string | null; referenceSourceTitle?: string | null
   active: boolean; open: boolean; onClose: () => void; onReady?: (ready: boolean) => void
 }) {
   const [analysis, setAnalysis] = useState(() => vocabAnalysis(initialAnalysis))
@@ -19,6 +20,9 @@ export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, o
   const [retry, setRetry] = useState(0)
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  // 그림 모드의 source_title은 '내 그림 이야기'이므로 실제로 찾은 참고 원전과 구분한다.
+  const folktaleTitle = sourceMode === "drawing" ? referenceSourceTitle?.trim() : sourceTitle?.trim() === "내 그림 이야기" ? null : sourceTitle?.trim()
+  const folktaleLabel = "참고한 옛 이야기"
   useEffect(() => {
     const node = dialog.current
     if (open && node && !node.open) node.showModal()
@@ -70,6 +74,7 @@ export function StoryVocabulary({ profileId, storyId, initialAnalysis, active, o
     } }}>
     <div className={styles.sheet}>
       <header className={styles.header}><div><span className={styles.eyebrow}>책 속 단어 살펴보기</span><h2 id={titleId}>동화 수준 확인하기</h2></div><button type="button" className={styles.close} aria-label="분석 창 닫기" onClick={onClose}><X size={22}/></button></header>
+      {folktaleTitle && <section className={styles.folktale} aria-label={folktaleLabel}><BookOpen size={20} aria-hidden="true"/><div><span>{folktaleLabel}</span><strong>{folktaleTitle}</strong></div></section>}
       {analysis ? <>
         <section className={styles.total}><BookOpen size={23} aria-hidden="true"/><div><p>뜻을 담은 단어가 총 <strong>{analysis.총_내용형태소_수.toLocaleString()}번</strong> 등장해요</p><small>장면 제목과 본문에서 센 수예요. 같은 단어가 다시 나오면 함께 세어요.</small></div></section>
         <section className={styles.challenge}>

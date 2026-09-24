@@ -6,6 +6,10 @@
 .header h2 { font-size:25px; margin:5px 0 0; font-family:var(--font-story),serif; }
 .close { flex-shrink:0; display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:#f0e7d8; }
 .close:hover { background:#e7d9c3; }
+.folktale { display:flex; gap:12px; align-items:flex-start; margin:-6px 0 18px; padding:14px 16px; border:1px solid #e9decb; border-radius:14px; background:#fbf6ed; }
+.folktale svg { flex-shrink:0; margin-top:2px; color:#946f4e; }
+.folktale span { display:block; margin-bottom:4px; color:#7f6e5d; font-size:11px; }
+.folktale strong { display:block; font-family:var(--font-story),serif; font-size:17px; line-height:1.4; font-weight:600; overflow-wrap:anywhere; }
 .dialog button:focus-visible { outline:3px solid #b55e3e; outline-offset:3px; }
 .total { display:flex; gap:14px; align-items:flex-start; padding:18px; border-radius:15px; background:#f4eddf; }
 .total svg { flex-shrink:0; margin-top:2px; }

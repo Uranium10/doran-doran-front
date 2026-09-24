@@ -73,7 +73,7 @@ type Turn = { id: number; from: BookSpread; to: BookSpread; forward: boolean; sp
 type PopupBookProps = {
   readingLevel?: number | null
   narrationIdentity?: { storyId: string; profileId: string }
-  vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown }
+  vocabulary?: { profileId: string; storyId: string; initialAnalysis?: unknown; sourceMode?: "original" | "personalized" | "drawing"; sourceTitle?: string | null; referenceSourceTitle?: string | null }
   initialBookmark?: BookBookmark
   onBookmarkChange?: (bookmark: BookBookmark) => void
   pdfExport?: { path: string; filename: string }

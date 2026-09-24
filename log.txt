@@ -822,3 +822,8 @@
 [2026-09-24] 언어 지침 배포 버전 계약
 - 통신규격.md에 GET /의 language_guidance_version=level20-dialogue-v1 추가 기록. 프론트 실행 코드 변경 없음.
 - 백엔드 관련71 테스트 통과. 사용자 배포 승인으로 문서/로그만 main push. DB 변경 없음.
+
+[2026-09-24] 동화 수준 확인 창에 참고 원전 표시
+- 책 상세 generation의 source_title(옛이야기·나만의 이야기) 또는 reference_source_title(새 그림 동화)을 분석 창 상단에 '참고한 옛 이야기'로 표시. 제목 없음·기존 그림 동화의 '내 그림 이야기'는 숨김. 어휘 분석 대기 중에도 제목을 볼 수 있음.
+- components/book-reader-page.tsx, components/workpad/popup-book.tsx, components/workpad/story-vocabulary.tsx/css, lib/workpad-data.ts, docs/VOCAB_ANALYSIS.md, 통신규격.md 갱신. 분석 전용 API 요청/응답 형식은 그대로.
+- TypeScript --noEmit --incremental false PASS. 백엔드 관련 32 unittest PASS, 두 저장소 git diff --check PASS. 기존 next-env.d.ts 사용자 변경은 유지. push/Vercel 배포 미실행.
