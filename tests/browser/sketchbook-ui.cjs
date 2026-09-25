@@ -14,8 +14,9 @@ const url='http://127.0.0.1:'+server.address().port;
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});try{const page=await browser.newPage({viewport:{width:390,height:844}});
 const errors=[];page.on('pageerror',e=>{errors.push(String(e));console.error(String(e))});
 await page.goto(url);
-assert.equal((await page.locator('.layerControl').first().boundingBox()).width,42);
-assert.equal((await page.locator('.layerEye').first().boundingBox()).width,25);
+assert.equal((await page.locator('.layerControl').first().boundingBox()).width,66);
+assert.equal((await page.locator('.layerEye').first().boundingBox()).width,22);
+const eyeBox=await page.locator('.layerEye').first().boundingBox(),tileBox=await page.locator('.layerTile').first().boundingBox();assert.ok(eyeBox.x+eyeBox.width<=tileBox.x);
 await page.screenshot({path:dir+'/compact-layers.png'});
 
 await page.getByLabel('색칠에 그리기',{exact:true}).click();
