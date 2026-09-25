@@ -136,7 +136,7 @@
 .modeMenu footer{border-top:1px solid #e3e6df;padding:12px 20px;font-size:11px;color:#858b84;line-height:18px}
 .modeMenu button:focus-visible{outline:2px solid #57775f;outline-offset:-2px}
 @media(hover:hover){.menuRow:hover,.modeMenu header button:hover{background:#e8ede5}}
-@media(max-width:600px){.modeMenu{margin:auto 8px max(8px,env(safe-area-inset-bottom));width:calc(100% - 16px);max-height:calc(100dvh - 24px);border-radius:16px}.menuRow{min-height:52px}.modeMenu footer{padding-bottom:16px}}
+@media(max-width:600px){.modeMenu{margin:auto;width:calc(100% - 16px);max-height:calc(100dvh - 24px);border-radius:16px}.menuRow{min-height:52px}.modeMenu footer{padding-bottom:16px}}
 /* 화면 변환 안내는 떠 있는 한 줄로, 두 손가락 조작 중에만 표시한다. */
 .history .zoomReset{display:grid;padding:0;color:#63736a}
 .viewReadout{position:absolute;z-index:9;top:52px;left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:18px;min-width:132px;padding:8px 14px;border-radius:8px;background:#29372dea;color:#fff;font-size:12px;font-variant-numeric:tabular-nums;box-shadow:0 2px 10px #16271b24;pointer-events:none}
