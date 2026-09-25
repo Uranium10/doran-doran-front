@@ -13,10 +13,10 @@ export type SketchSlot={version:1;savedAt:number;document:SketchDocument}
 export function validSketchDocument(value:unknown):value is SketchDocument{
   if(!value||typeof value!=='object')return false
   const d=value as SketchDocument,hex=(v:unknown)=>typeof v==='string'&&/^#[\da-f]{6}$/i.test(v)
-  if(d.width!==900||![650,1300].includes(d.height)||!hex(d.background)||!['outline','color'].includes(d.activeLayer))return false
+  if(d.width!==900||![560,650,1300].includes(d.height)||!hex(d.background)||!['outline','color'].includes(d.activeLayer))return false
   if(!d.layers||!['outline','color'].every(key=>{const l=d.layers[key as DrawingLayer];return l&&typeof l.visible==='boolean'&&Number.isFinite(l.opacity)&&l.opacity>=0&&l.opacity<=1}))return false
   if(!Array.isArray(d.strokes)||d.strokes.length>500)return false
-  let points=0
+  let points=0,photos=0,photoBytes=0
   return d.strokes.every(s=>{
     if(!s||typeof s.id!=='string'||s.id.length>100||!hex(s.color)||!Number.isFinite(s.width)||s.width<0||s.width>300||typeof s.erase!=='boolean')return false
     if(s.layer!==undefined&&!['outline','color'].includes(s.layer))return false
@@ -24,6 +24,7 @@ export function validSketchDocument(value:unknown):value is SketchDocument{
     if(s.opacity!==undefined&&(!Number.isFinite(s.opacity)||s.opacity<0||s.opacity>1))return false
     if(!Array.isArray(s.points)||!s.points.length||s.points.length>12001)return false
     if(!s.points.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<=100&&Math.abs(p.y)<=100))return false
+    if(s.photo!==undefined){if(!(s.photo instanceof Blob)||!['image/webp','image/png','image/jpeg'].includes(s.photo.type)||s.photo.size>2*1024*1024||s.points.length!==4||s.sticker||s.fillRuns||s.brush||s.erase)return false;photos++;photoBytes+=s.photo.size;if(photos>8||photoBytes>12*1024*1024)return false}
     if(s.sticker!==undefined&&!['ribbon','sun','moon','star','heart','flower','cloud','leaf'].includes(s.sticker))return false
     if(s.sticker&&s.points.length!==4)return false
     if(s.fillRuns!==undefined){

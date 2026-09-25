@@ -38,3 +38,86 @@
 .slotList{display:grid;gap:9px}.slotList>button{display:flex;align-items:center;gap:13px;padding:14px;border:1px solid #dfe2d6;border-radius:15px;text-align:left;min-height:74px;background:#f7f7ef}.slotList>button[aria-checked=true]{border-color:#789479;background:#eaf0e2;box-shadow:0 0 0 1px #789479}.slotIcon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fffdf5;color:#738267}.slotList strong{display:block;font-size:15px}.slotList small{display:block;font-size:11px;color:#818675;margin-top:5px}.slotList i{margin-left:auto;width:16px;height:16px;border:1px solid #a6b29e;border-radius:50%}.slotList [aria-checked=true] i{border:4px solid #527555;background:#fff}
 .storageHint{font-size:11px;color:#828675;line-height:1.7;margin-top:17px}.storageMessage{font-size:12px;line-height:1.5;min-height:34px;padding:8px 0;color:#796447}.storageDialog footer,.storageConfirm>div{display:flex;gap:10px}.storageDialog footer button,.storageConfirm button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-height:46px;border-radius:12px;background:#e9ecdf;color:#405440;font-size:14px}.storageDialog footer button:last-child,.storageConfirm button:last-child{background:#4c7256;color:#fff}.storageDialog button:disabled{opacity:.4;cursor:default}.storageConfirm{padding:16px;background:#f0f1e5;border-radius:15px}.storageConfirm strong{font-size:14px}.storageConfirm p{font-size:12px;color:#7b8173;line-height:1.7;margin:8px 0 14px}.storageDialog button:focus-visible{outline:3px solid #e6aa47;outline-offset:2px}
 @media(max-width:700px){.layerDock{right:8px}.layerControl{gap:0;padding:2px}.layerDock .layerControl button{min-width:23px;width:23px}.layerTile{width:32px}.layerName{right:calc(100% + 29px)}.storageDialog{padding:21px}.dial small{display:block;margin:0}}
+/* 눈 버튼은 표시만, 레이어 타일은 선택과 세로 드래그만 담당한다. */
+.layerDock .layerControl>button:first-child{width:36px;min-width:36px;height:44px}
+.layerDock .layerControl>.layerTile{position:relative;width:44px;min-width:44px;height:44px;touch-action:none;cursor:ns-resize;background:transparent;overflow:visible}
+.layerDock .layerControl>.layerTile[aria-pressed=true]{background:#dce8db}
+.layerArtwork{display:grid;place-items:center;transition:opacity .08s}
+.layerTile[data-adjusting=true] .layerArtwork{filter:blur(.7px);opacity:.18!important}
+.layerOpacity{position:absolute;inset:0;display:grid;place-items:center;color:#244431;font-size:13px;font-weight:700;pointer-events:none}
+.layerDock .layerTile .layerName{display:block;max-width:none;overflow:visible;margin:0;right:calc(100% + 42px)}
+.modeChoices{display:grid;gap:10px}.modeChoices button{display:flex;align-items:center;gap:13px;padding:17px 14px;border-radius:15px;border:1px solid #d9dfd2;text-align:left;background:#f6f6ed}.modeChoices button[aria-pressed=true]{background:#e7edde;border-color:#789479}.modeChoices span{flex:1}.modeChoices strong{display:block;font-size:16px}.modeChoices small{display:block;margin-top:5px;font-size:12px;color:#71806b}.openStorage{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;width:100%;margin-top:20px;border-radius:12px;background:#efe9db;font-size:14px}
+/* 도구와 종이는 같은 엔진을 사용한다. 저학년용에서는 도구만 아래쪽 서랍에 둔다. */
+.studio[data-mode=junior]{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;background:radial-gradient(ellipse at 20% 20%,#faf0db,transparent 60%),#eee2cc}
+.studio[data-mode=junior] .stage{grid-column:1;padding:4px 16px 0;grid-template-rows:42px minmax(0,1fr) 25px}
+.studio[data-mode=junior] .canvasSlot{padding:25px 18px 15px}
+.studio[data-mode=junior] .canvasWrap{border-radius:3px 9px 9px 3px;box-shadow:0 1px 0 2px #e1d4bc,0 5px 0 1px #fff9eb,0 7px 0 2px #ceb997,0 10px 15px #5f44232b}
+.studio[data-mode=junior] .canvasWrap::before{content:'';position:absolute;z-index:2;pointer-events:none;left:9%;right:9%;height:22px;top:-12px;background:repeating-linear-gradient(90deg,transparent 0 13px,#8e806d 13px 16px,#fff4db 16px 18px,#ae9e86 18px 20px,transparent 20px 36px);border-radius:5px;filter:drop-shadow(0 2px 1px #30211230)}
+.studio[data-mode=junior] .paletteBar{margin:0 12px max(10px,env(safe-area-inset-bottom));background:#fff9ecd9;border:1px solid #cdbb99;border-radius:15px;box-shadow:0 3px 9px #5e402214}
+.studio[data-mode=junior] .palette button{border-color:#ffffff}.studio[data-mode=junior] .palette button[aria-pressed=true]{outline-color:#775d42}.studio[data-mode=junior] .paletteToggle{color:#796549;border-color:#cdbb99}
+.juniorShelf{grid-column:1;display:flex;align-items:center;flex-direction:column;min-width:0;padding:0 12px 7px}
+.juniorTools{display:flex;justify-content:center;align-items:flex-end;gap:clamp(15px,6vw,60px);width:100%;height:105px;overflow:hidden}
+.juniorTools button{position:relative;width:76px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border-radius:16px 16px 0 0;touch-action:manipulation;isolation:isolate}
+.realTool{position:absolute;bottom:-15px;width:38px;height:90px;display:block;transform:translateY(10px) rotate(-4deg);transition:transform .2s cubic-bezier(.2,.8,.25,1);filter:drop-shadow(2px 3px 2px #40281735);pointer-events:none}
+.juniorTools [aria-pressed=true] .realTool{transform:translateY(-6px) rotate(0)}
+.juniorTools button[aria-pressed=true]::before{content:'';position:absolute;inset:0 0 4px;background:radial-gradient(ellipse at center,#ffffffd9,transparent 73%);z-index:-1}
+.realTool b,.realTool i,.realTool em{position:absolute;display:block}
+[data-kind=pen] .realTool{width:27px}
+[data-kind=pen] .realTool b{inset:28px 0 0;border-radius:4px 4px 0 0;background:linear-gradient(90deg,#203d50,#719aac 24%,#b9d2d9 33%,#3e677f 50%,#23475c 87%,#142e3d)}
+[data-kind=pen] .realTool i{width:27px;height:32px;top:0;background:linear-gradient(90deg,#19262d,#698084 42%,#26373b 65%,#111c20);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%)}
+[data-kind=pen] .realTool em{top:28px;left:0;right:0;height:9px;border-block:2px solid #b6c3bc;background:linear-gradient(90deg,#7a8988,#e9eeea 36%,#657b7a)}
+[data-kind=pencil] .realTool b{inset:24px 0 0;border-radius:4px 4px 0 0;background:repeating-linear-gradient(8deg,transparent 0 2px,#fff1 2px 3px),linear-gradient(90deg,#0004,transparent 35%,#fff3 50%,#0003),var(--junior-ink);border-inline:1px solid #0002}
+[data-kind=pencil] .realTool i{width:38px;height:30px;border-radius:14px 14px 3px 3px;top:0;background:radial-gradient(ellipse at 30% 25%,#fff5,transparent 65%),var(--junior-ink);clip-path:polygon(26% 0,74% 0,100% 90%,100% 100%,0 100%,0 90%)}
+[data-kind=pencil] .realTool em{inset:42px -1px 8px;background:linear-gradient(90deg,#d5ad78,#f5dfad 40%,#e4be89);border-block:3px double #917349;transform:rotate(-2deg)}
+[data-kind=erase] .realTool{width:44px;transform:translateY(10px) rotate(5deg)}
+[data-kind=erase] .realTool i{inset:4px 0 0;border-radius:9px 9px 2px 2px;background:linear-gradient(100deg,#e1b8ad,#ffe4db 35%,#f7d6ca 70%,#d9ad9e);border:1px solid #c59f9480}
+[data-kind=erase] .realTool b{inset:45px -1px 0;background:linear-gradient(90deg,#7e9a83,#d1dfbd 30%,#a4b798 80%,#738e7e);border-top:2px solid #f1ead5}
+.juniorToolName{position:relative;z-index:1;font-size:11px;font-weight:600;padding:3px 9px;margin-bottom:0;border-radius:20px;background:#fff9edeb;color:#65543e;border:1px solid #ddcfb8}
+.juniorTools [aria-pressed=true] .juniorToolName{background:#547358;color:#fff;border-color:#547358}
+.tipSizes{display:flex;gap:8px;justify-content:center;align-items:center;padding-top:5px}.tipSizes button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;min-width:78px;border:1px solid transparent;border-radius:22px;color:#8b7960;font-size:11px}.tipSizes button[aria-pressed=true]{background:#fffaf0;border-color:#baa785;color:#544633}.tipSizes i{display:block;border-radius:50%;background:currentColor;flex-shrink:0}
+.juniorTools button:disabled,.tipSizes button:disabled{opacity:.4}
+@media(max-width:700px){.studio[data-mode=junior] .stage{padding:2px 8px 0}.studio[data-mode=junior] .canvasSlot{padding:22px 10px 13px}.studio[data-mode=junior] .paletteBar{margin-inline:8px}.juniorTools{height:96px}.juniorTools button{height:94px}.juniorShelf{padding-bottom:3px}.tipSizes button{min-height:38px}.studio[data-mode=junior] .colorPopup{max-width:calc(100% - 20px)}}
+@media(max-height:540px){.juniorTools,.juniorTools button{height:62px}.realTool{height:65px}.tipSizes button{min-height:32px}.studio[data-mode=junior] .stage{grid-template-rows:36px minmax(0,1fr) 20px}}
+@media(prefers-reduced-motion:reduce){.realTool,.layerArtwork{transition:none}}
+@media(max-height:540px) and (orientation:landscape){.studio[data-mode=junior] .canvasSlot{padding:14px 10px 5px}.juniorShelf{flex-direction:row;justify-content:center;gap:20px;height:66px;padding-bottom:3px}.juniorTools{width:auto;gap:20px}.tipSizes{padding:0;gap:4px}.tipSizes button{min-width:56px;flex-direction:column;gap:3px}.studio[data-mode=junior] .paletteBar{height:44px;margin-bottom:max(4px,env(safe-area-inset-bottom))}}
+/* 실사 자산은 투명 WebP 한 벌만 읽는다. 필통 아래에 몸통을 숨겨 꺼내는 동작을 강조한다. */
+.realTool{width:44px;height:134px;bottom:-51px;filter:drop-shadow(1px 3px 2px #40281726)}
+.realTool img{display:block;height:100%;width:100%;object-fit:contain;object-position:top;user-select:none;-webkit-user-drag:none}
+[data-kind=pen] .realTool{width:29px}
+[data-kind=pencil] .realTool{width:39px}
+[data-kind=erase] .realTool{width:45px;height:106px;bottom:-37px}
+.juniorTools{gap:16px;position:relative}
+.juniorTools::after{content:'';position:absolute;bottom:0;left:calc(50% - 134px);width:268px;height:14px;pointer-events:none;border-radius:4px 4px 0 0;border-top:1px solid #ddc9a4;background:linear-gradient(#ead7b9,#e2c9a3);box-shadow:0 -2px 4px #75502e0d}
+.juniorToolName{z-index:2;margin-bottom:1px}
+@media(min-width:901px){
+ .studio[data-mode=junior]{grid-template-columns:184px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;background:radial-gradient(ellipse at 60% 40%,#f8efdd,transparent 75%),#e8dbc2}
+ .studio[data-mode=junior]::before{content:'';position:absolute;inset:0 auto 0 0;width:184px;background:linear-gradient(90deg,#f3e9d7,#f8efdf 90%,#ddcfb5);border-right:1px solid #c7b593;pointer-events:none}
+ .studio[data-mode=junior] .stage{grid-column:2;grid-row:1/-1;padding:0 22px 8px;grid-template-rows:minmax(0,1fr) 25px;overflow:visible}
+ .studio[data-mode=junior] .history{position:absolute;left:-172px;top:16px;width:160px;display:flex;gap:5px;flex-wrap:wrap;z-index:3}
+ .studio[data-mode=junior] .history .extrasButtons{margin-left:0;order:2;gap:5px}
+ .studio[data-mode=junior] .history button{min-width:42px;min-height:42px}
+ .studio[data-mode=junior] .history .zoomReset{min-width:59px}
+ .studio[data-mode=junior] .canvasSlot{padding:44px 20px 24px}
+ .studio[data-mode=junior] .juniorShelf{position:relative;grid-column:1;grid-row:1;align-self:end;padding:0 8px 12px;margin-top:140px;display:flex;flex-direction:column;gap:5px;height:auto}
+ .juniorTools{width:100%;gap:3px;height:174px;align-items:flex-end;border-bottom:2px solid #c3a47a;border-radius:0 0 9px 9px}
+ .juniorTools button{width:51px;height:163px;border-radius:12px 12px 0 0}
+ .juniorTools::after{left:0;right:0;width:auto;height:35px;border-radius:6px 6px 0 0;box-shadow:0 -3px 5px #4e352617}
+ .realTool{height:202px;bottom:-69px}.juniorTools [data-kind=pen] .realTool{width:39px}.juniorTools [data-kind=pencil] .realTool{width:44px}.juniorTools [data-kind=erase] .realTool{height:168px;bottom:-56px;width:50px}
+ .juniorTools [aria-pressed=true] .realTool{transform:translateY(-16px) rotate(0)}
+ .juniorToolName{font-size:10px;padding:4px 5px;margin-bottom:7px}
+ .tipSizes{gap:0;width:100%;padding-top:6px}.tipSizes button{min-width:0;flex:1;min-height:52px;flex-direction:column;gap:6px;border-radius:14px}
+ .studio[data-mode=junior] .paletteBar{position:relative;grid-column:1;grid-row:2;align-self:end;display:flex;flex-wrap:wrap;height:auto;margin:0 10px 16px;padding:10px;gap:8px;border-radius:12px;background:#fff9e9}
+ .studio[data-mode=junior] .palette{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;flex-basis:100%;overflow:auto;max-height:160px;padding:5px}
+ .studio[data-mode=junior] .palette button{width:23px;height:23px}
+ .studio[data-mode=junior] .paletteToggle{margin-left:auto;border-left:0;width:100%;height:34px;border-top:1px solid #decfb5;padding-top:5px}
+ .studio[data-mode=junior] .colorPopup{left:190px;right:auto;bottom:18px;max-width:calc(100% - 205px)}
+ .studio[data-mode=junior] .extrasPanel{left:10px;right:auto;top:106px}
+}
+@media(min-width:901px) and (max-height:620px){.studio[data-mode=junior] .juniorShelf{margin-top:102px;padding-bottom:5px}.juniorTools{height:115px}.juniorTools button{height:110px}.studio[data-mode=junior] .paletteBar{margin-bottom:6px}.tipSizes button{min-height:39px}.studio[data-mode=junior] .canvasSlot{padding:30px 12px 14px}}
+/* 필통 앞판 위로 이름표가 묻히지 않도록 입구 바로 위에 놓는다. */
+.juniorToolName{margin-bottom:21px}
+@media(min-width:901px){.juniorToolName{margin-bottom:45px}}
+.juniorToolName{white-space:nowrap;flex-shrink:0}
+/* 보조 조작은 필통과 분리해 종이 위 상단에 고정한다. */
+@media(min-width:901px){.studio[data-mode=junior] .stage{grid-template-rows:48px minmax(0,1fr) 25px}.studio[data-mode=junior] .history{position:static;width:auto;flex-wrap:nowrap;gap:6px}.studio[data-mode=junior] .history .extrasButtons{margin-left:auto;order:0}.studio[data-mode=junior] .extrasPanel{left:auto;right:60px;top:52px}.studio[data-mode=junior] .canvasSlot{padding-top:28px}}
+.photoActions{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:9;white-space:nowrap;padding:7px 8px 7px 14px;border:1px solid #c7b99c;border-radius:22px;background:#fffaf2ed;box-shadow:0 3px 15px #432d1924;font-size:12px}.photoActions button{border-radius:16px;padding:9px 13px;background:#52745b;color:white;font-weight:600}.photoActions button:disabled{opacity:.5}

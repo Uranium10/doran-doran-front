@@ -1,0 +1,100 @@
+// 실행: PLAYWRIGHT_MODULE, BROWSER_EXECUTABLE(선택). 실제 컴포넌트를 임시 번들로 검증한다.
+const fs=require('fs'),path=require('path');
+const root=(process.env.SKETCHBOOK_ROOT||path.resolve(__dirname,'../..')).replaceAll('\\','/');
+const webpackLib=require(root+'/node_modules/next/dist/compiled/webpack/webpack');
+const dir=fs.mkdtempSync(path.join(require('os').tmpdir(),'sketch-ui-')).replaceAll('\\','/');
+fs.writeFileSync(dir+'/loader.cjs',`const ts=require('${root}/node_modules/typescript');module.exports=function(s){return ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText}`);
+fs.writeFileSync(dir+'/css.cjs',`module.exports=function(s){return 'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default new Proxy({},{get:(_,k)=>k});'}`);
+fs.writeFileSync(dir+'/entry.tsx',`import React,{useState} from 'react';import{createRoot}from'react-dom/client';import{Sketchbook}from'${root}/components/workpad/sketchbook';import{sketchBlob}from'${root}/lib/sketchbook';import{writeSketchSlot,readSketchSlots}from'${root}/lib/sketchbook-document';import{preparePhotos}from'${root}/lib/sketchbook-photo';import{DEFAULT_LAYERS}from'${root}/lib/sketchbook-document';function App(){const[doc,setDoc]=useState({strokes:[],layers:DEFAULT_LAYERS,background:'#fffaf0',width:900,height:window.innerWidth>700?560:1300,activeLayer:'outline'});window.doc=doc;window.setDoc=setDoc;window.exportSketch=()=>sketchBlob(doc.strokes,doc.background,900,doc.height,doc.layers);window.slots={writeSketchSlot,readSketchSlots,preparePhotos};return <div style={{height:'100dvh',display:'grid',gridTemplateRows:'56px minmax(0,1fr)'}}><header style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 20px',background:'#fffaf0'}}>〈　그림 / 사진 <button>다했어요!</button></header><Sketchbook value={doc.strokes} layers={doc.layers} width={900} height={doc.height} background={doc.background} onChange={strokes=>setDoc({...doc,strokes})} onBackgroundChange={background=>setDoc({...doc,background})} onDocumentChange={setDoc} storageKey="ui-test"/></div>};createRoot(document.getElementById('root')).render(<App/>);`);
+async function build(){await new Promise((resolve,reject)=>{webpackLib.webpack({mode:'development',devtool:false,entry:dir+'/entry.tsx',output:{path:dir+'/dist',filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:{'@':root},modules:[root+'/node_modules','node_modules']},module:{rules:[{test:/\.tsx?$/,use:[dir+'/loader.cjs']},{test:/\.css$/,use:[dir+'/css.cjs']}]},performance:{hints:false}},(err,stats)=>{if(err||stats.hasErrors())reject(err||new Error(stats.toString({all:false,errors:true})));else resolve()});});}
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const http=require('http'),assert=require('assert/strict');
+(async()=>{await build();const server=http.createServer((req,res)=>{if(req.url.startsWith('/images/sketchbook/')){res.setHeader('content-type','image/webp');res.end(fs.readFileSync(root+'/public'+req.url))}else if(req.url.endsWith('.js')){res.setHeader('content-type','text/javascript; charset=utf-8');res.end(fs.readFileSync(dir+'/dist/'+req.url.split('/').pop()))}else res.end('<html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}h3,p{margin:0}svg{display:block}</style><div id="root"></div><script src="/bundle.js"></script></html>')});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const url='http://127.0.0.1:'+server.address().port;
+const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});try{const page=await browser.newPage({viewport:{width:390,height:844}});
+const errors=[];page.on('pageerror',e=>{errors.push(String(e));console.error(String(e))});
+await page.goto(url);
+
+await page.getByLabel('색칠에 그리기',{exact:true}).click();
+assert.equal(await page.getByLabel('색칠에 그리기',{exact:true}).getAttribute('aria-pressed'),'true');
+await page.getByLabel('밑그림 숨기기',{exact:true}).click();
+assert.equal(await page.getByLabel('색칠에 그리기',{exact:true}).getAttribute('aria-pressed'),'true');
+assert.equal(await page.evaluate(()=>window.doc.layers.outline.visible),false);
+await page.getByLabel('밑그림 보이기',{exact:true}).click();
+const tile=page.getByLabel('색칠에 그리기',{exact:true}),b=await tile.boundingBox();
+await page.mouse.move(b.x+b.width/2,b.y+b.height/2);
+await page.mouse.down();
+await page.mouse.move(b.x+b.width/2,b.y+b.height/2+60,{steps:8});
+assert.equal(await page.locator('.layerOpacity').count(),1);
+await page.mouse.up();
+assert.equal(await page.locator('.layerOpacity').count(),0);
+assert.equal(await page.evaluate(()=>window.doc.layers.color.visible),true);
+assert.ok(await page.evaluate(()=>window.doc.layers.color.opacity)<1);
+// 불투명도를 원래 값까지 끌어도 빈 기록이 생기지 않아야 한다.
+await page.getByLabel('실행 취소',{exact:true}).click();
+assert.equal(await page.evaluate(()=>window.doc.layers.color.opacity),1);
+await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y-40,{steps:4});await page.mouse.up();
+// 직전 유효 변경인 눈 버튼이 바로 취소된다.
+await page.getByLabel('실행 취소',{exact:true}).click();assert.equal(await page.evaluate(()=>window.doc.layers.outline.visible),false);
+await page.getByLabel('다시 실행',{exact:true}).click();assert.equal(await page.evaluate(()=>window.doc.layers.outline.visible),true);
+await page.getByLabel('밑그림에 그리기',{exact:true}).click();
+const paper=await page.locator('.canvasWrap').boundingBox();
+await page.mouse.move(paper.x+paper.width*.3,paper.y+paper.height*.4);
+await page.mouse.down();
+await page.mouse.move(paper.x+paper.width*.7,paper.y+paper.height*.5,{steps:15});
+await page.mouse.up();
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+const before=await page.evaluate(()=>JSON.stringify(window.doc));
+await page.getByLabel('스케치북 더 보기').click();
+await page.getByRole('button',{name:/저학년용/}).click();
+assert.equal(await page.evaluate(()=>JSON.stringify(window.doc)),before);
+await page.getByLabel('크레파스',{exact:true}).click();
+await page.getByLabel('굵은 촉',{exact:true}).click();
+assert.equal(await page.getByLabel('크레파스',{exact:true}).getAttribute('aria-pressed'),'true');
+await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+await page.screenshot({path:dir+'/junior-mobile.png'});
+await page.getByLabel('실행 취소',{exact:true}).click();
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+await page.getByLabel('다시 실행',{exact:true}).click();
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+await page.getByLabel('스케치북 더 보기').click();
+await page.getByRole('button',{name:/전체 도구/}).click();
+assert.equal(await page.evaluate(()=>JSON.stringify(window.doc)),before);
+// 빠른 키보드 취소도 같은 선을 두 번 취소하지 않는다.
+for(let n=0;n<2;n++){await page.mouse.move(paper.x+paper.width*.2,paper.y+paper.height*(.6+n*.1));await page.mouse.down();await page.mouse.move(paper.x+paper.width*.6,paper.y+paper.height*(.6+n*.1),{steps:4});await page.mouse.up()}
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),3);
+await page.locator('.studio').evaluate(el=>{for(let i=0;i<3;i++)el.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,bubbles:true}))});
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+await page.locator('.studio').evaluate(el=>{for(let i=0;i<3;i++)el.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,shiftKey:true,bubbles:true}))});
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),3);
+// 기존 그림 위에 가져온 사진만 이동/회전/축소하고 저장/복원/내보내기를 확인한다.
+const originalStrokes=await page.evaluate(()=>JSON.stringify(window.doc.strokes));
+const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=100;c.height=60;const x=c.getContext('2d');x.fillStyle='#ee3344';x.fillRect(0,0,100,60);return c.toDataURL().split(',')[1]});
+await page.getByLabel('스케치북 더 보기').click();
+const chooserEvent=page.waitForEvent('filechooser');await page.getByRole('button',{name:'사진 가져오기',exact:true}).click();const chooser=await chooserEvent;
+await chooser.setFiles({name:'test.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+await page.getByRole('button',{name:'배치 완료',exact:true}).waitFor();
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),4);
+const beforePhoto=await page.evaluate(()=>JSON.stringify(window.doc.strokes.at(-1).points));
+let box=await page.locator('.selection').boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+15,box.y+box.height/2+15,{steps:4});await page.mouse.up();
+assert.notEqual(await page.evaluate(()=>JSON.stringify(window.doc.strokes.at(-1).points)),beforePhoto);
+await page.getByLabel('실행 취소',{exact:true}).click();assert.equal(await page.evaluate(()=>JSON.stringify(window.doc.strokes.at(-1).points)),beforePhoto);
+// 배치 중 undo 후에도 선택은 사진 한 장에만 고정된다.
+box=await page.getByLabel('오른쪽 아래 크기 조절',{exact:true}).boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x-15,box.y-10,{steps:4});await page.mouse.up();
+box=await page.getByLabel('선택한 그림 회전',{exact:true}).boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+30,box.y+15,{steps:4});await page.mouse.up();
+assert.equal(await page.evaluate(()=>JSON.stringify(window.doc.strokes.slice(0,3))),originalStrokes);
+await page.getByRole('button',{name:'배치 완료',exact:true}).click();
+const storageResult=await page.evaluate(async()=>{const {writeSketchSlot,readSketchSlots,preparePhotos}=window.slots;await writeSketchSlot('photo-test','manual-1',window.doc);const slots=await readSketchSlots('photo-test'),restored=slots['manual-1'].document;await preparePhotos(restored.strokes);window.setDoc(restored);return {photo:restored.strokes.at(-1).photo instanceof Blob,count:restored.strokes.length}});
+assert.deepEqual(storageResult,{photo:true,count:4});
+const exported=await page.evaluate(async()=>{const blob=await window.exportSketch(),img=await createImageBitmap(blob),c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);img.close();const pixels=x.getImageData(0,0,c.width,c.height).data;let red=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]>180&&pixels[i+1]<120&&pixels[i+2]<130)red++;return red});assert.ok(exported>1000,'export contains photo pixels');
+await page.getByLabel('스케치북 더 보기').click();await page.getByRole('button',{name:/저학년용/}).click();await page.reload();
+await page.waitForSelector('[data-mode=junior]');
+await page.setViewportSize({width:1280,height:850});await page.reload();await page.waitForSelector('[data-mode=junior]');
+await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+await page.screenshot({path:dir+'/junior-desktop.png'});
+await page.setViewportSize({width:740,height:390});
+await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+await page.screenshot({path:dir+'/junior-landscape.png'});
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight),false);
+assert.deepEqual(errors,[]);assert.ok(await page.locator('.realTool img').evaluateAll(imgs=>imgs.every(i=>i.complete&&i.naturalWidth>0)));console.log('PASS: layer select / visibility / drag overlay, mode preserves strokes+layers+undo, tools, preference reload, responsive overflow, no browser errors');}finally{await browser.close();server.close()}})().catch(e=>{console.error(e);process.exit(1)});

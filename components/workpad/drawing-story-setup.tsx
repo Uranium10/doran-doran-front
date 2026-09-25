@@ -9,7 +9,7 @@ import {analyzeDrawing,confirmDrawing,deleteDrawing,deleteVoice,drawingImage,get
 import type {StoryInput} from '@/lib/workpad-data'
 import styles from './drawing-wizard.module.css'
 const EMPTY:DrawingDraft={tab:'sketch',strokes:[],description:'',version:1,background:'#fffaf0',step:'reading',readingMode:'level_aligned'}
-const newDraft=():DrawingDraft=>({...EMPTY,paperHeight:window.matchMedia('(max-width: 700px)').matches?1300:650})
+const newDraft=():DrawingDraft=>({...EMPTY,paperHeight:window.matchMedia('(max-width: 700px)').matches?1300:560})
 export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStudioChange,onExit}:{profileId:string;draftKey:string;onSubmit:(input:StoryInput)=>Promise<boolean>;onAccepted:()=>void;onStudioChange?:(full:boolean)=>void;onExit?:()=>void}){
   const [draft,setDraft]=useState<DrawingDraft>(EMPTY),[ready,setReady]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[preview,setPreview]=useState(''),[row,setRow]=useState<DrawingInput|null>(null)
   const [name,setName]=useState(''),[event,setEvent]=useState(''),[character,setCharacter]=useState<number|null>(null),[point,setPoint]=useState<Point|null>(null),[answers,setAnswers]=useState<string[]>([]),[notes,setNotes]=useState(''),[tts,setTts]=useState(false),[provider,setProvider]=useState<'openai'|'gemini'>('openai'),[recording,setRecording]=useState(false)

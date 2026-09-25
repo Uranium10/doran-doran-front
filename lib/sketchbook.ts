@@ -1,3 +1,4 @@
+import {photoImage,preparePhotos} from './sketchbook-photo'
 import {DEFAULT_LAYERS,type LayerSettings} from './sketchbook-document'
 import type {DrawingLayer,Point,Stroke} from './drawing-story'
 import {pencilGrain} from './sketchbook-controls'
@@ -78,7 +79,8 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   if(!s.points.length)return
   if(s.brush==='warp'){for(let i=1;i<s.points.length;i++)pushPixels(ctx,{x:s.points[i-1].x*W,y:s.points[i-1].y*H},{x:s.points[i].x*W,y:s.points[i].y*H},Math.max(12,s.width/2),s.opacity??1);return}
   ctx.save();ctx.globalCompositeOperation=s.erase?'destination-out':'source-over';ctx.globalAlpha=s.opacity??1;ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=s.width;ctx.lineCap='round';ctx.lineJoin='round'
-  if(s.sticker){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W/100,(b.y-a.y)*H/100,(d.x-a.x)*W/100,(d.y-a.y)*H/100,a.x*W,a.y*H);paintSticker(ctx,s.sticker)}
+  if(s.photo){const image=photoImage(s.photo);if(image){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W,(b.y-a.y)*H,(d.x-a.x)*W,(d.y-a.y)*H,a.x*W,a.y*H);ctx.drawImage(image,0,0,1,1)}}
+  else if(s.sticker){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W/100,(b.y-a.y)*H/100,(d.x-a.x)*W/100,(d.y-a.y)*H/100,a.x*W,a.y*H);paintSticker(ctx,s.sticker)}
   else if(s.fillRuns){
     ctx.translate(s.points[0].x*W,s.points[0].y*H)
     for(let i=0;i<s.fillRuns.length;i+=3)ctx.fillRect(s.fillRuns[i],s.fillRuns[i+1],s.fillRuns[i+2],1)
@@ -152,6 +154,7 @@ export function floodRuns(data:Uint8ClampedArray,width:number,height:number,x:nu
   return runs
 }
 export async function sketchBlob(strokes:Stroke[],background='#fffaf0',W=SKETCH_WIDTH,H=SKETCH_HEIGHT,layers:LayerSettings=DEFAULT_LAYERS):Promise<Blob>{
+  await preparePhotos(strokes)
   const ink=document.createElement('canvas');ink.width=W;ink.height=H;paintSketch(ink,strokes,layers)
   const flat=document.createElement('canvas');flat.width=W;flat.height=H;const ctx=flat.getContext('2d')!;ctx.fillStyle=background;ctx.fillRect(0,0,flat.width,flat.height);ctx.drawImage(ink,0,0)
   return new Promise((resolve,reject)=>flat.toBlob(b=>b?resolve(b):reject(new Error('그림을 준비하지 못했어요.')),'image/jpeg',.92))

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const root=process.env.SKETCHBOOK_ROOT||path.resolve(__dirname,'../..');
- const names=['sketchbook-document','sketchbook-controls','sketchbook-stickers','sketchbook-warp','sketchbook','sketchbook-eraser'];
+ const names=['sketchbook-photo','sketchbook-document','sketchbook-controls','sketchbook-stickers','sketchbook-warp','sketchbook','sketchbook-eraser'];
  const source=names.map(n=>`factories[${JSON.stringify('./'+n)}]=function(exports,require){${ts.transpileModule(fs.readFileSync(path.join(root,'lib',n+'.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText}};`).join('\n');
  const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});
  try{
