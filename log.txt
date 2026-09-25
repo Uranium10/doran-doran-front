@@ -903,3 +903,8 @@
 - 모바일 modeMenu의 하단 고정 여백을 margin:auto로 변경하여 화면 가로·세로 중앙 정렬. 기존 최대 높이와 내부 스크롤 유지.
 - 검증: 스케치북 브라우저 UI 회귀 통과, 320px 폭 넘침 없음. 390x844 모바일 스크린샷에서 중앙 배치 확인.
 - 변경: components/workpad/sketchbook.module.css. 사용자 요청에 따라 main push 진행. API/DB 변경 없음. 기존 next-env.d.ts 제외.
+
+[2026-09-25] 미래 생년월일 긴급 차단
+- 생성/수정 공통 프로필 폼에서 한국 시간 오늘을 max로 지정. 직접 입력한 미래/존재하지 않는 날짜에는 필드 오류와 저장 비활성화, 제출 직전 재검증 적용. 백엔드 POST/PATCH도 동일 조건422 검증.
+- 검증: 날짜 경계 테스트2개, 타입검사, Next 운영 빌드 통과. 백엔드 API 경계4개 및 기존 인증 회귀27개 통과.
+- 변경: components/profile-form-modal.tsx, lib/profile-birth-date.ts, tests/profile-birth-date.test.cjs, 통신규격.md. 기존 next-env.d.ts 제외. 양쪽 main push 진행, 배포 완료는 별도 확인.

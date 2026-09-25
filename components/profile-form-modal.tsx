@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { X, ImagePlus, Check } from "lucide-react"
+import { birthDateError, koreaToday } from "@/lib/profile-birth-date"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -90,10 +91,12 @@ export function ProfileFormModal({
 
   if (!open || !mounted) return null
 
-  const canSubmit = name.trim().length > 0 && birthDate.length > 0
+  const today = koreaToday()
+  const birthError = birthDate ? birthDateError(birthDate, today) : null
+  const canSubmit = name.trim().length > 0 && birthDate.length > 0 && !birthError
 
   const submit = async () => {
-    if (!canSubmit || submitting) return
+    if (!canSubmit || submitting || birthDateError(birthDate)) return
     setSubmitting(true)
     try {
       await onSubmit({
@@ -246,11 +249,16 @@ export function ProfileFormModal({
             <Input
               id="profile-birth"
               type="date"
+              max={today}
+              min="0001-01-01"
+              aria-invalid={Boolean(birthError)}
+              aria-describedby={birthError ? "profile-birth-error" : "profile-birth-help"}
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
               className="h-12 rounded-xl text-base"
             />
-            <p className="text-xs text-muted-foreground">
+            {birthError && <p id="profile-birth-error" role="alert" className="text-xs text-destructive">{birthError}</p>}
+            <p id="profile-birth-help" className="text-xs text-muted-foreground">
               나이에 맞춰 문해력 측정 방식이 자동으로 달라져요.
             </p>
           </div>
