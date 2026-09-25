@@ -1,6 +1,7 @@
 "use client"
 import {useEffect,useRef,useState} from 'react'
-import {ImagePlus,Pencil,ArrowRight,Check,Trash2,BookOpen,RefreshCw,ArrowLeft,Download,Volume2,CheckCircle2} from 'lucide-react'
+import {ImagePlus,Pencil,ArrowRight,Check,Trash2,BookOpen,RefreshCw,ArrowLeft,Download,Volume2,CheckCircle2,Maximize} from 'lucide-react'
+import {useSketchFullscreen} from './use-sketch-fullscreen'
 import {Sketchbook,ConfirmDialog} from './sketchbook'
 import {DrawingVoice} from './drawing-voice'
 import {ReadingModePicker} from './reading-mode-picker'
@@ -75,6 +76,9 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   })
   const locked=Boolean(busy)||recording||drawingBusy,analysis=row?.analysis
   const full=step==='canvas'
+  const studioRoot=useRef<HTMLDivElement>(null)
+  const nativeScreen=useSketchFullscreen(studioRoot,full)
+  const enterCanvas=()=>{if(window.matchMedia('(pointer: coarse), (max-width: 900px)').matches)nativeScreen.request();setStep('canvas')}
   useEffect(()=>{if(error&&!busy&&!full){errorBox.current?.focus({preventScroll:true});errorBox.current?.scrollIntoView({block:'center',behavior:'instant'})}},[error,busy,full])
   useEffect(()=>{onStudioChange?.(full);return()=>onStudioChange?.(false)},[full,onStudioChange])
   useEffect(()=>{
@@ -89,23 +93,25 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
   // API 구조체는 그대로 쓰고, 아이가 답할 입력만 한 화면씩 순서대로 연다.
   const steps=['preview','description',...['character','name','event','question-0','question-1','correction','artist','voice','final'].filter(s=>s==='character'?Boolean(analysis?.characters.length):s.startsWith('question-')?Boolean(analysis?.questions[Number(s.at(-1))]):true)]
   const next=()=>setStep(steps[steps.indexOf(step)+1]??'final')
-  const previous=()=>setStep(step==='preview'?'canvas':steps[Math.max(0,steps.indexOf(step)-1)])
+  const previous=()=>{if(step==='preview')enterCanvas();else setStep(steps[Math.max(0,steps.indexOf(step)-1)])}
   const discard=()=>void run('그림을 정리하고 있어요.',async()=>{discarded.current=true;await savedWrites.current.catch(()=>{});await saveDrawingDraft(draftKey,null).catch(()=>{discarded.current=false;throw new Error('초안을 지우지 못했어요. 다시 시도해 주세요.')});setLeaving(false);onExit?.()})
   const download=()=>{if(!previewBlob.current)return;const url=URL.createObjectURL(previewBlob.current),a=document.createElement('a');a.href=url;a.download='내가-그린-이야기.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000)}
   const prompt=busy||({reading:'먼저, 오늘 읽을 방법을 골라 주세요.',preview:'이 그림으로 이야기를 만들어 볼까요?',description:'이 그림에는 어떤 이야기가 숨어 있나요?',character:'누가 이야기의 주인공인가요?',name:'주인공의 이름을 알려 주세요.',event:'어떤 일이 생기면 좋을까요?',correction:'제가 다르게 이해한 곳이 있나요?',artist:'누가 그림을 그려 줄까요?',voice:'동화를 목소리로도 들을까요?',final:'준비됐어요. 동화를 만들어 볼까요?'} as Record<string,string>)[step]||analysis?.questions[Number(step.at(-1))]||''
   if(!ready)return <p role="status">그리던 이야기를 준비해요…</p>
-  return <div className={full?styles.fullscreen:styles.wizard}>
+  return <div ref={studioRoot} className={full?styles.fullscreen:styles.wizard}>
     {/* 미리보기를 오가도 도구의 실행 취소 기록은 유지한다. */}
     <div className={styles.editorShell} hidden={!full}>
       <header className={styles.studioHeader}>
         <button type="button" aria-label="그림 도구 나가기" onClick={()=>{if(hasPicture)setLeaving(true);else {setDraft(v=>({...v,step:'reading'}));setStep('reading')}}} disabled={locked}><ArrowLeft size={23}/></button>
         <div className={styles.switch} role="tablist" aria-label="그림 또는 사진"><i data-photo={draft.tab==='upload'}/>{([{id:'sketch',label:'그림',Icon:Pencil},{id:'upload',label:'사진',Icon:ImagePlus}]as const).map(({id,label,Icon})=><button type="button" key={id} role="tab" aria-selected={draft.tab===id} disabled={locked} onClick={()=>{if(draft.tab!==id)changePicture({tab:id})}}><Icon size={19}/><span>{label}</span></button>)}</div>
+        {nativeScreen.available&&!nativeScreen.fullscreen&&<button type="button" className={styles.nativeFullscreen} aria-label="그리기 전체 화면" title="주소창 숨기기" onClick={nativeScreen.request}><Maximize size={19}/></button>}
         <button type="button" className={styles.done} disabled={!hasPicture||locked} onClick={()=>{setError('');setStep('preview')}}>다했어요!<Check size={18}/></button>
       </header>
       <div className={styles.editorBody}>
         <div className={styles.sketchPane} hidden={draft.tab!=='sketch'}><Sketchbook key={draftKey} storageKey={draftKey} layers={draft.layers} onDocumentChange={doc=>changePicture({strokes:doc.strokes,background:doc.background,paperHeight:doc.height,layers:doc.layers})} onBusyChange={setDrawingBusy} value={draft.strokes} background={draft.background} height={draft.paperHeight??650} disabled={locked||!full||draft.tab!=='sketch'} onChange={strokes=>changePicture({strokes})} onBackgroundChange={background=>changePicture({background})}/></div>
         {draft.tab==='upload'&&<div className={styles.photoPane}><input ref={file} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="그림이나 사진 파일" onChange={e=>{const f=e.target.files?.[0];e.target.value='';if(f)void run('사진을 준비하고 있어요.',async()=>{const upload=await normalizePicture(f);if(mounted.current)changePicture({upload})})}}/><button type="button" className={styles.upload} disabled={locked} onClick={()=>file.current?.click()}>{draft.upload&&preview?/* eslint-disable-next-line @next/next/no-img-element */<img src={preview} alt="선택한 사진"/>:<><ImagePlus size={52}/><strong>그림이나 사진을 골라 주세요</strong><span>종이에 그린 그림도 좋아요</span></>}</button>{draft.upload&&<button type="button" className={styles.textButton} onClick={()=>file.current?.click()}>다른 사진 고르기</button>}<button type="button" className={styles.savedLink} disabled={locked} onClick={()=>{setShowSaved(true);void run('저장한 그림을 찾아요.',refresh)}}><BookOpen size={17}/>보관한 그림</button></div>}
       </div>
+      {nativeScreen.message&&<p className={styles.studioError} role="status">{nativeScreen.message}</p>}
       {error&&<p className={styles.studioError} role="alert">{error}</p>}
     </div>{!full&&<>
       <div className={styles.stepTop}><button type="button" onClick={()=>step==='reading'?onExit?.():previous()} disabled={locked}><ArrowLeft size={18}/>이전 단계</button><span>그림에서 시작하는 이야기</span></div>
@@ -128,7 +134,7 @@ export function DrawingStorySetup({profileId,draftKey,onSubmit,onAccepted,onStud
         </section>
         {error&&<div ref={errorBox} tabIndex={-1} role="alert" className={styles.error}>{step==='final'&&<><strong>이런, 문제가 생겼어요!</strong><br/></>}{error}</div>}
         {!busy&&<div className={styles.actions}><button type="button" className={styles.primary} disabled={locked||(step==='preview'&&!preview)||(step==='character'&&!point)||(step==='final'&&row?.status!=='ready')} onClick={()=>{
-          if(step==='reading'){setDraft(value=>({...value,step:'canvas'}));setStep('canvas')}
+          if(step==='reading'){setDraft(value=>({...value,step:'canvas'}));enterCanvas()}
           else if(step==='preview'){if(saveCopy)download();setStep('description')}
           else if(step==='description')void analyze()
           else if(step==='final')void generate()

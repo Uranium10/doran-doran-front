@@ -867,3 +867,15 @@
 - 이전 가로 캔버스(높이560) 저장 검증 허용도 함께 보완.
 - 검증: 타입검사, 단위 테스트33개, 브라우저 사진 가져오기→단독 이동/undo/크기/회전→기존 선 불변→IndexedDB 복원→출력 픽셀 확인 통과. 기존 모드/레이어/연속undo 검증 통과. 지우개 합성/취소/redo 테스트 통과(p95 3.5ms). Next 운영 빌드 성공, diff check 통과.
 - 이전 미push 저학년용/레이어/실사 자산/undo 개선을 포함하여 main push 예정. next-env.d.ts 기존 로컬 변경 제외. 운영 배포 완료 여부는 아직 미확인.
+
+[2026-09-25] 레이어 표시 축소 및 모바일 native fullscreen
+- 레이어 컨테이너를 폭42px로 축소. 눈 버튼은 별도 칸 없이 모서리의 투명25px 오버레이(아이콘13px)로 배치. 레이어 선택/스와이프와 눈 클릭 판정 분리, 기존 first-child 크기 규칙 충돌 보완.
+- 확인: 이전과 현재 그림 편집기는 CSS fixed/100dvh 및 사이트 헤더 숨김을 사용했고 browser requestFullscreen은 없었음. 사용자가 보았던 탐색바 상태의 정확한 기기 원인은 재현하지 못함.
+- useSketchFullscreen 추가. 모바일 그리기 진입 클릭에서 navigationUI:hide로 전체화면 요청. 브라우저/사진 선택으로 해제되면 상단 버튼으로 재진입, 미리보기/나가기/unmount에서 이 편집기 소유의 전체화면만 종료. API 미지원/거부 시 기존 CSS 편집 유지. 모바일 헤더 버튼 폭 조정.
+- 검증: 타입검사/운영빌드 통과. 실제 Chromium Fullscreen API 진입·외부해제·재진입·미리보기종료·거부fallback·unmount 정리 테스트 통과. 레이어42px/눈25px 크기 및 전체 스케치북 UI(사진단독편집/저장/undo 포함) 회귀 테스트 통과. 실제 휴대폰 OS 탐색바 숨김은 미검증이며 브라우저 지원에 따름.
+- 변경 파일: components/workpad/{sketchbook-layer.tsx,sketchbook.module.css,drawing-story-setup.tsx,drawing-wizard.module.css,use-sketch-fullscreen.ts}, tests/browser/{sketchbook-ui.cjs,sketchbook-fullscreen.cjs}.
+- API/DB 변경 없음. 이번 수정은 아직 commit/push/배포 전.
+
+[2026-09-25] 레이어 축소·모바일 전체화면 배포 요청
+- 직전 작업에서 통과한 타입검사/운영빌드/native fullscreen 및 스케치북 브라우저 회귀 검증을 기준으로 main 배포 진행.
+- 원격 main 일치 확인. 수정한 컴포넌트/훅/테스트/로그만 커밋하며 기존 next-env.d.ts 변경 제외. Vercel 배포 결과는 push 후 확인.

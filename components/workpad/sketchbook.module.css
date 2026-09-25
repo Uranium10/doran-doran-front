@@ -121,3 +121,14 @@
 /* 보조 조작은 필통과 분리해 종이 위 상단에 고정한다. */
 @media(min-width:901px){.studio[data-mode=junior] .stage{grid-template-rows:48px minmax(0,1fr) 25px}.studio[data-mode=junior] .history{position:static;width:auto;flex-wrap:nowrap;gap:6px}.studio[data-mode=junior] .history .extrasButtons{margin-left:auto;order:0}.studio[data-mode=junior] .extrasPanel{left:auto;right:60px;top:52px}.studio[data-mode=junior] .canvasSlot{padding-top:28px}}
 .photoActions{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:9;white-space:nowrap;padding:7px 8px 7px 14px;border:1px solid #c7b99c;border-radius:22px;background:#fffaf2ed;box-shadow:0 3px 15px #432d1924;font-size:12px}.photoActions button{border-radius:16px;padding:9px 13px;background:#52745b;color:white;font-weight:600}.photoActions button:disabled{opacity:.5}
+/* 눈은 독립된 칸 대신 작은 오버레이 버튼으로 배치한다. 선택/스와이프 영역과 이벤트는 분리한다. */
+.layerDock{gap:9px}
+.layerDock .layerControl{position:relative;width:42px;height:44px;display:block;padding:0;border-radius:10px;box-shadow:0 1px 4px #30493210}
+.layerDock .layerControl>.layerTile{position:absolute;inset:0;width:40px;min-width:40px;height:42px;min-height:42px;border-radius:9px}
+.layerDock .layerControl>.layerTile[aria-pressed=true]{background:transparent}
+.layerDock .layerControl>button.layerEye{position:absolute;z-index:2;right:-5px;bottom:-5px;width:25px;min-width:25px;height:25px;min-height:25px;padding:0;border:0;border-radius:50%;background:transparent;color:#657969;box-shadow:none;touch-action:manipulation}
+.layerDock .layerControl>button.layerEye[aria-pressed=true]{background:transparent;color:#36664d}
+.layerDock .layerControl>button.layerEye:hover,.layerDock .layerControl>button.layerEye:focus-visible{background:#fffdf5}
+.layerArtwork{transform:translate(-2px,-3px)}
+.layerDock .layerTile .layerName{right:calc(100% + 8px)}
+.layerOpacity{font-size:11px;padding-bottom:5px;pointer-events:none}
