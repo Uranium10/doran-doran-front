@@ -18,6 +18,50 @@ assert.equal((await page.locator('.layerControl').first().boundingBox()).width,6
 assert.equal((await page.locator('.layerEye').first().boundingBox()).width,22);
 const eyeBox=await page.locator('.layerEye').first().boundingBox(),tileBox=await page.locator('.layerTile').first().boundingBox();assert.ok(eyeBox.x+eyeBox.width<=tileBox.x);
 await page.screenshot({path:dir+'/compact-layers.png'});
+// 두 손가락 회전 값과 표시·초기화가 일치하고 메뉴가 좁은 화면을 넘지 않는지 확인한다.
+assert.equal(await page.locator('.viewAngle').count(),0);
+const touchBox=await page.locator('.canvasWrap').boundingBox(),cx=touchBox.x+touchBox.width/2,cy=touchBox.y+touchBox.height/2;
+const cdp=await page.context().newCDPSession(page);
+await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx-30,y:cy,id:1},{x:cx+30,y:cy,id:2}]});
+await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx-21.213,y:cy-21.213,id:1},{x:cx+21.213,y:cy+21.213,id:2}]});
+await page.getByLabel('캔버스 회전 45도',{exact:true}).waitFor();
+await page.screenshot({path:dir+'/rotation-angle.png'});
+await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+assert.equal(await page.locator('.viewAngle').count(),0);
+await page.getByLabel('종이를 화면에 맞추기',{exact:true}).click();
+assert.equal(await page.locator('.viewAngle').count(),0);
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+await page.getByLabel('스케치북 더 보기').click();
+await page.getByRole('dialog',{name:'스케치북',exact:true}).waitFor();
+await page.locator('.modeCard img').evaluateAll(imgs=>Promise.all(imgs.map(i=>i.decode())));
+await page.screenshot({path:dir+'/menu-mobile.png'});
+await page.setViewportSize({width:320,height:568});
+assert.equal(await page.locator('.modeMenu').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+const narrowMenu=await page.locator('.modeMenu').boundingBox();assert.ok(narrowMenu.x>=0&&narrowMenu.x+narrowMenu.width<=320);
+await page.keyboard.press('Escape');
+assert.equal(await page.getByLabel('스케치북 더 보기').evaluate(el=>el===document.activeElement),true);
+await page.setViewportSize({width:1280,height:850});
+await page.getByLabel('스케치북 더 보기').click();
+await page.screenshot({path:dir+'/menu-desktop.png'});
+await page.mouse.click(5,5);
+assert.equal(await page.locator('.modeMenu').count(),0);
+await page.setViewportSize({width:390,height:844});
+await page.getByLabel('스케치북 더 보기').click();
+await page.getByRole('button',{name:'저장',exact:true}).click();
+await page.getByRole('dialog',{name:'그림 저장',exact:true}).waitFor();
+assert.equal(await page.getByRole('radio').count(),2);
+await page.getByRole('button',{name:'이 칸에 저장',exact:true}).click();
+await page.getByText('내 그림 1에 저장했어요.',{exact:true}).waitFor();
+await page.getByLabel('보관함 닫기').click();
+await page.getByLabel('스케치북 더 보기').click();
+await page.getByRole('button',{name:'불러오기',exact:true}).click();
+await page.getByRole('dialog',{name:'그림 불러오기',exact:true}).waitFor();
+assert.equal(await page.getByRole('radio').count(),3);
+await page.getByRole('button',{name:'선택한 그림 불러오기',exact:true}).click();
+await page.getByRole('button',{name:'불러오기',exact:true}).click();
+await page.getByRole('dialog',{name:'그림 불러오기',exact:true}).waitFor({state:'detached'});
+
+
 
 await page.getByLabel('색칠에 그리기',{exact:true}).click();
 assert.equal(await page.getByLabel('색칠에 그리기',{exact:true}).getAttribute('aria-pressed'),'true');
@@ -62,7 +106,7 @@ assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
 await page.getByLabel('다시 실행',{exact:true}).click();
 assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
 await page.getByLabel('스케치북 더 보기').click();
-await page.getByRole('button',{name:/전체 도구/}).click();
+await page.getByRole('button',{name:/전체 기능/}).click();
 assert.equal(await page.evaluate(()=>JSON.stringify(window.doc)),before);
 // 빠른 키보드 취소도 같은 선을 두 번 취소하지 않는다.
 for(let n=0;n<2;n++){await page.mouse.move(paper.x+paper.width*.2,paper.y+paper.height*(.6+n*.1));await page.mouse.down();await page.mouse.move(paper.x+paper.width*.6,paper.y+paper.height*(.6+n*.1),{steps:4});await page.mouse.up()}

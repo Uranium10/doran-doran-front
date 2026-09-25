@@ -1,19 +1,35 @@
 "use client"
 import {useEffect,useRef,type CSSProperties} from 'react'
-import {X,FolderOpen,Check,BookOpen,SlidersHorizontal,ImagePlus} from 'lucide-react'
+import {X,FolderOpen,Check,Save,ImagePlus,ChevronRight} from 'lucide-react'
 import styles from './sketchbook.module.css'
 
 export type SketchMode='full'|'junior'
 export const SKETCH_MODE_KEY='doran-sketch-mode'
-export function SketchMenu({mode,onMode,onClose,onStorage,onPhoto}:{mode:SketchMode;onMode:(mode:SketchMode)=>void;onClose:()=>void;onStorage?:()=>void;onPhoto:()=>void}){
+export function SketchMenu({mode,onMode,onClose,onStorage,onPhoto}:{mode:SketchMode;onMode:(mode:SketchMode)=>void;onClose:()=>void;onStorage?:(action:'save'|'load')=>void;onPhoto:()=>void}){
   const ref=useRef<HTMLDialogElement>(null)
-  useEffect(()=>{const d=ref.current;d?.showModal();return()=>d?.close()},[])
-  return <dialog ref={ref} className={`${styles.storageDialog} ${styles.modeMenu}`} aria-labelledby="sketch-mode-title" onCancel={e=>{e.preventDefault();onClose()}}>
-    <header><div><h3 id="sketch-mode-title">나의 스케치북</h3><p>편한 도구로 그려요. 그림은 그대로예요.</p></div><button type="button" aria-label="스케치북 메뉴 닫기" onClick={onClose}><X size={20}/></button></header>
-    <div className={styles.modeChoices}>{([{id:'junior',title:'저학년용',detail:'펜, 크레파스, 지우개로 쉽고 크게',Icon:BookOpen},{id:'full',title:'전체 도구',detail:'레이어와 다양한 도구로 꼼꼼하게',Icon:SlidersHorizontal,ImagePlus}] as const).map(({id,title,detail,Icon})=><button key={id} type="button" aria-pressed={mode===id} onClick={()=>onMode(id)}><Icon size={25}/><span><strong>{title}</strong><small>{detail}</small></span>{mode===id&&<Check size={20}/>}</button>)}</div>
-    <button className={styles.openStorage} type="button" onClick={onPhoto}><ImagePlus size={20}/>사진 가져오기</button>
-    {onStorage&&<button className={styles.openStorage} type="button" onClick={onStorage}><FolderOpen size={20}/>그림 저장 · 불러오기</button>}
-    <p className={styles.storageHint}>고른 모드는 이 기기에서 다음에도 이어져요.</p>
+  useEffect(()=>{
+    const d=ref.current,opener=document.activeElement
+    d?.showModal()
+    // 다이얼로그가 제거된 뒤에도 키보드 사용자가 원래 도구에서 이어갈 수 있게 한다.
+    return()=>{d?.close();queueMicrotask(()=>{if(opener instanceof HTMLElement&&opener.isConnected)opener.focus({preventScroll:true})})}
+  },[])
+  return <dialog ref={ref} className={styles.modeMenu} aria-labelledby="sketch-mode-title" onCancel={e=>{e.preventDefault();onClose()}} onClick={e=>{if(e.target!==e.currentTarget)return;const b=e.currentTarget.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)onClose()}}>
+    <header><h3 id="sketch-mode-title">스케치북</h3><button type="button" aria-label="스케치북 메뉴 닫기" onClick={onClose}><X size={20}/></button></header>
+    <section className={styles.modeCards} aria-label="도구 모드">
+      {([{id:'junior',title:'저학년용'},{id:'full',title:'전체 기능'}] as const).map(({id,title})=><button className={styles.modeCard} key={id} type="button" aria-pressed={mode===id} onClick={()=>onMode(id)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/images/sketchbook/mode-${id}.webp`} alt="" width={256} height={256} draggable={false}/>
+        <span className={styles.modeCaption}><span>{title}</span><span className={styles.modeCheck} aria-hidden>{mode===id&&<Check size={14}/>}</span></span>
+      </button>)}
+    </section>
+    <section className={styles.menuGroup} aria-label="사진">
+      <button className={styles.menuRow} type="button" onClick={onPhoto}><ImagePlus size={20} aria-hidden/><span>사진 가져오기</span><ChevronRight size={16} aria-hidden/></button>
+    </section>
+    {onStorage&&<section className={styles.fileActions} aria-label="그림 파일">
+      <button type="button" onClick={()=>onStorage('save')}><Save size={20} aria-hidden/>저장</button>
+      <button type="button" onClick={()=>onStorage('load')}><FolderOpen size={20} aria-hidden/>불러오기</button>
+    </section>}
+    <footer>도구 모드는 이 기기에 저장됩니다.</footer>
   </dialog>
 }
 

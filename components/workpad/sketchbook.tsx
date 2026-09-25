@@ -1,6 +1,6 @@
 "use client"
 import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from 'react'
-import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,RotateCcw,Pointer,Smile,SwatchBook,X,MoreHorizontal} from 'lucide-react'
+import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,Scan,Pointer,Smile,SwatchBook,X,MoreHorizontal} from 'lucide-react'
 import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
 import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,copyLayer,adoptLayer,compositeLayers,strokeLayer,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
 import {pushPixels} from '@/lib/sketchbook-warp'
@@ -32,7 +32,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const viewport=useRef<HTMLDivElement>(null),paper=useRef<HTMLDivElement>(null),touches=useRef(new TouchView()),viewRef=useRef<View>({...IDENTITY})
   const paperSize=useRef({width:W,height:H})
   const warpCursor=useRef<HTMLDivElement>(null)
-  const [view,setView]=useState<View>({...IDENTITY}),[fit,setFit]=useState(1),[preview,setPreview]=useState<'size'|'opacity'|null>(null)
+  const [view,setView]=useState<View>({...IDENTITY}),[viewAdjusting,setViewAdjusting]=useState(false),[fit,setFit]=useState(1),[preview,setPreview]=useState<'size'|'opacity'|null>(null)
   const active=useRef<{id:number;pointerType:string;start:Point;points:Point[];stroke?:Stroke;moving:boolean;tap?:'fill'|'pick';handle?:SelectionHandle}|null>(null)
   const [transformed,setTransformed]=useState<Stroke[]|null>(null),transformedRef=useRef<Stroke[]|null>(null)
   const [tool,setTool]=useState<Tool>('pen'),[color,setColor]=useState(COLORS[0]),[backColor,setBackColor]=useState('#ffffff'),[colorTarget,setColorTarget]=useState<'front'|'back'>('front')
@@ -45,7 +45,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const announce=(label:string)=>{setToast(label);if(toastTimer.current)clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),1600)}
   const selectLayer=(layer:DrawingLayer)=>{if(blocked||active.current)return;setActiveLayer(layer);setSelected([]);setLayerLabel(true);announce(layer==='outline'?'밑그림 레이어':'색칠 레이어');if(layerTimer.current)clearTimeout(layerTimer.current);layerTimer.current=setTimeout(()=>setLayerLabel(false),1700)}
   const previousTool=useRef<Tool>('pen')
-  const [tolerance,setTolerance]=useState(28),[storage,setStorage]=useState(false)
+  const [tolerance,setTolerance]=useState(28),[storage,setStorage]=useState<'save'|'load'|null>(null)
   const [width,setWidth]=useState(8),[eraseWidth,setEraseWidth]=useState(32),[opacity,setOpacity]=useState(1),[selected,setSelected]=useState<string[]>([])
   const selectionIds=editingPhoto?[editingPhoto]:selected
   const history=useRef(new SketchHistory()),[,refreshHistory]=useState(0)
@@ -126,7 +126,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     // 펜이 닿은 동안 들어오는 손바닥 터치는 그림/제스처로 받지 않는다.
     if(e.pointerType==='touch'&&active.current?.pointerType==='pen')return
     finishBackground();e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId)
-    if(e.pointerType==='touch'&&touches.current.down(e.pointerId,viewPoint(e),viewRef.current)){cancelStroke();return}
+    if(e.pointerType==='touch'&&touches.current.down(e.pointerId,viewPoint(e),viewRef.current)){setViewAdjusting(true);cancelStroke();return}
     const handle=(e.target as HTMLElement).closest<HTMLElement>('[data-handle]')?.dataset.handle as SelectionHandle|undefined
     if(active.current||touches.current.locked||(!inPaper(e)&&!handle))return
     if(tool!=='lasso'&&tool!=='pick'&&(value.length>=500||value.reduce((n,s)=>n+s.points.length+(s.fillRuns?.length??0),0)>500000)){setNotice('종이가 꽉 찼어요. 그림을 저장하거나 조금 되돌려 주세요.');return}
@@ -164,6 +164,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   }
   const finish=(e:Input,cancel=false)=>{
     const consumed=e.pointerType==='touch'&&touches.current.up(e.pointerId,viewRef.current),a=active.current
+    if(e.pointerType==='touch'&&touches.current.points.size<2)setViewAdjusting(false)
     if(a?.id===e.pointerId){
       if(cancel||consumed)cancelStroke()
       else{
@@ -239,10 +240,11 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
       <button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>
     </aside>}
     <div className={styles.stage}>
+      {viewAdjusting&&<div className={styles.viewReadout} aria-label="캔버스 보기"><span>{Math.round(view.scale*100)}%</span><span className={styles.viewAngle} aria-label={`캔버스 회전 ${Math.round(view.rotation)}도`}>{Math.round(view.rotation)}°</span></div>}
       <div className={styles.history}>
         <button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.current.past.length} onClick={undo}><Undo2 size={22}/></button>
         <button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!history.current.future.length} onClick={redo}><Redo2 size={22}/></button>
-        <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title={`화면에 맞추기 · 현재 ${Math.round(view.rotation)}도`} onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><RotateCcw size={14}/>{Math.round(view.scale*100)}%</button>
+        <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title={`화면에 맞추기 · 현재 ${Math.round(view.rotation)}도`} onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><Scan size={20}/></button>
         <div className={styles.extrasButtons}>
           {mode==='junior'&&<button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>}
           <button type="button" aria-label="기본 스티커 붙이기" title="스티커 붙이기" disabled={blocked} aria-expanded={extras==='stickers'} onClick={()=>{setExtras(extras==='stickers'?null:'stickers');setPicker(false);announce('스티커 붙이기')}}><Smile size={22}/></button>
@@ -279,8 +281,8 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     </div>
     {picker&&!blocked&&<ColorPanel value={colorTarget==='front'?color:backColor} label={colorTarget==='front'?'전경색':'배경색'} onChange={chooseColor} custom={custom} onCustom={saveColors} onClose={()=>setPicker(false)}/>}
     <input ref={photoFile} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="편집할 사진 선택" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void loadPhoto(file)}}/>
-    {menu&&<SketchMenu onPhoto={()=>{setMenu(false);photoFile.current?.click()}} mode={mode} onMode={switchMode} onClose={()=>setMenu(false)} onStorage={storageKey?()=>{setMenu(false);setStorage(true)}:undefined}/>}
-    {storageKey&&<SketchStorage scope={storageKey} open={storage} onClose={()=>setStorage(false)} current={documentRef.current} enabled={!disabled} isBusy={()=>Boolean(active.current||fillBusy.current||layerStart.current)} onLoad={doc=>{remember(documentRef.current,doc);applyDocument(doc);changeView({...IDENTITY});setStorage(false);announce('그림을 불러왔어요')}} onNotice={setNotice}/>}
+    {menu&&<SketchMenu onPhoto={()=>{setMenu(false);photoFile.current?.click()}} mode={mode} onMode={switchMode} onClose={()=>setMenu(false)} onStorage={storageKey?action=>{setMenu(false);setStorage(action)}:undefined}/>}
+    {storageKey&&<SketchStorage scope={storageKey} open={storage!==null} action={storage??'save'} onClose={()=>setStorage(null)} current={documentRef.current} enabled={!disabled} isBusy={()=>Boolean(active.current||fillBusy.current||layerStart.current)} onLoad={doc=>{remember(documentRef.current,doc);applyDocument(doc);changeView({...IDENTITY});setStorage(null);announce('그림을 불러왔어요')}} onNotice={setNotice}/>}
     {clear&&<ConfirmDialog title="어디를 지울까요?" cancelLabel="취소" secondary="해당 레이어만" onSecondary={()=>{commit(value.filter(s=>strokeLayer(s)!==activeLayer));setSelected([]);setClear(false)}} description="지운 뒤에도 실행 취소로 되돌릴 수 있어요." confirm="전부" onCancel={()=>setClear(false)} onConfirm={()=>{commit([]);setSelected([]);setClear(false)}}/>}
   </div>
 }
