@@ -237,7 +237,6 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
       </div>
       <BrushDial label={tool==='fill'?'채우기 허용 오차':tool==='erase'?'지우개 크기':tool==='warp'?'밀기 범위':'브러시 크기'} value={tool==='fill'?tolerance:size} min={tool==='fill'?0:tool==='warp'?24:2} max={tool==='fill'?255:96} unit={tool==='fill'?'허용 오차':'px'} indicator={tool==='fill'?8+tolerance/255*28:undefined} color={inkColor} disabled={blocked} onChange={tool==='fill'?setTolerance:tool==='erase'?setEraseWidth:setWidth} onPreview={on=>{if(tool!=='fill')setPreview(on?'size':null)}}/>
       <BrushDial label={tool==='warp'?'밀기 강도':'브러시 불투명도'} value={Math.round(opacity*100)} min={1} max={100} unit="%" color={inkColor} alpha disabled={blocked} onChange={v=>setOpacity(v/100)} onPreview={on=>setPreview(on?'opacity':null)}/>
-      <button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>
     </aside>}
     <div className={styles.stage}>
       {viewAdjusting&&<div className={styles.viewReadout} aria-label="캔버스 보기"><span>{Math.round(view.scale*100)}%</span><span className={styles.viewAngle} aria-label={`캔버스 회전 ${Math.round(view.rotation)}도`}>{Math.round(view.rotation)}°</span></div>}
@@ -245,8 +244,8 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
         <button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.current.past.length} onClick={undo}><Undo2 size={22}/></button>
         <button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!history.current.future.length} onClick={redo}><Redo2 size={22}/></button>
         <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title={`화면에 맞추기 · 현재 ${Math.round(view.rotation)}도`} onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><Scan size={20}/></button>
+        <button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>
         <div className={styles.extrasButtons}>
-          {mode==='junior'&&<button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>}
           <button type="button" aria-label="기본 스티커 붙이기" title="스티커 붙이기" disabled={blocked} aria-expanded={extras==='stickers'} onClick={()=>{setExtras(extras==='stickers'?null:'stickers');setPicker(false);announce('스티커 붙이기')}}><Smile size={22}/></button>
           <button type="button" aria-label="종이 배경 변경" title="배경 변경" disabled={blocked||!onBackgroundChange} aria-expanded={extras==='paper'} onClick={()=>{setExtras(extras==='paper'?null:'paper');setPicker(false);announce('종이 배경')}}><SwatchBook size={22}/></button>
         </div>

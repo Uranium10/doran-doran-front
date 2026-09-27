@@ -908,3 +908,10 @@
 - 생성/수정 공통 프로필 폼에서 한국 시간 오늘을 max로 지정. 직접 입력한 미래/존재하지 않는 날짜에는 필드 오류와 저장 비활성화, 제출 직전 재검증 적용. 백엔드 POST/PATCH도 동일 조건422 검증.
 - 검증: 날짜 경계 테스트2개, 타입검사, Next 운영 빌드 통과. 백엔드 API 경계4개 및 기존 인증 회귀27개 통과.
 - 변경: components/profile-form-modal.tsx, lib/profile-birth-date.ts, tests/profile-birth-date.test.cjs, 통신규격.md. 기존 next-env.d.ts 제외. 양쪽 main push 진행, 배포 완료는 별도 확인.
+
+[2026-09-28] 스케치북 더 보기 위치 및 데스크톱 도구 폭 정리
+- 전체 기능/저학년용 공통으로 더 보기(...) 버튼을 화면 맞추기 바로 오른쪽에 배치. 왼쪽 도구 아래와 우측 꾸미기 영역의 별도 버튼 제거.
+- 데스크톱 전체 기능 도구 열을 96px에서 72px로 축소하고 붓 버튼을 40px 정사각형으로 정리. 상단 아이콘도 정사각형으로 통일하고 저학년용 화면 맞추기의 불필요한 가로 폭 제거.
+- 검증: TypeScript 검사, git diff --check 통과. 실제 컴포넌트 브라우저 검사에서 두 모드 320/390/740/1280px 배치·중복 버튼·겹침·데스크톱 정사각 비율 확인. 기존 레이어/그리기/사진 편집/저장·불러오기/실행 취소/모드 보존 회귀 통과. 1280px 및 320px 스크린샷 시각 확인.
+- 변경: components/workpad/sketchbook.tsx, components/workpad/sketchbook.module.css. API/DB 변경 없음. 아직 commit/push/배포 전. 기존 next-env.d.ts 변경 유지.
+- 후속 요청: 검증한 변경을 main에 커밋/push하여 Vercel 운영 배포 진행. 배포 결과는 원격 상태로 확인.
