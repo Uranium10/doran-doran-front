@@ -915,3 +915,17 @@
 - 검증: TypeScript 검사, git diff --check 통과. 실제 컴포넌트 브라우저 검사에서 두 모드 320/390/740/1280px 배치·중복 버튼·겹침·데스크톱 정사각 비율 확인. 기존 레이어/그리기/사진 편집/저장·불러오기/실행 취소/모드 보존 회귀 통과. 1280px 및 320px 스크린샷 시각 확인.
 - 변경: components/workpad/sketchbook.tsx, components/workpad/sketchbook.module.css. API/DB 변경 없음. 아직 commit/push/배포 전. 기존 next-env.d.ts 변경 유지.
 - 후속 요청: 검증한 변경을 main에 커밋/push하여 Vercel 운영 배포 진행. 배포 결과는 원격 상태로 확인.
+
+[2026-09-28] 그림 툴 실행 취소/다시 실행 단축키 보완
+- Ctrl+Z 실행 취소, Ctrl+Y 및 Ctrl+Shift+Z 다시 실행 지원. 기존 Cmd 조합 유지. 물리 키 코드로 한글 입력 상태도 처리.
+- 마우스/펜으로 그릴 때 캔버스에 스크롤 없는 포커스를 부여해 외부에 포커스가 남아 단축키가 무시되던 경우 보완. 입력란/contenteditable/대화상자/IME 조합 및 Alt 조합은 그림 기록 단축키에서 제외.
+- 다시 실행 버튼 툴팁에 단축키 표시.
+- 검증: TypeScript 및 diff --check 통과. 실제 브라우저에서 세 단축키, 한글 키 코드, 모달 내 기록 보호 확인. 기존 레이어·사진·저장·불러오기·모드 전환·연속 undo/redo 회귀 통과.
+- 변경: components/workpad/sketchbook.tsx, tests/browser/sketchbook-ui.cjs. API/DB 변경 없음. 아직 commit/push/배포 전. 기존 next-env.d.ts 변경 유지.
+
+[2026-09-28] 그림 화면 공통 기록 단축키 및 push
+- 실행 취소/다시 실행을 활성 그림 화면의 document 키 이벤트로 처리하여 펜/팔레트/상단 버튼/빈 영역 포커스에서도 사용 가능. 기존 컴포넌트 키 처리와 중복 실행되지 않게 정리.
+- 입력란, 편집 가능한 텍스트, 열린 모달, 숨김/비활성 그림 화면에서는 동작하지 않음. IME 조합 중 입력 보호 및 한글 자판 물리 키 인식 유지.
+- 검증: TypeScript, diff --check 및 실제 브라우저 회귀 통과. 도구/팔레트/화면 맞추기/외부 상단 버튼 클릭 뒤 Ctrl+Z/Y, Ctrl+Shift+Z, 모달·입력란·숨김 화면 보호 확인. 기존 저장/사진/레이어/모드/연속 undo 검사 통과.
+- 필압은 현재 좌표에 저장되지 않고 선 굵기가 고정인 점 확인. 이번 변경은 단축키만 적용하며 필압 구현은 포함하지 않음.
+- 변경: components/workpad/sketchbook.tsx, tests/browser/sketchbook-ui.cjs, log.txt. 사용자 요청으로 이전 단축키 보완과 함께 main push. 기존 next-env.d.ts 변경 제외. Vercel 배포 완료는 원격 상태로 확인.

@@ -125,6 +125,8 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     if(blocked||fillBusy.current||layerStart.current||e.button!==0)return
     // 펜이 닿은 동안 들어오는 손바닥 터치는 그림/제스처로 받지 않는다.
     if(e.pointerType==='touch'&&active.current?.pointerType==='pen')return
+    // 기본 포커스 이동을 막아도 그린 직후 키보드 단축키는 캔버스에서 받는다.
+    if(e.pointerType!=='touch')overlay.current?.focus({preventScroll:true})
     finishBackground();e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId)
     if(e.pointerType==='touch'&&touches.current.down(e.pointerId,viewPoint(e),viewRef.current)){setViewAdjusting(true);cancelStroke();return}
     const handle=(e.target as HTMLElement).closest<HTMLElement>('[data-handle]')?.dataset.handle as SelectionHandle|undefined
@@ -218,11 +220,28 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     announce(next==='junior'?'저학년용 스케치북':'전체 그리기 도구')
   }
   const openMenu=()=>{if(active.current||touches.current.points.size||layerStart.current)return;setMenu(true);setPicker(false);setExtras(null)}
+  // 그리기 화면이 활성화된 동안은 상단 버튼이나 빈 곳에 포커스가 있어도 기록 단축키를 받는다.
+  useEffect(()=>{
+    const onHistoryKey=(e:KeyboardEvent)=>{
+      if(blocked||e.defaultPrevented||e.isComposing||e.altKey||!(e.ctrlKey||e.metaKey)||!viewport.current?.getClientRects().length)return
+      const target=e.target
+      if(target instanceof HTMLElement&&(target.isContentEditable||target.closest('input,textarea,select,dialog,[role="textbox"]')))return
+      if(document.querySelector('dialog[open],[role="dialog"][aria-modal="true"]'))return
+      // 한글 입력 상태에서도 물리 키 위치로 실행 취소/다시 실행을 인식한다.
+      const key=e.code==='KeyZ'?'z':e.code==='KeyY'?'y':e.key.toLowerCase()
+      if(key!=='z'&&key!=='y')return
+      e.preventDefault();e.stopPropagation()
+      if(key==='y'||e.shiftKey)redo();else undo()
+    }
+    document.addEventListener('keydown',onHistoryKey)
+    return()=>document.removeEventListener('keydown',onHistoryKey)
+  })
+
   const b=selectionBounds(transformed??value,selectionIds),size=tool==='erase'?eraseWidth:width
   return <div className={styles.studio} data-mode={mode} onKeyDown={e=>{
-    if(e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement||blocked||(e.target as HTMLElement).closest('dialog'))return
+    const target=e.target as HTMLElement
+    if(blocked||e.defaultPrevented||e.nativeEvent.isComposing||target.isContentEditable||target.closest('input,textarea,select,dialog'))return
     if(e.key==='Escape'&&editingPhoto){setEditingPhoto(null);setSelected([]);setTool('pen')}
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redo();else undo()}
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'&&e.target instanceof HTMLCanvasElement&&!editingPhoto){e.preventDefault();setTool('lasso');setSelected(value.filter(s=>strokeLayer(s)===activeLayer&&!s.fillRuns&&s.brush!=='warp').map(s=>s.id))}
     else if(mode==='full'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(e.key.toLowerCase()==='x')swap();if(e.key.toLowerCase()==='d'){setColor('#000000');setBackColor('#ffffff');setColorTarget('front')}}
   }}>
@@ -242,7 +261,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
       {viewAdjusting&&<div className={styles.viewReadout} aria-label="캔버스 보기"><span>{Math.round(view.scale*100)}%</span><span className={styles.viewAngle} aria-label={`캔버스 회전 ${Math.round(view.rotation)}도`}>{Math.round(view.rotation)}°</span></div>}
       <div className={styles.history}>
         <button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.current.past.length} onClick={undo}><Undo2 size={22}/></button>
-        <button type="button" title="다시 실행" aria-label="다시 실행" disabled={blocked||!history.current.future.length} onClick={redo}><Redo2 size={22}/></button>
+        <button type="button" title="다시 실행 (Ctrl+Y / Ctrl+Shift+Z)" aria-label="다시 실행" disabled={blocked||!history.current.future.length} onClick={redo}><Redo2 size={22}/></button>
         <button type="button" className={styles.zoomReset} aria-label="종이를 화면에 맞추기" title={`화면에 맞추기 · 현재 ${Math.round(view.rotation)}도`} onClick={()=>{if(active.current||touches.current.points.size)return;changeView({...IDENTITY});announce('화면에 맞추기')}}><Scan size={20}/></button>
         <button type="button" aria-label="스케치북 더 보기" title="모드 · 저장 · 불러오기" disabled={blocked} onClick={openMenu}><MoreHorizontal size={24}/></button>
         <div className={styles.extrasButtons}>

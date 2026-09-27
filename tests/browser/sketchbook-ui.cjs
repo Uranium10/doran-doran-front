@@ -92,6 +92,40 @@ await page.mouse.down();
 await page.mouse.move(paper.x+paper.width*.7,paper.y+paper.height*.5,{steps:15});
 await page.mouse.up();
 assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+// 캔버스 포커스와 실제 키 입력을 통해 실행 취소/다시 실행을 확인한다.
+assert.equal(await page.locator('.ink').evaluate(el=>el===document.activeElement),true);
+for(const redoKey of ['Control+y','Control+Shift+z']){
+  await page.keyboard.press('Control+z');
+  assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+  await page.keyboard.press(redoKey);
+  assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+}
+await page.locator('.ink').evaluate(el=>el.dispatchEvent(new KeyboardEvent('keydown',{key:'ㅋ',code:'KeyZ',ctrlKey:true,bubbles:true,cancelable:true})));
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+await page.locator('.ink').evaluate(el=>el.dispatchEvent(new KeyboardEvent('keydown',{key:'ㅛ',code:'KeyY',ctrlKey:true,bubbles:true,cancelable:true})));
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+await page.getByLabel('스케치북 더 보기').click();
+await page.keyboard.press('Control+z');
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+await page.keyboard.press('Escape');
+// 다른 도구와 스케치북 바깥 상단 버튼을 눌러도 단축키가 한 번씩만 실행된다.
+for(const button of [page.getByLabel('펜',{exact:true}),page.getByLabel('종이를 화면에 맞추기'),page.locator('.palette button').first(),page.getByRole('button',{name:'다했어요!',exact:true})]){
+  await button.click();
+  await page.keyboard.press('Control+z');
+  assert.equal(await page.evaluate(()=>window.doc.strokes.length),0);
+  await page.keyboard.press('Control+y');
+  assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+}
+// 입력란의 텍스트 편집과 숨겨진 그리기 화면에는 기록 단축키를 적용하지 않는다.
+await page.evaluate(()=>{const input=document.createElement('textarea');input.id='shortcut-input';document.querySelector('header').append(input);input.focus()});
+await page.keyboard.press('Control+z');
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+await page.evaluate(()=>document.getElementById('shortcut-input').remove());
+await page.evaluate(()=>{document.querySelector('.studio').style.display='none'});
+await page.getByRole('button',{name:'다했어요!',exact:true}).click();
+await page.keyboard.press('Control+z');
+assert.equal(await page.evaluate(()=>window.doc.strokes.length),1);
+await page.evaluate(()=>{document.querySelector('.studio').style.display=''});
 const before=await page.evaluate(()=>JSON.stringify(window.doc));
 await page.getByLabel('스케치북 더 보기').click();
 await page.getByRole('button',{name:/저학년용/}).click();
