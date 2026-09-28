@@ -1,12 +1,14 @@
 "use client"
+import {FreeTransform} from './sketchbook-transform'
+import {prepareTransform,type TransformSession} from '@/lib/sketchbook-transform-session'
 import {brushPoint,DEFAULT_INPUT_SETTINGS,INPUT_SETTINGS_KEY,type InputSettings} from '@/lib/sketchbook-input'
 import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from 'react'
-import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,Scan,Pointer,Smile,SwatchBook,X,MoreHorizontal} from 'lucide-react'
+import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,Scan,Pointer,Smile,SwatchBook,X,MoreHorizontal,SquareDashedMousePointer} from 'lucide-react'
 import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
 import {SKETCH_WIDTH,SKETCH_HEIGHT,clamp,insidePolygon,moveSelection,selectionBounds,paintSketch,copyLayer,adoptLayer,compositeLayers,strokeLayer,transformSelection,type SelectionHandle} from '@/lib/sketchbook'
 import {pushPixels} from '@/lib/sketchbook-warp'
 import {beginStrokePreview} from '@/lib/sketchbook-eraser'
-import {STICKERS,type StickerKind} from '@/lib/sketchbook-stickers'
+import {STICKERS,STICKER_ATLAS,STICKER_CELLS,prepareStickers,stickersReady,type StickerKind} from '@/lib/sketchbook-stickers'
 import {IDENTITY,TouchView,paperPoint,type View} from '@/lib/sketchbook-controls'
 import {BrushDial,ColorPanel} from './sketchbook-controls'
 import {DEFAULT_LAYERS,type LayerSettings,type SketchDocument} from '@/lib/sketchbook-document'
@@ -25,6 +27,7 @@ const HANDLES=[['nw',0,0,'왼쪽 위'],['n',50,0,'위'],['ne',100,0,'오른쪽 �
 type Input=PointerEvent<HTMLDivElement>
 export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDocumentChange,background='#fffaf0',onBackgroundChange,onBusyChange,disabled=false,width:paperWidth=SKETCH_WIDTH,height:paperHeight=SKETCH_HEIGHT}:{value:Stroke[];layers?:LayerSettings;storageKey?:string;onDocumentChange?:(doc:SketchDocument)=>void;onChange:(v:Stroke[])=>void;background?:string;onBackgroundChange?:(color:string)=>void;onBusyChange?:(busy:boolean)=>void;disabled?:boolean;width?:number;height?:number}){
   const W=paperWidth,H=paperHeight
+  const [transformSession,setTransformSession]=useState<TransformSession|null>(null),transformToolbar=useRef<HTMLDivElement>(null)
   const [inputSettings,setInputSettings]=useState<InputSettings>(DEFAULT_INPUT_SETTINGS)
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(INPUT_SETTINGS_KEY)||'null');if(saved)setInputSettings({pressure:typeof saved.pressure==='boolean'?saved.pressure:true,stabilize:typeof saved.stabilize==='boolean'?saved.stabilize:false})}catch{}},[])
   const changeInputSettings=(next:InputSettings)=>{setInputSettings(next);try{localStorage.setItem(INPUT_SETTINGS_KEY,JSON.stringify(next))}catch{setNotice('그리기 설정은 이 창에서만 유지돼요.')}}
@@ -55,7 +58,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const history=useRef(new SketchHistory()),[,refreshHistory]=useState(0)
   const [clear,setClear]=useState(false),[notice,setNotice]=useState(''),[picker,setPicker]=useState(false),[custom,setCustom]=useState<string[]>([])
   const fillWorker=useRef<Worker|null>(null),fillBusy=useRef(false),[filling,setFilling]=useState(false)
-  const blocked=disabled||filling||loadingPhoto||decodingPhotos
+  const blocked=disabled||filling||loadingPhoto||decodingPhotos||Boolean(transformSession)
   const latest=useRef(value);latest.current=value
   const documentRef=useRef<SketchDocument>({strokes:value,background,width:W,height:H,layers,activeLayer})
   documentRef.current={strokes:value,background,width:W,height:H,layers,activeLayer}
@@ -71,8 +74,8 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const viewTransform=(v:View)=>`translate(${v.x}px,${v.y}px) rotate(${v.rotation}deg) scale(${v.scale})`
   const changeView=(next:View)=>{viewRef.current=next;if(paper.current)paper.current.style.transform=viewTransform(next);setView(next)}
   useEffect(()=>{let cancelled=false
-    if(photosReady(value)){setDecodingPhotos(false);if(canvas.current)paintSketch(canvas.current,value,layers)}
-    else{setDecodingPhotos(true);void preparePhotos(value).then(()=>{if(!cancelled&&canvas.current)paintSketch(canvas.current,value,layers)}).catch(()=>{if(!cancelled)setNotice('저장한 사진을 열지 못했어요. 다시 불러와 주세요.')}).finally(()=>{if(!cancelled)setDecodingPhotos(false)})}
+    if(photosReady(value)&&stickersReady(value)){setDecodingPhotos(false);if(canvas.current)paintSketch(canvas.current,value,layers)}
+    else{setDecodingPhotos(true);void Promise.all([preparePhotos(value),prepareStickers(value)]).then(()=>{if(!cancelled&&canvas.current)paintSketch(canvas.current,value,layers)}).catch(()=>{if(!cancelled)setNotice('그림 속 사진이나 스티커를 열지 못했어요. 다시 불러와 주세요.')}).finally(()=>{if(!cancelled)setDecodingPhotos(false)})}
     return()=>{cancelled=true}
   },[value,W,H,layers])
   useEffect(()=>{if(editingPhoto&&!value.some(s=>s.id===editingPhoto)){setEditingPhoto(null);setSelected([])}},[value,editingPhoto])
@@ -204,11 +207,16 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const swap=()=>{setColor(backColor);setBackColor(color);setColorTarget('front');announce('전경색으로 그려요')}
   const chooseColor=(c:string)=>{if(colorTarget==='front')setColor(c);else setBackColor(c)}
   const updateWarpCursor=(e:Input)=>{const el=warpCursor.current;if(!el)return;if(!inPaper(e)||touches.current.locked){el.style.opacity='0';return}const box=e.currentTarget.getBoundingClientRect(),diameter=Math.max(24,width)*fit*viewRef.current.scale;el.style.opacity='1';el.style.width=`${diameter}px`;el.style.height=`${diameter}px`;el.style.left=`${e.clientX-box.left}px`;el.style.top=`${e.clientY-box.top}px`}
-  const addSticker=(kind:StickerKind)=>{
+  const addSticker=async(kind:StickerKind)=>{
     if(blocked||active.current||value.length>=500)return
+    if(photoPending.current)return
+    photoPending.current=true;setLoadingPhoto(true)
+    try{
+    await prepareStickers([{sticker:kind} as Stroke])
     setEditingPhoto(null)
     const side=Math.min(W,H)*.24,dx=side/W/2,dy=side/H/2,id=crypto.randomUUID()
     commit([...latest.current,{id,color:'#000000',width:0,erase:false,layer:activeLayer,sticker:kind,points:[{x:.5-dx,y:.5-dy},{x:.5+dx,y:.5-dy},{x:.5+dx,y:.5+dy},{x:.5-dx,y:.5+dy}]}]);setTool('lasso');setSelected([id]);setExtras(null);announce(`${STICKERS[kind].label} · 끌어서 옮겨요`)
+    }catch{setNotice('스티커를 불러오지 못했어요. 다시 눌러 주세요.')}finally{photoPending.current=false;setLoadingPhoto(false)}
   }
   const loadPhoto=async(file:File)=>{
     if(blocked||photoPending.current||active.current)return
@@ -231,13 +239,32 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     announce(next==='junior'?'저학년용 스케치북':'전체 그리기 도구')
   }
   const openMenu=()=>{if(active.current||touches.current.points.size||layerStart.current)return;setMenu(true);setPicker(false);setExtras(null)}
+  const deleteSelection=()=>{
+    if(blocked||active.current||touches.current.points.size||layerStart.current)return
+    if(selectionIds.length){commit(latest.current.filter(s=>!selectionIds.includes(s.id)));setSelected([]);setEditingPhoto(null);announce('선택한 그림을 지웠어요')}
+    else if(latest.current.length){setMenu(false);setPicker(false);setExtras(null);setClear(true)}
+  }
+  const startTransform=async()=>{
+    if(blocked||photoPending.current||active.current||touches.current.points.size||layerStart.current)return
+    if(!layers[activeLayer].visible||!layers[activeLayer].opacity){announce('변형할 레이어를 먼저 켜 주세요');return}
+    const ids=selectionIds.length?selectionIds:latest.current.filter(s=>strokeLayer(s)===activeLayer).map(s=>s.id)
+    if(!ids.length){announce('변형할 그림을 먼저 그려 주세요');return}
+    photoPending.current=true;setLoadingPhoto(true);onBusyChange?.(true);setMenu(false);setPicker(false);setExtras(null);finishBackground()
+    try{const session=await prepareTransform(latest.current,ids,W,H,activeLayer);setTransformSession(session);setTool('lasso');setNotice('')}
+    catch(error){setNotice(error instanceof Error?error.message:'변형할 그림을 열지 못했어요.');onBusyChange?.(false)}
+    finally{photoPending.current=false;setLoadingPhoto(false)}
+  }
+  const closeTransform=()=>{setTransformSession(null);onBusyChange?.(false);overlay.current?.focus({preventScroll:true})}
   // 그리기 화면이 활성화된 동안은 상단 버튼이나 빈 곳에 포커스가 있어도 기록 단축키를 받는다.
   useEffect(()=>{
     const onHistoryKey=(e:KeyboardEvent)=>{
-      if(blocked||e.defaultPrevented||e.isComposing||e.altKey||!(e.ctrlKey||e.metaKey)||!viewport.current?.getClientRects().length)return
+      if(blocked||e.defaultPrevented||e.isComposing||!viewport.current?.getClientRects().length)return
       const target=e.target
       if(target instanceof HTMLElement&&(target.isContentEditable||target.closest('input,textarea,select,dialog,[role="textbox"]')))return
       if(document.querySelector('dialog[open],[role="dialog"][aria-modal="true"]'))return
+      if(e.key==='Delete'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();e.stopPropagation();if(!e.repeat)deleteSelection();return}
+      if((e.ctrlKey||e.metaKey)&&(e.code==='KeyT'||e.key.toLowerCase()==='t')&&!e.shiftKey){e.preventDefault();e.stopPropagation();if(!e.repeat)void startTransform();return}
+      if(e.altKey||!(e.ctrlKey||e.metaKey))return
       // 한글 입력 상태에서도 물리 키 위치로 실행 취소/다시 실행을 인식한다.
       const key=e.code==='KeyZ'?'z':e.code==='KeyY'?'y':e.key.toLowerCase()
       if(key!=='z'&&key!=='y')return
@@ -270,6 +297,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     </aside>}
     <div className={styles.stage}>
       {viewAdjusting&&<div className={styles.viewReadout} aria-label="캔버스 보기"><span>{Math.round(view.scale*100)}%</span><span className={styles.viewAngle} aria-label={`캔버스 회전 ${Math.round(view.rotation)}도`}>{Math.round(view.rotation)}°</span></div>}
+      <div ref={transformToolbar} style={{display:'contents'}}/>
       <div className={styles.history}>
         <button type="button" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled={blocked||!history.current.past.length} onClick={undo}><Undo2 size={22}/></button>
         <button type="button" title="다시 실행 (Ctrl+Y / Ctrl+Shift+Z)" aria-label="다시 실행" disabled={blocked||!history.current.future.length} onClick={redo}><Redo2 size={22}/></button>
@@ -284,24 +312,25 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
       {mode==='full'&&<div className={styles.layerDock} aria-label="그림 레이어" data-expanded={layerLabel}>{(['outline','color'] as const).map(layer=><LayerControl key={layer} label={layer==='outline'?'밑그림':'색칠'} active={activeLayer===layer} value={layers[layer]} disabled={blocked||Boolean(editingPhoto)} onSelect={()=>selectLayer(layer)} onBegin={()=>{if(active.current||layerStart.current||fillBusy.current)return false;layerStart.current=documentRef.current;return true}} onChange={setting=>layerChange(layer,setting)} onEnd={layerEnd}><LayerGlyph kind={layer}/></LayerControl>)}</div>}
       {extras&&!blocked&&<section className={styles.extrasPanel} role="dialog" aria-label={extras==='stickers'?'기본 스티커':'종이 배경'} onKeyDown={e=>{if(e.key==='Escape'){finishBackground();setExtras(null)}}}>
         <header><strong>{extras==='stickers'?'어떤 스티커를 붙일까요?':'종이색을 골라요'}</strong><button type="button" aria-label="꾸미기 닫기" onClick={()=>setExtras(null)}><X size={18}/></button></header>
-        {extras==='stickers'?<div className={styles.stickerGrid}>{(Object.keys(STICKERS) as StickerKind[]).map(kind=><button type="button" key={kind} aria-label={`${STICKERS[kind].label} 붙이기`} onClick={()=>addSticker(kind)}><svg viewBox="0 0 104 104" aria-hidden><g transform="translate(2 2)" stroke="#715a42" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round">{STICKERS[kind].parts.map(([path,fill],i)=><path key={i} d={path} fill={fill}/>)}</g></svg><span>{STICKERS[kind].label}</span></button>)}</div>:<><div className={styles.paperColors}>{['#fffaf0','#ffffff','#f6e0df','#e2edf3','#e7efdb','#ece4f4','#f9ebc5','#343c43'].map(c=><button type="button" key={c} aria-label={`종이색 ${c}`} aria-pressed={background===c} style={{background:c}} onClick={()=>changeBackground(c)}/>)}</div><label className={styles.paperCustom}>직접 고르기<input type="color" aria-label="원하는 종이색" value={background} onFocus={()=>{backgroundStart.current=documentRef.current}} onClick={()=>{if(!backgroundStart.current)backgroundStart.current=documentRef.current}} onBlur={finishBackground} onChange={e=>changeBackground(e.target.value)}/></label></>}
+        {extras==='stickers'?<div className={styles.stickerGrid}>{(Object.keys(STICKERS) as StickerKind[]).map(kind=><button type="button" key={kind} aria-label={`${STICKERS[kind].label} 붙이기`} onClick={()=>addSticker(kind)}><svg viewBox={`${STICKER_CELLS[kind][0]*100} ${STICKER_CELLS[kind][1]*100} 100 100`} aria-hidden><image href={STICKER_ATLAS} width="400" height="200"/></svg><span>{STICKERS[kind].label}</span></button>)}</div>:<><div className={styles.paperColors}>{['#fffaf0','#ffffff','#f6e0df','#e2edf3','#e7efdb','#ece4f4','#f9ebc5','#343c43'].map(c=><button type="button" key={c} aria-label={`종이색 ${c}`} aria-pressed={background===c} style={{background:c}} onClick={()=>changeBackground(c)}/>)}</div><label className={styles.paperCustom}>직접 고르기<input type="color" aria-label="원하는 종이색" value={background} onFocus={()=>{backgroundStart.current=documentRef.current}} onClick={()=>{if(!backgroundStart.current)backgroundStart.current=documentRef.current}} onBlur={finishBackground} onChange={e=>changeBackground(e.target.value)}/></label></>}
       </section>}
       <div ref={viewport} className={styles.canvasSlot} onPointerDown={down} onPointerMove={move} onPointerLeave={()=>{if(!active.current){setEye(null);if(warpCursor.current)warpCursor.current.style.opacity='0'}}} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)}>
         <div ref={paper} className={styles.canvasWrap} style={{background,width:`min(100cqw,calc(100cqh * ${W} / ${H}))`,aspectRatio:`${W}/${H}`,transform:viewTransform(view)}}>
-          <canvas width={W} height={H} ref={canvas} aria-hidden/>
+          <canvas width={W} height={H} ref={canvas} aria-hidden style={transformSession?{visibility:'hidden'}:undefined}/>
           <canvas width={W} height={H} ref={overlay} className={styles.ink} aria-label="여기에 자유롭게 그려 주세요" tabIndex={0}/>
-          {b&&<div className={styles.selection} style={{left:`${b.left*100}%`,top:`${b.top*100}%`,width:`${(b.right-b.left)*100}%`,height:`${(b.bottom-b.top)*100}%`,'--handle-scale':1/view.scale} as CSSProperties}>
+          {b&&!transformSession&&<div className={styles.selection} style={{left:`${b.left*100}%`,top:`${b.top*100}%`,width:`${(b.right-b.left)*100}%`,height:`${(b.bottom-b.top)*100}%`,'--handle-scale':1/view.scale} as CSSProperties}>
             {HANDLES.map(([id,x,y,label])=><button key={id} type="button" data-handle={id} aria-label={`${label} 크기 조절`} title="끌어서 크기 조절" style={{left:`${x}%`,top:`${y}%`,cursor:`${id}-resize`}} onKeyDown={e=>{const delta=({ArrowLeft:[-.01,0],ArrowRight:[.01,0],ArrowUp:[0,-.01],ArrowDown:[0,.01]} as Record<string,number[]>)[e.key];if(delta){e.preventDefault();const p={x:b.left+(b.right-b.left)*x/100,y:b.top+(b.bottom-b.top)*y/100};commit(transformSelection(value,selectionIds,id,p,{x:p.x+delta[0],y:p.y+delta[1]},W,H))}}}/>)}
             <span className={styles.rotationStem} style={{height:30/view.scale}}/><button type="button" data-handle="rotate" className={styles.rotateHandle} aria-label="선택한 그림 회전" title="끌어서 회전 · 방향키로 5도 회전" style={{left:'50%',top:-30/view.scale,cursor:'grab'}} onKeyDown={e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;e.preventDefault();const cx=(b.left+b.right)/2,cy=(b.top+b.bottom)/2,a=(e.key==='ArrowRight'?1:-1)*Math.PI/36;commit(transformSelection(value,selectionIds,'rotate',{x:cx,y:cy-.1},{x:cx+Math.sin(a)*.1*H/W,y:cy-Math.cos(a)*.1},W,H))}}/>
           </div>}
+          {transformSession&&<FreeTransform session={transformSession} W={W} H={H} layers={layers} scale={view.scale} pixelScale={fit*view.scale} screenToPoint={e=>point(e,true)} toolbar={transformToolbar} onApply={(strokes,id)=>{commit(strokes);setSelected(strokes.some(s=>s.id===id)?[id]:selectionIds);if(editingPhoto)setEditingPhoto(id);closeTransform();announce('변형을 적용했어요')}} onCancel={()=>{closeTransform();announce('변형을 취소했어요')}}/>}
         </div>
         {preview&&<div className={styles.brushPreview} aria-hidden><div className={preview==='opacity'?styles.checker:styles.previewPaper}><i style={{width:preview==='size'?size*fit*view.scale:64,height:preview==='size'?size*fit*view.scale:64,background:tool==='erase'?'#647267':inkColor,opacity:preview==='opacity'?opacity:1}}/></div><span>{preview==='size'?`${size}px · 실제 크기`:`${tool==='warp'?'밀기 강도':'불투명도'} ${Math.round(opacity*100)}%`}</span></div>}
         {eye&&<div className={styles.eyePreview} aria-hidden style={{left:eye.x,top:eye.y,'--sample':eye.sample,'--current':eye.current} as CSSProperties}><i/><span>{eye.sample.toUpperCase()}</span></div>}
         {tool==='warp'&&<div ref={warpCursor} className={styles.warpCursor} aria-hidden/>}
       </div>
-      {editingPhoto&&<div className={styles.photoActions}><span>사진만 편집 중</span><button type="button" disabled={blocked} onClick={()=>{setEditingPhoto(null);setSelected([]);setTool('pen');setNotice('사진 위에 자유롭게 그려요.')}}>배치 완료</button></div>}
+      {editingPhoto&&!transformSession&&<div className={styles.photoActions}><span>사진만 편집 중</span><button type="button" disabled={blocked} onClick={()=>{setEditingPhoto(null);setSelected([]);setTool('pen');setNotice('사진 위에 자유롭게 그려요.')}}>배치 완료</button></div>}
       {toast&&<div className={styles.toolToast} role="status" key={toast}>{toast}</div>}
-      <div className={styles.status} role="status">{mode==='junior'&&(!layers[activeLayer].visible||layers[activeLayer].opacity===0)&&<button type="button" onClick={()=>{const before=documentRef.current;layerChange(activeLayer,{visible:true,opacity:1});remember(before,documentRef.current)}}>그릴 레이어 켜기</button>}{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selectionIds.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'고를 색과 지금 색을 함께 확인해요':tool==='fill'?`허용 오차 ${tolerance} · 높일수록 더 넓은 색 범위를 채워요`:'두 손가락으로 확대·이동·회전해요')}{tool==='lasso'&&selectionIds.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={()=>{commit(value.filter(s=>!selectionIds.includes(s.id)));setSelected([])}}><Trash2 size={20}/></button>}</div>
+      <div className={styles.status} role="status">{mode==='junior'&&(!layers[activeLayer].visible||layers[activeLayer].opacity===0)&&<button type="button" onClick={()=>{const before=documentRef.current;layerChange(activeLayer,{visible:true,opacity:1});remember(before,documentRef.current)}}>그릴 레이어 켜기</button>}{filling?'색을 채우고 있어요…':notice||(tool==='lasso'?(selectionIds.length?'가운데는 이동 · 테두리는 크기 · 위쪽은 회전':'선을 둘러서 그림을 골라요'):tool==='pick'?'고를 색과 지금 색을 함께 확인해요':tool==='fill'?`허용 오차 ${tolerance} · 높일수록 더 넓은 색 범위를 채워요`:'두 손가락으로 확대·이동·회전해요')}{tool==='lasso'&&selectionIds.length>0&&<button type="button" disabled={blocked} aria-label="선택한 그림 삭제" onClick={deleteSelection}><Trash2 size={20}/></button>}<button type="button" disabled={blocked||!value.some(s=>strokeLayer(s)===activeLayer)} aria-label="자유 변형" title="자유 변형 (Ctrl+T / 브라우저: Ctrl+Alt+T)" onClick={()=>void startTransform()}><SquareDashedMousePointer size={20}/></button></div>
     </div>
     {mode==='junior'&&<JuniorTools tool={tool} color={inkColor} size={size} disabled={blocked} onTool={next=>{if(active.current)return;setEditingPhoto(null);setTool(next);setSelected([]);setOpacity(1);setPicker(false);setExtras(null);announce(next==='pen'?'펜':next==='pencil'?'크레파스':'지우개')}} onSize={tool==='erase'?setEraseWidth:setWidth}/>}
     <div className={styles.paletteBar}>
@@ -311,7 +340,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     {picker&&!blocked&&<ColorPanel value={colorTarget==='front'?color:backColor} label={colorTarget==='front'?'전경색':'배경색'} onChange={chooseColor} custom={custom} onCustom={saveColors} onClose={()=>setPicker(false)}/>}
     <input ref={photoFile} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="편집할 사진 선택" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void loadPhoto(file)}}/>
     {menu&&<SketchMenu inputSettings={inputSettings} onInputSettings={changeInputSettings} onPhoto={()=>{setMenu(false);photoFile.current?.click()}} mode={mode} onMode={switchMode} onClose={()=>setMenu(false)} onStorage={storageKey?action=>{setMenu(false);setStorage(action)}:undefined}/>}
-    {storageKey&&<SketchStorage scope={storageKey} open={storage!==null} action={storage??'save'} onClose={()=>setStorage(null)} current={documentRef.current} enabled={!disabled} isBusy={()=>Boolean(active.current||fillBusy.current||layerStart.current)} onLoad={doc=>{remember(documentRef.current,doc);applyDocument(doc);changeView({...IDENTITY});setStorage(null);announce('그림을 불러왔어요')}} onNotice={setNotice}/>}
+    {storageKey&&<SketchStorage scope={storageKey} open={storage!==null} action={storage??'save'} onClose={()=>setStorage(null)} current={documentRef.current} enabled={!disabled} isBusy={()=>Boolean(active.current||fillBusy.current||layerStart.current||transformSession||loadingPhoto)} onLoad={doc=>{remember(documentRef.current,doc);applyDocument(doc);changeView({...IDENTITY});setStorage(null);announce('그림을 불러왔어요')}} onNotice={setNotice}/>}
     {clear&&<ConfirmDialog title="어디를 지울까요?" cancelLabel="취소" secondary="해당 레이어만" onSecondary={()=>{commit(value.filter(s=>strokeLayer(s)!==activeLayer));setSelected([]);setClear(false)}} description="지운 뒤에도 실행 취소로 되돌릴 수 있어요." confirm="전부" onCancel={()=>setClear(false)} onConfirm={()=>{commit([]);setSelected([]);setClear(false)}}/>}
   </div>
 }

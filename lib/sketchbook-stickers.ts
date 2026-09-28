@@ -1,4 +1,20 @@
-// 미리보기와 저장 그림이 같은 벡터를 공유한다. 네트워크 다운로드나 이미지 디코딩을 기다리지 않는다.
+// 생성한 투명 스프라이트 한 장을 미리보기와 캔버스에서 공유한다.
+import type {Stroke} from './drawing-story'
+export const STICKER_ATLAS='/images/sketchbook/storybook-stickers-v1.webp'
+export const STICKER_CELLS={ribbon:[0,0],sun:[1,0],moon:[2,0],star:[3,0],heart:[0,1],cloud:[1,1],flower:[2,1],leaf:[3,1]} as const
+let atlas:HTMLImageElement|undefined,pending:Promise<void>|undefined
+export const stickersReady=(strokes:Stroke[])=>!strokes.some(s=>s.sticker)||Boolean(atlas)
+export function prepareStickers(strokes:Stroke[]):Promise<void>{
+  if(stickersReady(strokes))return Promise.resolve()
+  if(pending)return pending
+  pending=new Promise<void>((resolve,reject)=>{
+    const image=new Image()
+    image.onload=()=>{atlas=image;resolve()}
+    image.onerror=()=>reject(new Error('스티커 그림을 불러오지 못했어요. 다시 시도해 주세요.'))
+    image.src=STICKER_ATLAS
+  }).finally(()=>{pending=undefined})
+  return pending
+}
 export const STICKERS={
   ribbon:{label:'리본',parts:[['M48 40Q12 5 7 31Q3 56 43 56L24 83L42 78L48 90L53 56L64 87L72 74L88 80L63 54Q99 57 93 31Q86 6 57 40Z','#e78a99'],['M44 38Q51 33 59 39L60 56Q52 61 44 55Z','#cc617d']]},
   sun:{label:'해',parts:[['M50 3L58 20L73 9L75 28L94 25L86 42L100 52L82 59L89 78L70 76L66 96L52 82L36 97L32 78L12 83L19 63L1 55L18 44L8 27L29 29L28 9L43 20Z','#f0b949'],['M75 51A25 25 0 1 1 25 51A25 25 0 1 1 75 51Z','#ffe29a'],['M38 45L38 49M62 45L62 49M43 61Q51 69 59 61','none']]},
@@ -11,6 +27,8 @@ export const STICKERS={
 } as const
 export type StickerKind=keyof typeof STICKERS
 export function paintSticker(ctx:CanvasRenderingContext2D,kind:StickerKind){
+  if(atlas){const [col,row]=STICKER_CELLS[kind],side=atlas.naturalWidth/4;ctx.drawImage(atlas,col*side,row*side,side,side,0,0,100,100);return}
+  // 로딩 중의 기존 그림은 빈 개체가 되지 않도록 원래 벡터로 표시한다.
   ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=2.5;ctx.strokeStyle='#715a42'
   for(const [path,color] of STICKERS[kind].parts){const shape=new Path2D(path);if(color!=='none'){ctx.fillStyle=color;ctx.fill(shape)}ctx.stroke(shape)}
 }

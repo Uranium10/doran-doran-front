@@ -1,10 +1,11 @@
+import {drawQuad,type Quad} from './sketchbook-transform'
 import {paintPressureInk} from './sketchbook-input'
 import {photoImage,preparePhotos} from './sketchbook-photo'
 import {DEFAULT_LAYERS,type LayerSettings} from './sketchbook-document'
 import type {DrawingLayer,Point,Stroke} from './drawing-story'
 import {pencilGrain} from './sketchbook-controls'
 import {pushPixels} from './sketchbook-warp'
-import {paintSticker} from './sketchbook-stickers'
+import {paintSticker,prepareStickers,stickersReady} from './sketchbook-stickers'
 export const SKETCH_WIDTH=900, SKETCH_HEIGHT=650
 export const clamp=(n:number,min=0,max=1)=>Math.max(min,Math.min(max,n))
 /** 레이어가 없던 기존 그림은 선이 가려지지 않도록 밑그림으로 해석한다. */
@@ -81,7 +82,7 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   if(!s.points.length)return
   if(s.brush==='warp'){for(let i=1;i<s.points.length;i++)pushPixels(ctx,{x:s.points[i-1].x*W,y:s.points[i-1].y*H},{x:s.points[i].x*W,y:s.points[i].y*H},Math.max(12,s.width/2),s.opacity??1);return}
   ctx.save();ctx.globalCompositeOperation=s.erase?'destination-out':'source-over';ctx.globalAlpha=s.opacity??1;ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=s.width;ctx.lineCap='round';ctx.lineJoin='round'
-  if(s.photo){const image=photoImage(s.photo);if(image){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W,(b.y-a.y)*H,(d.x-a.x)*W,(d.y-a.y)*H,a.x*W,a.y*H);ctx.drawImage(image,0,0,1,1)}}
+  if(s.photo){const image=photoImage(s.photo);if(image)drawQuad(ctx,image,s.points.map(p=>({x:p.x*W,y:p.y*H})) as Quad,image.naturalWidth,image.naturalHeight)}
   else if(s.sticker){const [a,b,,d]=s.points;ctx.transform((b.x-a.x)*W/100,(b.y-a.y)*H/100,(d.x-a.x)*W/100,(d.y-a.y)*H/100,a.x*W,a.y*H);paintSticker(ctx,s.sticker)}
   else if(s.fillRuns){
     ctx.translate(s.points[0].x*W,s.points[0].y*H)
@@ -116,13 +117,13 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   ctx.restore()
 }
 const layerCanvases=new WeakMap<HTMLCanvasElement,{color:HTMLCanvasElement;outline:HTMLCanvasElement}>()
-const layerHistory=new WeakMap<HTMLCanvasElement,{strokes:Stroke[];width:number;height:number}>()
+const layerHistory=new WeakMap<HTMLCanvasElement,{strokes:Stroke[];width:number;height:number;stickersLoaded:boolean}>()
 export function paintLayer(canvas:HTMLCanvasElement,strokes:Stroke[],layer:DrawingLayer){
   const filtered=strokes.filter(s=>strokeLayer(s)===layer),previous=layerHistory.get(canvas),ctx=canvas.getContext('2d',{willReadFrequently:true})!
-  const incremental=previous&&previous.width===canvas.width&&previous.height===canvas.height&&previous.strokes.length<=filtered.length&&previous.strokes.every((s,i)=>s===filtered[i])
+  const incremental=previous&&previous.stickersLoaded===stickersReady(filtered)&&previous.width===canvas.width&&previous.height===canvas.height&&previous.strokes.length<=filtered.length&&previous.strokes.every((s,i)=>s===filtered[i])
   if(!incremental)ctx.clearRect(0,0,canvas.width,canvas.height)
   for(let i=incremental?previous.strokes.length:0;i<filtered.length;i++)paintStroke(ctx,filtered[i],canvas.width,canvas.height)
-  layerHistory.set(canvas,{strokes:filtered,width:canvas.width,height:canvas.height})
+  layerHistory.set(canvas,{strokes:filtered,width:canvas.width,height:canvas.height,stickersLoaded:stickersReady(filtered)})
 }
 function layerBuffers(canvas:HTMLCanvasElement){
   let buffers=layerCanvases.get(canvas)
@@ -137,7 +138,7 @@ export function copyLayer(canvas:HTMLCanvasElement,target:HTMLCanvasElement,stro
 }
 export function adoptLayer(canvas:HTMLCanvasElement,source:HTMLCanvasElement,strokes:Stroke[],layer:DrawingLayer){
   const target=layerBuffers(canvas)[layer],ctx=target.getContext('2d',{willReadFrequently:true})!;ctx.clearRect(0,0,target.width,target.height);ctx.drawImage(source,0,0)
-  layerHistory.set(target,{strokes:strokes.filter(s=>strokeLayer(s)===layer),width:target.width,height:target.height})
+  layerHistory.set(target,{strokes:strokes.filter(s=>strokeLayer(s)===layer),width:target.width,height:target.height,stickersLoaded:stickersReady(strokes)})
 }
 /** 색칠을 먼저, 밑그림을 나중에 합성한다. 지우개도 선택한 레이어 안에서만 작동한다. */
 export function compositeLayers(canvas:HTMLCanvasElement,color:HTMLCanvasElement,outline:HTMLCanvasElement,layers:LayerSettings=DEFAULT_LAYERS){
@@ -163,7 +164,7 @@ export function floodRuns(data:Uint8ClampedArray,width:number,height:number,x:nu
   return runs
 }
 export async function sketchBlob(strokes:Stroke[],background='#fffaf0',W=SKETCH_WIDTH,H=SKETCH_HEIGHT,layers:LayerSettings=DEFAULT_LAYERS):Promise<Blob>{
-  await preparePhotos(strokes)
+  await Promise.all([preparePhotos(strokes),prepareStickers(strokes)])
   const ink=document.createElement('canvas');ink.width=W;ink.height=H;paintSketch(ink,strokes,layers)
   const flat=document.createElement('canvas');flat.width=W;flat.height=H;const ctx=flat.getContext('2d')!;ctx.fillStyle=background;ctx.fillRect(0,0,flat.width,flat.height);ctx.drawImage(ink,0,0)
   return new Promise((resolve,reject)=>flat.toBlob(b=>b?resolve(b):reject(new Error('그림을 준비하지 못했어요.')),'image/jpeg',.92))

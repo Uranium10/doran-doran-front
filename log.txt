@@ -939,3 +939,16 @@
 - 변경: lib/sketchbook-input.ts 신규, drawing-story/sketchbook/document/history/eraser 및 Sketchbook/SketchMenu/CSS, 관련 단위·브라우저 테스트, DRAWING_CONTROLS.md. 서버 API/DB 변경 없음. 아직 commit/push/배포 전. 기존 next-env.d.ts 변경 유지.
 - 최종 확인: 캔버스 버퍼 보완 이후 별도 TypeScript 검사 및 Next 운영 빌드 통과.
 - 후속 요청: 검증한 필압·손떨림 방지 변경을 main push하여 Vercel 운영 배포 진행. 배포 결과는 원격 상태로 확인.
+[2026-09-28] 기본 스티커 8종 이미지 생성 및 적용
+- 내장 image_gen으로 리본·해·달·별·하트·구름·꽃·나뭇잎을 색연필/수채 질감, 아이보리 테두리, 투명 배경으로 제작. 원본과 최종 프롬프트는 고도화/output/sketch-stickers-20260928에 보존.
+- public/images/sketchbook/storybook-stickers-v1.webp (1774x887, 381944 bytes), lib/sketchbook-stickers.ts 및 Sketchbook 선택창/Canvas 공유. 원본 PNG 1877151 bytes 대비 약 80% 절감. 1개 atlas만 로드/캐시하고 이미지 준비 상태 변경 시 레이어 캐시 갱신. 기존 ID/저장 형식 유지.
+- lib/sketchbook.ts의 내보내기와 Sketchbook 복원 시 스티커 로딩 대기, 실패 안내. CSS, DRAWING_CONTROLS.md, tests/browser/sketchbook-ui.cjs 갱신.
+- 검증: 8종 삽입, undo/redo, IndexedDB 저장/새 페이지 복원, 미디코딩 상태 export의 JPEG 동일성, 기존 필압/레이어/모드/사진 회귀 통과. 모바일 선택창 및 복원 화면 시각 확인. 별도 TypeScript 검사, Next 운영 빌드, diff --check 통과.
+- 서버 API/DB 변경 없음. commit/push/배포 전. 기존 next-env.d.ts 변경은 유지.
+[2026-09-28] Delete와 취소 가능한 자유 변형
+- 선택 삭제 또는 기존 전체 지우기 확인창을 Delete에 연결. Ctrl/Cmd+T, 브라우저 대체 Ctrl+Alt+T 및 하단 아이콘 제공. 입력/모달/그리기 중 보호.
+- lib/sketchbook-transform.ts, sketchbook-transform-session.ts, components/workpad/sketchbook-transform.tsx 신규. 8핸들/이동/회전, 비율·중심·각도 보조키, 왜곡/기울이기/투시, 뒤집기, 세션 undo/redo, Enter 1회 적용/Esc 원본 복원. 범위 및 Photoshop과의 차이는 DRAWING_CONTROLS.md 기록.
+- sketchbook.ts의 사진 렌더러는 네 꼭짓점 투시 지원. GPU 공유/텍스처 2개 제한과 CPU 대체. 여러 선은 투명 PNG 개체로 변형, 기존 저장 제한 적용, 기존 사진 재인코딩 없음. 서버 API/DB 변경 없음.
+- 검증: 단위39개, 실제 Chromium Ctrl+T 및 Ctrl+Alt+T/Delete/입력 보호/모달/선택 취소/1회 undo/다른 레이어 보존/로컬 저장/export 통과. GPU/CPU 투명도·색·이음선 테스트 통과. 기존 스티커·필압·레이어·사진·모드 회귀, 모바일 시각 확인. 별도 TypeScript 및 운영 빌드 통과.
+- 생성 스티커 변경과 함께 아직 commit/push/배포 전. 기존 next-env.d.ts 변경은 유지.
+- 후속 요청: 생성 스티커 및 Delete/자유 변형 변경 전체를 main에 push하여 Vercel 운영 배포. 직전 단위39개·브라우저 회귀·타입·빌드 검증 완료, 배포 상태는 GitHub 커밋 상태로 확인.
