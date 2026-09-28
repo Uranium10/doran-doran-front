@@ -929,3 +929,13 @@
 - 검증: TypeScript, diff --check 및 실제 브라우저 회귀 통과. 도구/팔레트/화면 맞추기/외부 상단 버튼 클릭 뒤 Ctrl+Z/Y, Ctrl+Shift+Z, 모달·입력란·숨김 화면 보호 확인. 기존 저장/사진/레이어/모드/연속 undo 검사 통과.
 - 필압은 현재 좌표에 저장되지 않고 선 굵기가 고정인 점 확인. 이번 변경은 단축키만 적용하며 필압 구현은 포함하지 않음.
 - 변경: components/workpad/sketchbook.tsx, tests/browser/sketchbook-ui.cjs, log.txt. 사용자 요청으로 이전 단축키 보완과 함께 main push. 기존 next-env.d.ts 변경 제외. Vercel 배포 완료는 원격 상태로 확인.
+
+
+[2026-09-28] 스케치북 필압 및 고정 손떨림 방지
+- ... 메뉴에 필압/손떨림 방지 스위치 2개 추가. 필압 기본 ON, 보정 기본 OFF. 두 모드 공통, localStorage에 기기별 지속. 강도 설정은 제공하지 않음.
+- pen 입력의 압력을 점별 보존: 펜/지우개 굵기, 크레파스 농도, 에어브러시 범위/농도에 반영. 마우스/손가락과 필압 OFF는 기존 고정 굵기. 고정 보정은 작은 흔들림을 줄이고 빠른 움직임/실제 끝점을 따라감.
+- 필압 신규 구간만 투명 잉크 버퍼에 누적. 프레임마다 선 전체를 재생하지 않음. 작업 캔버스 처리 방식을 통일하여 취소/복원 가장자리 차이를 개선. 기존 그림 호환, 필압 저장/변형/undo 보존 및 잘못된 필압 값 검증.
+- 검증: 단위 테스트35개, 실제 Chromium pen 압력/ON-OFF/설정 지속/IndexedDB 왕복 및 기존 UI 회귀 통과. 16개 렌더링 조건의 미리보기/확정과 필압 취소/복원 통과(교차 캔버스 합성 반올림 1/255 허용). 900x1300, 4001점 필압 선 프레임 p50 10.7ms/p95 13.6ms, 복합 그림 지우개 p50 6.5ms/p95 11.5ms. 데스크톱 측정이며 갤럭시 S펜 실기기는 미검증.
+- 변경: lib/sketchbook-input.ts 신규, drawing-story/sketchbook/document/history/eraser 및 Sketchbook/SketchMenu/CSS, 관련 단위·브라우저 테스트, DRAWING_CONTROLS.md. 서버 API/DB 변경 없음. 아직 commit/push/배포 전. 기존 next-env.d.ts 변경 유지.
+- 최종 확인: 캔버스 버퍼 보완 이후 별도 TypeScript 검사 및 Next 운영 빌드 통과.
+- 후속 요청: 검증한 필압·손떨림 방지 변경을 main push하여 Vercel 운영 배포 진행. 배포 결과는 원격 상태로 확인.

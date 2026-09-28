@@ -14,6 +14,31 @@ const url='http://127.0.0.1:'+server.address().port;
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});try{const page=await browser.newPage({viewport:{width:390,height:844}});
 const errors=[];page.on('pageerror',e=>{errors.push(String(e));console.error(String(e))});
 await page.goto(url);
+// S펜과 같은 pen 포인터의 압력 전달, 스위치 지속, 저장 복원 경로를 검증한다.
+{
+ await page.getByLabel('스케치북 더 보기').click();
+ assert.equal(await page.getByRole('switch',{name:'필압',exact:true}).getAttribute('aria-checked'),'true');
+ assert.equal(await page.getByRole('switch',{name:'손떨림 방지',exact:true}).getAttribute('aria-checked'),'false');
+ await page.getByRole('switch',{name:'손떨림 방지',exact:true}).click();await page.keyboard.press('Escape');
+ const penSession=await page.context().newCDPSession(page);
+ const drawPen=async()=>{const b=await page.locator('.canvasWrap').boundingBox(),x=b.x+b.width*.2,y=b.y+b.height*.45;
+  await penSession.send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1,pointerType:'pen',force:.1});
+  for(let i=1;i<=12;i++)await penSession.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:x+b.width*.5*i/12,y:y+Math.sin(i)*1.2,button:'left',buttons:1,pointerType:'pen',force:.1+.8*i/12});
+  await penSession.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:x+b.width*.5,y,button:'left',buttons:0,clickCount:1,pointerType:'pen',force:0});
+ };
+ await drawPen();
+ const stroke=await page.evaluate(()=>window.doc.strokes[0]);assert.equal(stroke.pressure,true);assert.ok(stroke.points.some(p=>p.pressure<.2));assert.ok(stroke.points.some(p=>p.pressure>.7));assert.ok(stroke.points.at(-1).pressure>.7);
+ const stored=await page.evaluate(async()=>{await window.slots.writeSketchSlot('pressure-test','manual-1',window.doc);return (await window.slots.readSketchSlots('pressure-test'))['manual-1'].document.strokes[0]});assert.deepEqual(stored,stroke);
+ await page.getByLabel('스케치북 더 보기').click();await page.getByRole('switch',{name:'필압',exact:true}).click();await page.keyboard.press('Escape');
+ await drawPen();const fixed=await page.evaluate(()=>window.doc.strokes.at(-1));assert.equal(fixed.pressure,undefined);assert.ok(fixed.points.every(p=>p.pressure===undefined));
+ await page.reload();await page.getByLabel('스케치북 더 보기').click();
+ assert.equal(await page.getByRole('switch',{name:'필압',exact:true}).getAttribute('aria-checked'),'false');assert.equal(await page.getByRole('switch',{name:'손떨림 방지',exact:true}).getAttribute('aria-checked'),'true');
+ await page.screenshot({path:dir+'/input-switches-mobile.png'});
+ await page.getByRole('switch',{name:'필압',exact:true}).click();await page.getByRole('switch',{name:'손떨림 방지',exact:true}).click();await page.keyboard.press('Escape');
+ await page.reload();await penSession.detach();
+ console.log('PASS pen pressure, pressure-off fixed stroke, switches persistence, IndexedDB pressure roundtrip');
+}
+
 assert.equal((await page.locator('.layerControl').first().boundingBox()).width,66);
 assert.equal((await page.locator('.layerEye').first().boundingBox()).width,22);
 const eyeBox=await page.locator('.layerEye').first().boundingBox(),tileBox=await page.locator('.layerTile').first().boundingBox();assert.ok(eyeBox.x+eyeBox.width<=tileBox.x);

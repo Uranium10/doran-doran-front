@@ -1,3 +1,4 @@
+import {paintPressureInk} from './sketchbook-input'
 import {photoImage,preparePhotos} from './sketchbook-photo'
 import {DEFAULT_LAYERS,type LayerSettings} from './sketchbook-document'
 import type {DrawingLayer,Point,Stroke} from './drawing-story'
@@ -15,7 +16,7 @@ export const orderedStrokes=(strokes:Stroke[])=>[
 // 작은 색연필 타일만 최대 16색 캐시한다. 움직일 때마다 픽셀 노이즈를 만들지 않는다.
 const pencilTiles=new Map<string,HTMLCanvasElement>()
 const pencilPatterns=new WeakMap<CanvasRenderingContext2D,Map<string,CanvasPattern>>()
-function pencilPattern(ctx:CanvasRenderingContext2D,color:string){
+export function pencilPattern(ctx:CanvasRenderingContext2D,color:string){
   let patterns=pencilPatterns.get(ctx);if(!patterns){patterns=new Map();pencilPatterns.set(ctx,patterns)}
   if(patterns.has(color))return patterns.get(color)!
   let tile=pencilTiles.get(color)
@@ -40,13 +41,13 @@ export function selectionBounds(strokes:Stroke[],ids:string[]){
 export function moveSelection(strokes:Stroke[],ids:string[],dx:number,dy:number){
   const b=selectionBounds(strokes,ids);if(!b)return strokes
   dx=clamp(dx,-b.left,1-b.right);dy=clamp(dy,-b.top,1-b.bottom)
-  return strokes.map(s=>ids.includes(s.id)?{...s,points:s.points.map(p=>({x:p.x+dx,y:p.y+dy}))}:s)
+  return strokes.map(s=>ids.includes(s.id)?{...s,points:s.points.map(p=>({...p,x:p.x+dx,y:p.y+dy}))}:s)
 }
 export function resizeSelection(strokes:Stroke[],ids:string[],factor:number){
   const b=selectionBounds(strokes,ids);if(!b)return strokes
   const cx=(b.left+b.right)/2,cy=(b.top+b.bottom)/2
   const f=Math.min(factor,...[b.right-cx,cx-b.left].filter(v=>v>0).map(v=>Math.min(cx,1-cx)/v),...[b.bottom-cy,cy-b.top].filter(v=>v>0).map(v=>Math.min(cy,1-cy)/v))
-  return strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*f,2,96),points:s.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}))}:s)
+  return strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*f,2,96),points:s.points.map(p=>({...p,x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}))}:s)
 }
 export type SelectionHandle='n'|'ne'|'e'|'se'|'s'|'sw'|'w'|'nw'|'rotate'
 /** 드래그 시작 시 원본에서 계산해 연속 변형의 반올림 오차가 쌓이지 않게 한다. */
@@ -63,17 +64,18 @@ export function transformSelection(strokes:Stroke[],ids:string[],handle:Selectio
     // 네 모서리는 반대편 모서리를 기준으로 가로세로 비율을 보존한다.
     if(handle.length===2){const vx=(start.x-ax)*W,vy=(start.y-ay)*H,denominator=vx*vx+vy*vy;const uniform=denominator>0?Math.max(.04,(((end.x-ax)*W)*vx+((end.y-ay)*H)*vy)/denominator):1;sx=sy=uniform}
   }
-  let next=strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*Math.sqrt(sx*sy),2,96),points:s.points.map(p=>handle==='rotate'?{x:cx+((p.x-cx)*W*Math.cos(angle)-(p.y-cy)*H*Math.sin(angle))/W,y:cy+((p.x-cx)*W*Math.sin(angle)+(p.y-cy)*H*Math.cos(angle))/H}:{x:ax+(p.x-ax)*sx,y:ay+(p.y-ay)*sy})}:s)
+  let next=strokes.map(s=>ids.includes(s.id)&&!s.fillRuns?{...s,width:clamp(s.width*Math.sqrt(sx*sy),2,96),points:s.points.map(p=>handle==='rotate'?{...p,x:cx+((p.x-cx)*W*Math.cos(angle)-(p.y-cy)*H*Math.sin(angle))/W,y:cy+((p.x-cx)*W*Math.sin(angle)+(p.y-cy)*H*Math.cos(angle))/H}:{...p,x:ax+(p.x-ax)*sx,y:ay+(p.y-ay)*sy})}:s)
   // 회전으로 종이 밖에 나갈 때는 모양을 찌그러뜨리지 않고 전체를 같은 비율로 맞춘다.
   const inkBounds=(list:Stroke[])=>{
     const chosen=list.filter(s=>ids.includes(s.id)),points=selectionBounds(list,ids)!,radius=Math.max(...chosen.map(s=>s.width/2),0)
     return {left:points.left-radius/W,right:points.right+radius/W,top:points.top-radius/H,bottom:points.bottom+radius/H}
   }
   const box=inkBounds(next),scale=Math.min(1,1/Math.max(.001,box.right-box.left),1/Math.max(.001,box.bottom-box.top))
-  if(scale<1)next=next.map(s=>ids.includes(s.id)?{...s,width:s.width*scale,points:s.points.map(p=>({x:cx+(p.x-cx)*scale,y:cy+(p.y-cy)*scale}))}:s)
+  if(scale<1)next=next.map(s=>ids.includes(s.id)?{...s,width:s.width*scale,points:s.points.map(p=>({...p,x:cx+(p.x-cx)*scale,y:cy+(p.y-cy)*scale}))}:s)
   const bounds=inkBounds(next),dx=bounds.left<0?-bounds.left:bounds.right>1?1-bounds.right:0,dy=bounds.top<0?-bounds.top:bounds.bottom>1?1-bounds.bottom:0
-  return next.map(s=>ids.includes(s.id)?{...s,points:s.points.map(p=>({x:p.x+dx,y:p.y+dy}))}:s)
+  return next.map(s=>ids.includes(s.id)?{...s,points:s.points.map(p=>({...p,x:p.x+dx,y:p.y+dy}))}:s)
 }
+const pressureSurfaces=new WeakMap<CanvasRenderingContext2D,HTMLCanvasElement>()
 /** 고정 크기의 선 데이터로 화면 크기가 변해도 원본 좌표를 보존한다. */
 export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH,H=SKETCH_HEIGHT){
   if(!s.points.length)return
@@ -84,6 +86,13 @@ export function paintStroke(ctx:CanvasRenderingContext2D,s:Stroke,W=SKETCH_WIDTH
   else if(s.fillRuns){
     ctx.translate(s.points[0].x*W,s.points[0].y*H)
     for(let i=0;i<s.fillRuns.length;i+=3)ctx.fillRect(s.fillRuns[i],s.fillRuns[i+1],s.fillRuns[i+2],1)
+  }else if(s.pressure){
+    let ink=pressureSurfaces.get(ctx)
+    if(!ink){ink=document.createElement('canvas');pressureSurfaces.set(ctx,ink)}
+    if(ink.width!==W||ink.height!==H){ink.width=W;ink.height=H}
+    const surface=ink.getContext('2d',{willReadFrequently:true})!;surface.clearRect(0,0,W,H)
+    paintPressureInk(surface,s,W,H,0,s.brush==='pencil'?pencilPattern(surface,s.color):undefined)
+    ctx.drawImage(ink,0,0)
   }else if(s.brush==='air'){
     const radius=s.width/2
     for(let i=0;i<s.points.length;i++){

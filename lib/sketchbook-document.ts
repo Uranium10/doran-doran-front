@@ -21,9 +21,10 @@ export function validSketchDocument(value:unknown):value is SketchDocument{
     if(!s||typeof s.id!=='string'||s.id.length>100||!hex(s.color)||!Number.isFinite(s.width)||s.width<0||s.width>300||typeof s.erase!=='boolean')return false
     if(s.layer!==undefined&&!['outline','color'].includes(s.layer))return false
     if(s.brush!==undefined&&!['pen','pencil','air','warp'].includes(s.brush))return false
+    if(s.pressure!==undefined&&typeof s.pressure!=='boolean')return false
     if(s.opacity!==undefined&&(!Number.isFinite(s.opacity)||s.opacity<0||s.opacity>1))return false
     if(!Array.isArray(s.points)||!s.points.length||s.points.length>12001)return false
-    if(!s.points.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<=100&&Math.abs(p.y)<=100))return false
+    if(!s.points.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<=100&&Math.abs(p.y)<=100&&(p.pressure===undefined||(Number.isFinite(p.pressure)&&p.pressure>=0&&p.pressure<=1))))return false
     if(s.photo!==undefined){if(!(s.photo instanceof Blob)||!['image/webp','image/png','image/jpeg'].includes(s.photo.type)||s.photo.size>2*1024*1024||s.points.length!==4||s.sticker||s.fillRuns||s.brush||s.erase)return false;photos++;photoBytes+=s.photo.size;if(photos>8||photoBytes>12*1024*1024)return false}
     if(s.sticker!==undefined&&!['ribbon','sun','moon','star','heart','flower','cloud','leaf'].includes(s.sticker))return false
     if(s.sticker&&s.points.length!==4)return false

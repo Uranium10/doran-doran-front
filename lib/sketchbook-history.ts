@@ -19,6 +19,6 @@ export function sameSketch(a:SketchDocument,b:SketchDocument){
   if(a.strokes===b.strokes)return true
   return a.strokes.length===b.strokes.length&&a.strokes.every((s,i)=>{
     const t=b.strokes[i];if(s===t)return true
-    return s.id===t.id&&s.color===t.color&&s.width===t.width&&s.erase===t.erase&&s.opacity===t.opacity&&s.layer===t.layer&&s.brush===t.brush&&s.sticker===t.sticker&&s.photo===t.photo&&s.fillRuns===t.fillRuns&&s.points.length===t.points.length&&s.points.every((p,j)=>p.x===t.points[j].x&&p.y===t.points[j].y)
+    return s.id===t.id&&s.color===t.color&&s.width===t.width&&s.erase===t.erase&&s.pressure===t.pressure&&s.opacity===t.opacity&&s.layer===t.layer&&s.brush===t.brush&&s.sticker===t.sticker&&s.photo===t.photo&&s.fillRuns===t.fillRuns&&s.points.length===t.points.length&&s.points.every((p,j)=>p.x===t.points[j].x&&p.y===t.points[j].y&&p.pressure===t.points[j].pressure)
   })
 }

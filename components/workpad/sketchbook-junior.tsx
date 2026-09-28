@@ -1,11 +1,12 @@
 "use client"
+import type {InputSettings} from '@/lib/sketchbook-input'
 import {useEffect,useRef,type CSSProperties} from 'react'
 import {X,FolderOpen,Check,Save,ImagePlus,ChevronRight} from 'lucide-react'
 import styles from './sketchbook.module.css'
 
 export type SketchMode='full'|'junior'
 export const SKETCH_MODE_KEY='doran-sketch-mode'
-export function SketchMenu({mode,onMode,onClose,onStorage,onPhoto}:{mode:SketchMode;onMode:(mode:SketchMode)=>void;onClose:()=>void;onStorage?:(action:'save'|'load')=>void;onPhoto:()=>void}){
+export function SketchMenu({mode,onMode,onClose,onStorage,onPhoto,inputSettings,onInputSettings}:{inputSettings:InputSettings;onInputSettings:(settings:InputSettings)=>void;mode:SketchMode;onMode:(mode:SketchMode)=>void;onClose:()=>void;onStorage?:(action:'save'|'load')=>void;onPhoto:()=>void}){
   const ref=useRef<HTMLDialogElement>(null)
   useEffect(()=>{
     const d=ref.current,opener=document.activeElement
@@ -29,7 +30,10 @@ export function SketchMenu({mode,onMode,onClose,onStorage,onPhoto}:{mode:SketchM
       <button type="button" onClick={()=>onStorage('save')}><Save size={20} aria-hidden/>저장</button>
       <button type="button" onClick={()=>onStorage('load')}><FolderOpen size={20} aria-hidden/>불러오기</button>
     </section>}
-    <footer>도구 모드는 이 기기에 저장됩니다.</footer>
+    <section className={styles.inputSettings} aria-label="그리기 설정">
+      {([{key:'pressure',label:'필압'},{key:'stabilize',label:'손떨림 방지'}] as const).map(({key,label})=><button key={key} type="button" role="switch" aria-checked={inputSettings[key]} onClick={()=>onInputSettings({...inputSettings,[key]:!inputSettings[key]})}><span>{label}</span><i className={styles.switchTrack} aria-hidden><b/></i></button>)}
+    </section>
+    <footer>도구 모드와 그리기 설정은 이 기기에 저장됩니다.</footer>
   </dialog>
 }
 

@@ -1,4 +1,5 @@
 "use client"
+import {brushPoint,DEFAULT_INPUT_SETTINGS,INPUT_SETTINGS_KEY,type InputSettings} from '@/lib/sketchbook-input'
 import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from 'react'
 import {PenTool,Eraser,LassoSelect,Undo2,Redo2,Trash2,PaintBucket,SprayCan,ArrowLeftRight,Pipette,Palette,Scan,Pointer,Smile,SwatchBook,X,MoreHorizontal} from 'lucide-react'
 import type {DrawingLayer,Point,Stroke} from '@/lib/drawing-story'
@@ -24,6 +25,9 @@ const HANDLES=[['nw',0,0,'왼쪽 위'],['n',50,0,'위'],['ne',100,0,'오른쪽 �
 type Input=PointerEvent<HTMLDivElement>
 export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDocumentChange,background='#fffaf0',onBackgroundChange,onBusyChange,disabled=false,width:paperWidth=SKETCH_WIDTH,height:paperHeight=SKETCH_HEIGHT}:{value:Stroke[];layers?:LayerSettings;storageKey?:string;onDocumentChange?:(doc:SketchDocument)=>void;onChange:(v:Stroke[])=>void;background?:string;onBackgroundChange?:(color:string)=>void;onBusyChange?:(busy:boolean)=>void;disabled?:boolean;width?:number;height?:number}){
   const W=paperWidth,H=paperHeight
+  const [inputSettings,setInputSettings]=useState<InputSettings>(DEFAULT_INPUT_SETTINGS)
+  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(INPUT_SETTINGS_KEY)||'null');if(saved)setInputSettings({pressure:typeof saved.pressure==='boolean'?saved.pressure:true,stabilize:typeof saved.stabilize==='boolean'?saved.stabilize:false})}catch{}},[])
+  const changeInputSettings=(next:InputSettings)=>{setInputSettings(next);try{localStorage.setItem(INPUT_SETTINGS_KEY,JSON.stringify(next))}catch{setNotice('그리기 설정은 이 창에서만 유지돼요.')}}
   const photoFile=useRef<HTMLInputElement>(null),photoPending=useRef(false)
   const [loadingPhoto,setLoadingPhoto]=useState(false),[decodingPhotos,setDecodingPhotos]=useState(false),[editingPhoto,setEditingPhoto]=useState<string|null>(null)
   const [mode,setMode]=useState<SketchMode>('full'),[menu,setMenu]=useState(false)
@@ -33,7 +37,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
   const paperSize=useRef({width:W,height:H})
   const warpCursor=useRef<HTMLDivElement>(null)
   const [view,setView]=useState<View>({...IDENTITY}),[viewAdjusting,setViewAdjusting]=useState(false),[fit,setFit]=useState(1),[preview,setPreview]=useState<'size'|'opacity'|null>(null)
-  const active=useRef<{id:number;pointerType:string;start:Point;points:Point[];stroke?:Stroke;moving:boolean;tap?:'fill'|'pick';handle?:SelectionHandle}|null>(null)
+  const active=useRef<{id:number;pointerType:string;start:Point;points:Point[];stroke?:Stroke;moving:boolean;stabilize?:boolean;tap?:'fill'|'pick';handle?:SelectionHandle}|null>(null)
   const [transformed,setTransformed]=useState<Stroke[]|null>(null),transformedRef=useRef<Stroke[]|null>(null)
   const [tool,setTool]=useState<Tool>('pen'),[color,setColor]=useState(COLORS[0]),[backColor,setBackColor]=useState('#ffffff'),[colorTarget,setColorTarget]=useState<'front'|'back'>('front')
   const [activeLayer,setActiveLayer]=useState<DrawingLayer>('outline'),[eye,setEye]=useState<{x:number;y:number;sample:string;current:string}|null>(null)
@@ -133,7 +137,8 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     if(active.current||touches.current.locked||(!inPaper(e)&&!handle))return
     if(tool!=='lasso'&&tool!=='pick'&&(value.length>=500||value.reduce((n,s)=>n+s.points.length+(s.fillRuns?.length??0),0)>500000)){setNotice('종이가 꽉 찼어요. 그림을 저장하거나 조금 되돌려 주세요.');return}
     if(tool!=='pick'&&(!layers[activeLayer].visible||layers[activeLayer].opacity===0)){announce('레이어를 켜고 불투명도를 올려 주세요');return}
-    const p=point(e,Boolean(handle))
+    const usesPressure=inputSettings.pressure&&e.pointerType==='pen'&&['pen','pencil','air','erase'].includes(tool)
+    const p=brushPoint(point(e,Boolean(handle)),undefined,W,H,false,usesPressure?(e.pressure>0?e.pressure:.5):undefined)
     if(editingPhoto&&!handle){const photo=value.find(s=>s.id===editingPhoto);if(!photo||!insidePolygon(p,photo.points))return}
     setNotice('')
     if(tool==='warp')updateWarpCursor(e)
@@ -147,7 +152,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
       copyLayer(canvas.current!,ink,value,activeLayer);copyLayer(canvas.current!,other,value,activeLayer==='color'?'outline':'color');warpWork.current={ink,other,done:1,layer:activeLayer}
     }
     const moving=tool==='lasso'&&Boolean(b&&p.x>=b.left&&p.x<=b.right&&p.y>=b.top&&p.y<=b.bottom)
-    active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving,stroke:tool!=='lasso'?{id:crypto.randomUUID(),color:inkColor,width:tool==='erase'?eraseWidth:width,erase:tool==='erase',brush:tool==='erase'?'pen':tool,opacity,layer:activeLayer,points:[p]}:undefined};queuePaint()
+    active.current={id:e.pointerId,pointerType:e.pointerType,start:p,points:[p],moving,stabilize:inputSettings.stabilize,stroke:tool!=='lasso'?{id:crypto.randomUUID(),color:inkColor,width:tool==='erase'?eraseWidth:width,erase:tool==='erase',brush:tool==='erase'?'pen':tool,pressure:usesPressure||undefined,opacity,layer:activeLayer,points:[p]}:undefined};queuePaint()
   }
   const move=(e:Input)=>{
     if(tool==='pick')previewEye(e)
@@ -159,8 +164,9 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     const a=active.current;if(!a||a.id!==e.pointerId||a.tap)return;e.preventDefault()
     const samples=e.nativeEvent.getCoalescedEvents?.()??[]
     for(const event of samples.length?samples:[e.nativeEvent]){
-      const p=point(event,Boolean(a.handle)),last=a.points.at(-1)!
-      if(Math.hypot((p.x-last.x)*W,(p.y-last.y)*H)<(a.stroke?.brush==='warp'?Math.max(2,a.stroke.width/8):1))continue
+      const last=a.points.at(-1)!,raw=point(event,Boolean(a.handle))
+      const p=a.stroke&&a.stroke.brush!=='warp'?brushPoint(raw,last,W,H,Boolean(a.stabilize),a.stroke.pressure?event.pressure:undefined):raw
+      if(Math.hypot((p.x-last.x)*W,(p.y-last.y)*H)<(a.stroke?.brush==='warp'?Math.max(2,a.stroke.width/8):1)&&Math.abs((p.pressure??.5)-(last.pressure??.5))<.015)continue
       if(a.points.length<(a.stroke?.brush==='warp'?2048:12000)){a.points.push(p);if(a.stroke)a.stroke.points=a.points}
     }queuePaint()
   }
@@ -170,7 +176,12 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     if(a?.id===e.pointerId){
       if(cancel||consumed)cancelStroke()
       else{
-        const p=point(e,Boolean(a.handle));a.points.push(p);if(a.stroke)a.stroke.points=a.points
+        const p=point(e,Boolean(a.handle))
+        // 펜을 떼면 기기가 0을 보고하므로 마지막 유효 필압을 보존하고 보정 지연 없이 끝점에 닿는다.
+        if(a.stroke?.pressure)p.pressure=a.points.at(-1)?.pressure??.5
+        const last=a.points.at(-1)!
+        if((p.x!==last.x||p.y!==last.y)&&a.points.length<12001)a.points.push(p)
+        if(a.stroke)a.stroke.points=a.points
         active.current=null;clearOverlay()
         if(a.tap){if(inPaper(e)){if(a.tap==='fill')fillAt(p);else sampleAt(p)}}
         else if(a.stroke){
@@ -299,7 +310,7 @@ export function Sketchbook({value,onChange,layers=DEFAULT_LAYERS,storageKey,onDo
     </div>
     {picker&&!blocked&&<ColorPanel value={colorTarget==='front'?color:backColor} label={colorTarget==='front'?'전경색':'배경색'} onChange={chooseColor} custom={custom} onCustom={saveColors} onClose={()=>setPicker(false)}/>}
     <input ref={photoFile} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="편집할 사진 선택" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void loadPhoto(file)}}/>
-    {menu&&<SketchMenu onPhoto={()=>{setMenu(false);photoFile.current?.click()}} mode={mode} onMode={switchMode} onClose={()=>setMenu(false)} onStorage={storageKey?action=>{setMenu(false);setStorage(action)}:undefined}/>}
+    {menu&&<SketchMenu inputSettings={inputSettings} onInputSettings={changeInputSettings} onPhoto={()=>{setMenu(false);photoFile.current?.click()}} mode={mode} onMode={switchMode} onClose={()=>setMenu(false)} onStorage={storageKey?action=>{setMenu(false);setStorage(action)}:undefined}/>}
     {storageKey&&<SketchStorage scope={storageKey} open={storage!==null} action={storage??'save'} onClose={()=>setStorage(null)} current={documentRef.current} enabled={!disabled} isBusy={()=>Boolean(active.current||fillBusy.current||layerStart.current)} onLoad={doc=>{remember(documentRef.current,doc);applyDocument(doc);changeView({...IDENTITY});setStorage(null);announce('그림을 불러왔어요')}} onNotice={setNotice}/>}
     {clear&&<ConfirmDialog title="어디를 지울까요?" cancelLabel="취소" secondary="해당 레이어만" onSecondary={()=>{commit(value.filter(s=>strokeLayer(s)!==activeLayer));setSelected([]);setClear(false)}} description="지운 뒤에도 실행 취소로 되돌릴 수 있어요." confirm="전부" onCancel={()=>setClear(false)} onConfirm={()=>{commit([]);setSelected([]);setClear(false)}}/>}
   </div>
