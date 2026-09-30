@@ -3,6 +3,8 @@ import { Sparkles } from "lucide-react"
 import { StartButton } from "@/components/start-button"
 import { LandingTopLink } from "@/components/landing-top-link"
 
+import { LandingDataSources } from "@/components/landing-data-sources"
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-secondary/40">
@@ -41,6 +43,7 @@ export function SiteFooter() {
             </p>
           </div>
         </div>
+        <LandingDataSources />
       </div>
     </footer>
   )

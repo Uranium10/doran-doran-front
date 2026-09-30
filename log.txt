@@ -952,3 +952,10 @@
 - 검증: 단위39개, 실제 Chromium Ctrl+T 및 Ctrl+Alt+T/Delete/입력 보호/모달/선택 취소/1회 undo/다른 레이어 보존/로컬 저장/export 통과. GPU/CPU 투명도·색·이음선 테스트 통과. 기존 스티커·필압·레이어·사진·모드 회귀, 모바일 시각 확인. 별도 TypeScript 및 운영 빌드 통과.
 - 생성 스티커 변경과 함께 아직 commit/push/배포 전. 기존 next-env.d.ts 변경은 유지.
 - 후속 요청: 생성 스티커 및 Delete/자유 변형 변경 전체를 main에 push하여 Vercel 운영 배포. 직전 단위39개·브라우저 회귀·타입·빌드 검증 완료, 배포 상태는 GitHub 커밋 상태로 확인.
+
+[2026-09-30] 랜딩페이지 데이터 출처 표기
+- 요청: 사용 데이터의 기관/자료 출처를 랜딩페이지 하단에 공개. 다른 페이지에는 추가하지 않음.
+- 변경: components/landing-data-sources.tsx 신규, components/site-footer.tsx 연결. 민족문화대백과·민속대백과·한국고전종합DB·한국구비문학대계·국립국어원 5개 출처와 용도/원문 링크 표시. 이용조건은 기본 접힌 details로 제공하고 1/2/4유형 및 미확인 상태를 자료별로 구분. 외부 링크 새 창 안내, 키보드 포커스, 모바일 1열/데스크톱 다열 배치.
+- 검증: 독립 TypeScript 검사(tsc --noEmit --incremental false), Next 운영 빌드, git diff --check 통과. SiteFooter는 app/page.tsx에서만 사용됨을 확인. 브라우저 시각 검수는 수행하지 않음.
+- 서버/API/DB 변경 없음. 기존 next-env.d.ts 사용자 변경 유지. commit/push/운영 배포 미실행.
+- 후속 요청: 검증한 랜딩 출처 표기를 main push하여 Vercel 운영 배포. 별도 next-env.d.ts 변경은 커밋에서 제외.
