@@ -12,7 +12,8 @@ import { LandingTopLink } from "@/components/landing-top-link"
 const navItems = [
   { label: "대쉬보드", href: "/#hero"},
   { label: "라이브러리", href: "/#library" },
-  { label: "가격", href: "/#pricing" },
+  // 가격 안내 재개 시 메뉴도 복구한다.
+  // { label: "가격", href: "/#pricing" },
   { label: "문해력 평가기준", href: "/#criteria" },
   { label: "자주 묻는 질문", href: "/#faq" },
 ]

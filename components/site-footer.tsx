@@ -32,7 +32,7 @@ export function SiteFooter() {
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <LandingTopLink className="hover:text-primary">대쉬보드</LandingTopLink>
             <Link href="/#library" className="hover:text-primary">라이브러리</Link>
-            <Link href="/#pricing" className="hover:text-primary">가격</Link>
+            {/* 가격 안내 재개 시 복구: <Link href="/#pricing" className="hover:text-primary">가격</Link> */}
             <Link href="/#criteria" className="hover:text-primary">평가 기준</Link>
             <Link href="/#faq" className="hover:text-primary">FAQ</Link>
           </nav>
