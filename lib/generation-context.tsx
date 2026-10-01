@@ -60,7 +60,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       setState(EMPTY); setRequestedStory(null); setScrollRequest(null)
       if (!userId) return
       const instance = new GenerationController(userId, {
-        current: () => request<{ available: boolean; job: GenerationJob | null }>("/stories/generation-jobs/current"),
+        current: () => request<{ available: boolean; job: GenerationJob | null }>("/stories/generation-jobs/current?include_result=false"),
         get: id => request<GenerationJob>(`/stories/generation-jobs/${encodeURIComponent(id)}`),
         enqueue: (profileId, input, key) => request<GenerationJob>("/stories/generation-jobs", {
           method: "POST", headers: { "Idempotency-Key": key },

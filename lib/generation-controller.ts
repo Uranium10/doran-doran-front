@@ -88,6 +88,16 @@ export class GenerationController {
       } else { result = (await this.api.current()).job }
       // 조회 중 새 요청을 시작했거나 로그아웃하면 오래된 응답으로 새 화면을 덮지 않는다.
       if (this.stopped || version !== this.revision) return
+      // 가벼운 최신 상태에는 본문이 없다. 완료 본문은 처음 한 번만 받고 같은 작업은 재사용한다.
+      // 알림을 닫은 작업은 본문도 다시 요청하지 않는다. 계정별 컨트롤러 밖에는 캐시하지 않는다.
+      const ignoredOlderCompletion = this.state.job?.status === "failed" && result?.job_id !== this.state.job.job_id
+      if (result?.status === "completed" && !result.result && !ignoredOlderCompletion && this.read("dismissed") !== result.job_id) {
+        const cached = this.state.job
+        result = cached?.job_id === result.job_id && cached.profile_id === result.profile_id && cached.result
+          ? { ...result, result: cached.result }
+          : await this.api.get(result.job_id)
+        if (this.stopped || version !== this.revision) return
+      }
       if (this.state.job?.mode === "legacy" && this.state.job.status === "completed" && !result) return
       if (pending && !result) {
         // 접수 실패 안내를 과거 완료 기록으로 덮지 않는다. 늦은 접수 응답은 같은 ID로 계속 확인한다.

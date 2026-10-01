@@ -156,6 +156,26 @@ async function run(){
  // 새로고침/다른 계정으로는 입력 메모리를 넘기지 않는다.
  memory.clear();a=make({current:async()=>({available:true,job:job('failed')})});await a.controller.refresh()
  assert.equal(a.controller.canRetry(),false);a.controller.dispose()
+ // 요약 폴링은 완료 본문을 최초 1회만 받고 최신 작업이 바뀌면 새 본문을 받는다.
+ memory.clear();let detailCalls=0,latestId='summary-1';
+ a=make({current:async()=>({available:true,job:{...job('completed',latestId),result:null}}),get:async id=>{detailCalls++;return job('completed',id)}});
+ await a.controller.refresh();await a.controller.refresh();await a.controller.refresh();
+ assert.equal(detailCalls,1);assert.equal(a.notices.length,1);assert.ok(a.controller.state.job.result);
+ latestId='summary-2';await a.controller.refresh();assert.equal(detailCalls,2);assert.equal(a.notices.length,2);
+ a.controller.dismiss();await a.controller.refresh();assert.equal(detailCalls,2);assert.equal(a.controller.state.job,null);a.controller.dispose();
+ // 미접수 실패 안내가 유지되는 동안 예전 완료 본문을 반복 다운로드하지 않는다.
+ memory.clear();let staleDetailCalls=0;
+ a=make({enqueue:async()=>{throw Object.assign(new Error('입력 확인'),{status:422})},current:async()=>({available:true,job:{...job('completed','old'),result:null}}),get:async()=>{staleDetailCalls++;return job('completed','old')}});
+ await a.controller.start('profile-1',input);await a.controller.refresh();await a.controller.refresh();
+ assert.equal(staleDetailCalls,0);assert.equal(a.controller.state.job.status,'failed');a.controller.dispose();
+ // 본문 로드 중 로그아웃한 경우 결과를 버린다.
+ memory.clear();const detail=deferred();a=make({current:async()=>({available:true,job:{...job('completed'),result:null}}),get:()=>detail.promise});
+ const hydrating=a.controller.refresh();await Promise.resolve();a.controller.dispose();detail.resolve(job('completed'));await hydrating;assert.equal(a.notices.length,0);
+ // 본문 로드 실패는 완료 알림을 소진하지 않고 다음 조회에서 복구한다.
+ memory.clear();let detailOnline=false;
+ a=make({current:async()=>({available:true,job:{...job('completed'),result:null}}),get:async()=>{if(!detailOnline)throw new Error('offline');return job('completed')}});
+ await a.controller.refresh();assert.equal(a.notices.length,0);assert.equal(a.controller.state.connectionLost,true);
+ detailOnline=true;await a.controller.refresh();assert.equal(a.notices.length,1);a.controller.dispose();
  assert.equal(timers.size,0)
  console.log('PASS: acceptance, navigation/reload recovery, no duplicate POST, conflict adoption, stale responses, logout/account isolation, reconnect, legacy completion')
 }
