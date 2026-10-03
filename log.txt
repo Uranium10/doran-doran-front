@@ -968,3 +968,12 @@
 [2026-10-01] 생성 상태 조회 경량화
 - generation-context가 include_result=false 요약 조회 사용. generation-controller는 새 완료 작업만 기존 상세 API로 1회 로드하고, 같은 완료 본문은 현재 계정 메모리에서 재사용. 닫은 알림/이전 실패에 가려진 완료 작업은 재다운로드하지 않음. 로그아웃/늦은 응답/네트워크 복구/완료 알림 회귀 유지. 통신규격.md 갱신.
 - 프론트 테스트98개, controller 추가 케이스, tsc --noEmit, Next 프로덕션 빌드 통과. 외부 폰트 네트워크 제한 후 허용 빌드로 통과. 백엔드 선행 배포 후 Vercel main 배포 예정.
+
+[2026-10-01] 어휘/상태 조회 경량화 운영 반영 확인
+- 2e15515 main push, Vercel Vyst89qZyZzs9Gwg7h2rifimKiFn success 확인. 운영 랜딩 HTTP200, 공개 JS 번들 include_result=false 반영 확인. 기존 next-env.d.ts 변경 제외.
+- 배포 확인 기록은 고도화/output/vocab-polling-20261001/deployment.json. 추가 모델 호출/비용/DB 변경 없음.
+
+[2026-10-04] 획득 스티커 중앙 정렬
+- components/sticker-book.module.css: 결과 화면의 획득 카드 영역을 중앙 정렬 flex-wrap으로 변경. 카드 최대 기준 폭 320px, 좁은 화면에서는 가용 폭에 맞춰 축소. 종이/테이프 장식 유지, 스티커북 목록의 기존 2열/1열 그리드 유지.
+- 검증: 실제 StickerCard JSX 및 CSS 기반 로컬 미리보기에서 데스크톱 1365px 중앙 오차 0px, 모바일 390/320px 가로 넘침 없음. 복수 획득 카드 중앙 정렬과 기존 스티커북 2열 확인. tsc --noEmit, Next 운영 빌드(--webpack), git diff --check 통과.
+- 사용자 요청에 따라 main push 및 Vercel 운영 배포 진행. API/DB 변경 없음. 기존 next-env.d.ts 변경 제외.
