@@ -622,59 +622,63 @@ function StickerWorkspace({
                 />
               ))}
             </div>
-            <nav className={styles.pagination} aria-label="스티커 페이지">
-              <button
-                type="button"
-                aria-label="이전 스티커 페이지"
-                disabled={busy || page === 0}
-                onClick={() => {
-                  setPage((p) => p - 1);
-                  setNotice("");
-                }}
-              >
-                <ChevronLeft size={20} />
-              </button>
-              {stickerPages(page, data.total).map((number, index) =>
-                number === null ? (
-                  <span key={`gap-${index}`} className={styles.pageGap}>
-                    …
-                  </span>
-                ) : (
+            {!storyId && (
+              <>
+                <nav className={styles.pagination} aria-label="스티커 페이지">
                   <button
-                    key={number}
                     type="button"
-                    aria-label={`${number + 1}페이지`}
-                    aria-current={page === number ? "page" : undefined}
-                    disabled={busy}
+                    aria-label="이전 스티커 페이지"
+                    disabled={busy || page === 0}
                     onClick={() => {
-                      setPage(number);
+                      setPage((p) => p - 1);
                       setNotice("");
                     }}
                   >
-                    {number + 1}
-                    <svg viewBox="0 0 54 48" fill="none" aria-hidden="true">
-                      <path d="M43 8C27 0 5 6 4 24c-2 16 21 22 36 13C57 27 47 5 29 6" />
-                      <path d="M41 6C24 3 7 8 6 24c-1 14 23 19 36 9" />
-                    </svg>
+                    <ChevronLeft size={20} />
                   </button>
-                ),
-              )}
-              <button
-                type="button"
-                aria-label="다음 스티커 페이지"
-                disabled={busy || page >= stickerLastPage(data.total)}
-                onClick={() => {
-                  setPage((p) => p + 1);
-                  setNotice("");
-                }}
-              >
-                <ChevronRight size={20} />
-              </button>
-            </nav>
-            <p className={styles.pageNote}>
-              {page + 1} / {stickerLastPage(data.total) + 1} 쪽 · 한 쪽에 네
-              장씩
-            </p>
+                  {stickerPages(page, data.total).map((number, index) =>
+                    number === null ? (
+                      <span key={`gap-${index}`} className={styles.pageGap}>
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={number}
+                        type="button"
+                        aria-label={`${number + 1}페이지`}
+                        aria-current={page === number ? "page" : undefined}
+                        disabled={busy}
+                        onClick={() => {
+                          setPage(number);
+                          setNotice("");
+                        }}
+                      >
+                        {number + 1}
+                        <svg viewBox="0 0 54 48" fill="none" aria-hidden="true">
+                          <path d="M43 8C27 0 5 6 4 24c-2 16 21 22 36 13C57 27 47 5 29 6" />
+                          <path d="M41 6C24 3 7 8 6 24c-1 14 23 19 36 9" />
+                        </svg>
+                      </button>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    aria-label="다음 스티커 페이지"
+                    disabled={busy || page >= stickerLastPage(data.total)}
+                    onClick={() => {
+                      setPage((p) => p + 1);
+                      setNotice("");
+                    }}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </nav>
+                <p className={styles.pageNote}>
+                  {page + 1} / {stickerLastPage(data.total) + 1} 쪽 · 한 쪽에 네
+                  장씩
+                </p>
+              </>
+            )}
           </>
         )}
         <button

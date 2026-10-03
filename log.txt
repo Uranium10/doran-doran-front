@@ -977,3 +977,8 @@
 - components/sticker-book.module.css: 결과 화면의 획득 카드 영역을 중앙 정렬 flex-wrap으로 변경. 카드 최대 기준 폭 320px, 좁은 화면에서는 가용 폭에 맞춰 축소. 종이/테이프 장식 유지, 스티커북 목록의 기존 2열/1열 그리드 유지.
 - 검증: 실제 StickerCard JSX 및 CSS 기반 로컬 미리보기에서 데스크톱 1365px 중앙 오차 0px, 모바일 390/320px 가로 넘침 없음. 복수 획득 카드 중앙 정렬과 기존 스티커북 2열 확인. tsc --noEmit, Next 운영 빌드(--webpack), git diff --check 통과.
 - 사용자 요청에 따라 main push 및 Vercel 운영 배포 진행. API/DB 변경 없음. 기존 next-env.d.ts 변경 제외.
+
+[2026-10-04] 획득 화면 페이징 제거
+- components/sticker-collection.tsx: 동화별 획득 화면(storyId 있음)에서는 페이지 이동 버튼/번호와 쪽수 안내 문구를 렌더링하지 않음. 스티커북과 휴지통의 4장 페이징은 유지.
+- 검증: 변경 분기와 기존 목록 동작 확인, tsc --noEmit, Next 운영 빌드(--webpack), git diff --check 통과. API/DB 변경 없음.
+- 직전 획득 화면 배포의 후속 수정으로 main push 및 Vercel 배포 진행. 기존 next-env.d.ts 변경 제외.
